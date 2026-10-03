@@ -1,5 +1,7 @@
 package org.projecteden.farmermobile.ui.screens.history
 
+import org.projecteden.farmermobile.theme.bevel
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -93,7 +95,7 @@ fun AdviceHistoryScreen(
             // 1. Offline Freshness Banner
             Surface(
                 color = SurfaceContainerHigh,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(2.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -166,7 +168,7 @@ fun AdviceHistoryScreen(
                     )
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(2.dp))
                             .background(PrimaryContainer)
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
@@ -202,9 +204,9 @@ fun AdviceHistoryScreen(
             historyList.forEach { item ->
                 Surface(
                     color = SurfaceContainerLowest,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(2.dp),
                     shadowElevation = 2.dp,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.bevel().fillMaxWidth()
                 ) {
                     Row(
                         modifier = Modifier
@@ -249,7 +251,7 @@ fun AdviceHistoryScreen(
                                 if (item.hasListenedAudio) {
                                     Box(
                                         modifier = Modifier
-                                            .clip(RoundedCornerShape(12.dp))
+                                            .clip(RoundedCornerShape(2.dp))
                                             .background(SurfaceContainer)
                                             .padding(horizontal = 8.dp, vertical = 2.dp)
                                     ) {
@@ -310,7 +312,7 @@ fun AdviceHistoryScreen(
                                         containerColor = SurfaceContainer,
                                         contentColor = Primary
                                     ),
-                                    shape = RoundedCornerShape(10.dp),
+                                    shape = RoundedCornerShape(2.dp),
                                     modifier = Modifier.height(44.dp)
                                 ) {
                                     Row(
@@ -335,7 +337,7 @@ fun AdviceHistoryScreen(
                                     onClick = onNavigateToDetail,
                                     modifier = Modifier
                                         .size(44.dp)
-                                        .clip(RoundedCornerShape(10.dp))
+                                        .clip(RoundedCornerShape(2.dp))
                                         .background(SurfaceContainerLow)
                                 ) {
                                     Icon(
@@ -354,7 +356,7 @@ fun AdviceHistoryScreen(
             // 4. Honest Calm Empty State for Older Seasons
             Surface(
                 color = SurfaceContainerLow,
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(2.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 16.dp)
@@ -406,7 +408,7 @@ fun AdviceHistoryScreen(
                     // Contact SAAO Chip
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
+                            .clip(RoundedCornerShape(2.dp))
                             .background(SurfaceContainer)
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {

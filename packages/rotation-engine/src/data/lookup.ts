@@ -19,6 +19,23 @@ export function amanOf(context: EvaluationContext) {
   return { crop, record, catalog };
 }
 
+/** The Aman crop when the plan has one; plans built around another crop may leave rice out. */
+export function amanOrNull(context: EvaluationContext) {
+  return context.crops.some(c => c.season === 'Aman') ? amanOf(context) : null;
+}
+
+/** A non-rice crop in the monsoon (Kharif-2) slot, when the plan has one. */
+export function kharif2Of(context: EvaluationContext) {
+  const crop = context.crops.find(c => c.season === 'Kharif-2');
+  if (!crop) return null;
+  const record = recordFor(crop.variety);
+  const catalog = catalogFor(crop.variety);
+  if (!record || !catalog) {
+    throw new Error(`No Kharif-2 replay data for "${crop.variety}" in rotation ${context.rotationId}`);
+  }
+  return { crop, record, catalog };
+}
+
 export function rabiOf(context: EvaluationContext) {
   const crop = context.crops.find(c => c.season === 'Rabi');
   const record = crop ? recordFor(crop.variety) : undefined;

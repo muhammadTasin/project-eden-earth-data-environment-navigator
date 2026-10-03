@@ -1,5 +1,12 @@
 package org.projecteden.farmermobile.ui.screens.ai
 
+import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.speech.RecognizerIntent
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -25,6 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.CircularProgressIndicator
@@ -45,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -164,7 +173,7 @@ fun AiAssistantScreen(
         ) {
             viewModel.promptSuggestions.forEach { prompt ->
                 Surface(
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(2.dp),
                     color = SurfaceContainerLow,
                     border = androidx.compose.foundation.BorderStroke(1.dp, Primary.copy(alpha = 0.3f)),
                     modifier = Modifier.clickable {
@@ -193,12 +202,47 @@ fun AiAssistantScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // Speak instead of typing: the phone's speech recogniser (Bangla) turns the words into text
+                val context = LocalContext.current
+                val speech = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                    val heard = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+                    if (result.resultCode == Activity.RESULT_OK && !heard.isNullOrBlank()) {
+                        viewModel.sendQuery(heard, spoken = true)
+                    }
+                }
+                IconButton(
+                    onClick = {
+                        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "bn-BD")
+                            putExtra(RecognizerIntent.EXTRA_PROMPT, "কোন ফসল করতে চান, বলুন")
+                        }
+                        try {
+                            speech.launch(intent)
+                        } catch (e: ActivityNotFoundException) {
+                            Toast.makeText(context, "এই ফোনে কথা থেকে লেখার সুবিধা নেই; লিখে পাঠান।", Toast.LENGTH_LONG).show()
+                        }
+                    },
+                    enabled = !isLoading,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(SurfaceContainerHigh)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Mic,
+                        contentDescription = "বলুন",
+                        tint = Primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
                 OutlinedTextField(
                     value = inputText,
                     onValueChange = { inputText = it },
                     placeholder = { Text("আপনার প্রশ্ন এখানে লিখুন...", color = OnSurfaceVariant) },
                     maxLines = 3,
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(2.dp),
                     textStyle = MaterialTheme.typography.bodyMedium.copy(
                         color = OnSurface,
                         fontWeight = FontWeight.Normal
@@ -319,7 +363,7 @@ private fun ChatBubble(message: ChatMessage) {
                     if (message.sources.isNotEmpty()) {
                         Surface(
                             color = SurfaceContainerHigh.copy(alpha = 0.6f),
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(2.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {

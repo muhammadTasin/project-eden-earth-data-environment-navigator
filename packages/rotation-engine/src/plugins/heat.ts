@@ -1,5 +1,5 @@
 import type { IEvidenceDimensionPlugin, EvaluationContext, DimensionScoreResult } from '@project-eden/contracts';
-import { amanOf, rabiOf, kharif1Of, clampScore } from '../data/lookup.ts';
+import { amanOrNull, rabiOf, kharif1Of, kharif2Of, clampScore } from '../data/lookup.ts';
 import { bnDate, bnDecimal, bnDigits, enDate } from '../bn.ts';
 import { LOC } from '../data/location.ts';
 import { choiceIdOf, replayFacts } from '../data/crop_choice.ts';
@@ -15,15 +15,21 @@ export class HeatDimensionPlugin implements IEvidenceDimensionPlugin {
   readonly isEnabled = true;
 
   evaluate(context: EvaluationContext): DimensionScoreResult {
-    const { crop: amanCrop, record: aman, catalog: amanName } = amanOf(context);
+    const amanSlot = amanOrNull(context);
     const { crop: rabiCrop, record: rabi, catalog: rabiName } = rabiOf(context);
     const heat = rabi.heat;
     const k1 = kharif1Of(context);
     const k1Heat = k1?.record.heat ?? null;
+    const k2 = kharif2Of(context);
+    const k2Heat = k2?.record.heat ?? null;
     const assumed = (variety: string) => variety.includes('@') && Boolean(replayFacts(choiceIdOf(variety))?.heat?.assumed);
 
     // Score = share of the sensitive stage that stays below the crop's heat threshold (the worse crop, with Kharif-1).
-    const hotShare = Math.max(heat ? heat.hotDays / heat.windowDays : 0, k1Heat ? k1Heat.hotDays / k1Heat.windowDays : 0);
+    const hotShare = Math.max(
+      heat ? heat.hotDays / heat.windowDays : 0,
+      k1Heat ? k1Heat.hotDays / k1Heat.windowDays : 0,
+      k2Heat ? k2Heat.hotDays / k2Heat.windowDays : 0,
+    );
     const heatScore = clampScore(1 - hotShare, 0.1, 0.95);
     const limitNoteBangla = assumed(rabiCrop.variety) ? ' (সীমা সাহিত্য থেকে অনুমিত)' : '';
     const limitNoteEnglish = assumed(rabiCrop.variety) ? ' (assumed limit)' : '';
@@ -33,18 +39,24 @@ export class HeatDimensionPlugin implements IEvidenceDimensionPlugin {
     const k1English = k1 && k1Heat
       ? ` ${k1.catalog.crop}: ${k1Heat.hotDays} of ${k1Heat.windowDays} days above ${k1Heat.thresholdC} C at ${k1Heat.stage}${assumed(k1.crop.variety) ? ' (assumed limit)' : ''}.`
       : '';
+    const k2Bangla = k2 && k2Heat && k2Heat.hotDays > 0
+      ? ` বর্ষার ${k2.catalog.cropBangla}: ${k2Heat.stageBangla} ${bnDigits(k2Heat.windowDays)} দিনের ${bnDigits(k2Heat.hotDays)} দিন ${bnDigits(k2Heat.thresholdC)}°C ছাড়ায়।`
+      : '';
+    const k2English = k2 && k2Heat && k2Heat.hotDays > 0
+      ? ` Monsoon ${k2.catalog.crop.toLowerCase()}: ${k2Heat.hotDays} of ${k2Heat.windowDays} days above ${k2Heat.thresholdC} C at ${k2Heat.stage}.`
+      : '';
 
     const summaryBangla = heat
       ? `${heat.stageBangla} ${bnDigits(heat.windowDays)} দিনের মধ্যে প্রায় ${bnDigits(heat.hotDays)} দিন তাপমাত্রা ${bnDigits(heat.thresholdC)}°C ছাড়ায় (২৫ মৌসুমের মধ্যমা)${limitNoteBangla}।`
       : `${rabiName.cropBangla} ~${bnDate(rabi.harvest)} কাটা হয়, মার্চ-এপ্রিলের গরমের আগেই।`;
     // A significant warming of nights at this variety's flowering is shown as a caution (it does not change the score)
-    const night = LOC.advisories?.heatTrends.find(t => t.measure === NIGHT_MEASURE[amanCrop.variety]);
-    const warmingNights = night && night.kendallP < 0.05 && night.trendPerDecade > 0 ? night : null;
-    const nightNoteBangla = warmingNights
-      ? ` সতর্কতা: ${amanName.varietyBangla}-এর ফুল আসার সময়ের রাত প্রতি দশকে ${bnDecimal(warmingNights.trendPerDecade, 2)}°C গরম হচ্ছে।`
+    const night = amanSlot ? LOC.advisories?.heatTrends.find(t => t.measure === NIGHT_MEASURE[amanSlot.crop.variety]) : undefined;
+    const warmingNights = amanSlot && night && night.kendallP < 0.05 && night.trendPerDecade > 0 ? night : null;
+    const nightNoteBangla = warmingNights && amanSlot
+      ? ` সতর্কতা: ${amanSlot.catalog.varietyBangla}-এর ফুল আসার সময়ের রাত প্রতি দশকে ${bnDecimal(warmingNights.trendPerDecade, 2)}°C গরম হচ্ছে।`
       : '';
-    const nightNoteEnglish = warmingNights
-      ? ` Watch: nights at ${amanCrop.variety} flowering are warming ${warmingNights.trendPerDecade} C per decade.`
+    const nightNoteEnglish = warmingNights && amanSlot
+      ? ` Watch: nights at ${amanSlot.crop.variety} flowering are warming ${warmingNights.trendPerDecade} C per decade.`
       : '';
 
     const summaryEnglish = heat
@@ -55,17 +67,18 @@ export class HeatDimensionPlugin implements IEvidenceDimensionPlugin {
       dimensionId: this.id,
       score: heatScore,
       confidence: 'medium',
-      summaryBangla: summaryBangla + k1Bangla + nightNoteBangla,
-      summaryEnglish: summaryEnglish + k1English + nightNoteEnglish,
+      summaryBangla: summaryBangla + k1Bangla + k2Bangla + nightNoteBangla,
+      summaryEnglish: summaryEnglish + k1English + k2English + nightNoteEnglish,
       metrics: {
         hotDays: heat?.hotDays ?? 0,
         sensitiveWindowDays: heat?.windowDays ?? 0,
         thresholdC: heat?.thresholdC ?? 0,
         sensitiveStage: heat?.stage ?? 'none before harvest',
-        amanFloweringNightTempC: aman.floweringNightTempC ?? 'not computed',
+        amanFloweringNightTempC: amanSlot?.record.floweringNightTempC ?? 'not computed',
         amanNightTrendPerDecade: night ? night.trendPerDecade : 'not computed',
         amanNightTrendSignificant: Boolean(warmingNights),
         ...(k1Heat ? { kharif1HotDays: k1Heat.hotDays, kharif1WindowDays: k1Heat.windowDays } : {}),
+        ...(k2Heat ? { kharif2HotDays: k2Heat.hotDays, kharif2WindowDays: k2Heat.windowDays } : {}),
       },
       provenance: {
         source: 'NASA POWER daily Tmax, bias-corrected by month against BMD station 41895 Shah Mokhdum (NOAA GSOD); research/explore/heat_windows.py',

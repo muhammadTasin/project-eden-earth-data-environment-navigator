@@ -1,5 +1,5 @@
 import type { IEvidenceDimensionPlugin, EvaluationContext, DimensionScoreResult } from '@project-eden/contracts';
-import { rabiOf, kharif1Of } from '../data/lookup.ts';
+import { amanOrNull, rabiOf, kharif1Of, kharif2Of } from '../data/lookup.ts';
 import { LOC } from '../data/location.ts';
 import { bnDigits } from '../bn.ts';
 
@@ -15,21 +15,28 @@ export class FodderDimensionPlugin implements IEvidenceDimensionPlugin {
   evaluate(context: EvaluationContext): DimensionScoreResult {
     const { catalog: rabiName } = rabiOf(context);
     const k1 = kharif1Of(context);
+    const k2 = kharif2Of(context);
+    const hasAman = Boolean(amanOrNull(context));
     const cattle = Math.round(LOC.conditions.cattlePerKm2);
-    // A crop before Aman adds a second residue: the better of the two classes, plus a little
-    const score = k1
-      ? Math.min(0.95, Math.max(FODDER_SCORE[rabiName.fodderValue], FODDER_SCORE[k1.catalog.fodderValue]) + 0.02)
-      : FODDER_SCORE[rabiName.fodderValue];
+    // Aman straw is assumed in every rotation with Aman, so the score follows the other crops' residue: the best
+    // class, plus a little for each extra crop; without Aman the rice straw is missing.
+    const extras = [k1, k2].filter(Boolean) as Array<NonNullable<typeof k1>>;
+    const best = Math.max(FODDER_SCORE[rabiName.fodderValue], ...extras.map(x => FODDER_SCORE[x.catalog.fodderValue]));
+    const score = Math.max(0.3, Math.min(0.95, best + 0.02 * extras.length - (hasAman ? 0 : 0.1)));
+    const noStrawBangla = hasAman ? '' : ' আমন নেই, তাই ধানের খড়ও নেই।';
+    const noStrawEnglish = hasAman ? '' : ' No Aman, so no rice straw.';
 
     return {
       dimensionId: this.id,
       score: Number(score.toFixed(2)),
       confidence: 'medium',
-      summaryBangla: `${rabiName.fodderNoteBangla}${k1 ? ` ${k1.catalog.fodderNoteBangla}` : ''} রাজশাহীতে প্রতি বর্গকিমিতে প্রায় ${bnDigits(cattle)}টি গরু (FAO GLW4)।`,
-      summaryEnglish: `Residue class "${rabiName.fodderValue}" for ${rabiName.crop}; Rajshahi has about ${cattle} cattle per km2 (FAO GLW4, 2015).`,
+      summaryBangla: `${rabiName.fodderNoteBangla}${extras.map(x => ` ${x.catalog.fodderNoteBangla}`).join('')}${noStrawBangla} রাজশাহীতে প্রতি বর্গকিমিতে প্রায় ${bnDigits(cattle)}টি গরু (FAO GLW4)।`,
+      summaryEnglish: `Residue class "${rabiName.fodderValue}" for ${rabiName.crop};${noStrawEnglish} Rajshahi has about ${cattle} cattle per km2 (FAO GLW4, 2015).`,
       metrics: {
         residueClass: rabiName.fodderValue,
         ...(k1 ? { kharif1ResidueClass: k1.catalog.fodderValue } : {}),
+        ...(k2 ? { kharif2ResidueClass: k2.catalog.fodderValue } : {}),
+        riceStraw: hasAman,
         districtCattlePerKm2: LOC.conditions.cattlePerKm2,
       },
       provenance: {

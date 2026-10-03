@@ -92,7 +92,7 @@ fun AudioPlayerCard(
                 containerColor = Primary,
                 contentColor = OnPrimary
             ),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(2.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(54.dp)
@@ -129,7 +129,7 @@ fun AudioPlayerCard(
 
             Surface(
                 color = SurfaceContainerHigh,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(2.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -182,7 +182,7 @@ fun AudioPlayerCard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(6.dp)
-                                .clip(RoundedCornerShape(3.dp)),
+                                .clip(RoundedCornerShape(2.dp)),
                             color = PrimaryContainer,
                             trackColor = SurfaceDim
                         )
@@ -196,7 +196,7 @@ fun AudioPlayerCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(2.dp))
                     .background(SurfaceContainerHigh)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,

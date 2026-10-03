@@ -19,8 +19,8 @@ import { getRiverErosion } from './erosion.ts';
 import { liveHaor, liveStatus, liveUpazila, liveUpazilas } from './live.ts';
 import { askAiAssistant } from './ai_assistant.ts';
 import { cropMenu } from '../../../packages/rotation-engine/src/data/crop_choice.ts';
-import { cropsFromKeys, keypadMenu, replyFor, understand } from './voice.ts';
-import { awajConfig, bdMobile, sendTtsCall } from './awaj.ts';
+import { cropsFromKeys, keypadMenu, replyFor, requestFromWords, understand } from './voice.ts';
+import { awajConfig, bdMobile, sendKeypadSurvey, sendTemplateSurvey, sendTtsCall } from './awaj.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -96,6 +96,8 @@ function planRequest(body: any): PlanOptionsRequest {
     season: body.season || '2026-aman',
     currentAmanCrop: body.currentAmanCrop,
     preferredCrops: cropList(body.preferredCrops),
+    heroCrop: typeof body.heroCrop === 'string' && body.heroCrop.trim() ? body.heroCrop.trim().toLowerCase() : undefined,
+    avoidCrops: cropList(body.avoidCrops),
     farmerPriorities: body.farmerPriorities || DEFAULT_PRIORITIES,
   };
 }
@@ -106,14 +108,20 @@ function planRequest(body: any): PlanOptionsRequest {
  */
 function voiceAnswer(body: any) {
   const heard = understand(String(body.text ?? ''));
+  const words = requestFromWords(heard);
   const request = planRequest({
     ...body,
-    preferredCrops: heard.crops.length || heard.notModelled.length ? [...heard.crops, ...heard.notModelled] : body.preferredCrops,
-    landType: heard.landType ?? body.landType,
-    farmerPriorities: heard.priorities ?? body.farmerPriorities,
+    ...words,
+    ...(words.heroCrop ? { preferredCrops: words.preferredCrops ?? [] } : {}),
+    avoidCrops: [...(words.avoidCrops ?? []), ...(cropList(body.avoidCrops) ?? [])],
   });
   const advice = adviseWithNarration(request, body.farmerId);
-  return { understood: heard, request: { unionId: request.unionId, preferredCrops: request.preferredCrops ?? [], landType: request.landType, farmerPriorities: request.farmerPriorities }, reply: replyFor(advice, heard), advice };
+  return {
+    understood: heard,
+    request: { unionId: request.unionId, heroCrop: request.heroCrop ?? null, preferredCrops: request.preferredCrops ?? [], avoidCrops: request.avoidCrops ?? [], landType: request.landType, farmerPriorities: request.farmerPriorities },
+    reply: replyFor(advice, heard),
+    advice,
+  };
 }
 
 /** Recent phone-channel events (Awaj survey answers and the call-backs they triggered), newest first. */
@@ -501,7 +509,10 @@ const server = http.createServer(async (req, res) => {
     // API: phone calls through Awaj Digital (dry runs until AWAJ_API_TOKEN, AWAJ_SENDER and AWAJ_LIVE=1 are set)
     if (pathname === '/api/v1/calls/status' && req.method === 'GET') {
       const cfg = awajConfig();
-      return sendJSON(res, 200, { provider: 'Awaj Digital', live: cfg.live, tokenSet: cfg.tokenSet, senderSet: Boolean(cfg.sender), voice: cfg.voice, keypad: keypadMenu() });
+      return sendJSON(res, 200, {
+        provider: 'Awaj Digital', live: cfg.live, tokenSet: cfg.tokenSet, senderSet: Boolean(cfg.sender), voice: cfg.voice,
+        keypadReady: Boolean(cfg.menuVoice || cfg.surveyTemplate), webhookSet: Boolean(cfg.webhookUrl), keypad: keypadMenu(),
+      });
     }
     if (pathname === '/api/v1/calls/advice' && req.method === 'POST') {
       const body = await parseBody(req);
@@ -516,6 +527,35 @@ const server = http.createServer(async (req, res) => {
       logCall({ kind: 'advice_call', phone: maskPhone(phone), crops: answer.reply.understoodCrops, dryRun: sent.dryRun });
       return sendJSON(res, 200, { reply: answer.reply, call: sent });
     }
+    // The keypad call: the farmer hears the recorded crop menu and presses keys; Awaj posts them to the webhook
+    if (pathname === '/api/v1/calls/keypad' && req.method === 'POST') {
+      const body = await parseBody(req);
+      if (awajConfig().live && !desk.officerForToken(req.headers.authorization)) {
+        return sendJSON(res, 401, { error: 'Officer sign-in required to place a real call' });
+      }
+      const phones = (Array.isArray(body.phones) ? body.phones : [body.phone]).map((p: unknown) => bdMobile(String(p ?? ''))).filter(Boolean) as string[];
+      if (!phones.length) return sendJSON(res, 400, { error: 'phone must be a Bangladeshi mobile number (01XXXXXXXXX)' });
+      const cfg = awajConfig();
+      const metadata = { channel: 'mather-kotha-keypad', unionId: body.unionId ?? 'talanda_tanore', farmerId: body.farmerId ?? null };
+      const menu = keypadMenu();
+      const sent = cfg.surveyTemplate
+        ? await sendTemplateSurvey({ phoneNumbers: phones, templateName: cfg.surveyTemplate, webhookUrl: cfg.webhookUrl ?? undefined, metadata })
+        : await sendKeypadSurvey({
+            phoneNumbers: phones,
+            questionVoice: cfg.menuVoice ?? '<AWAJ_MENU_VOICE: the recorded crop menu>',
+            options: menu.options,
+            officerKey: menu.officerKey,
+            officerNumber: cfg.officerNumber ?? undefined,
+            webhookUrl: cfg.webhookUrl ?? undefined,
+            metadata,
+          });
+      logCall({ kind: 'keypad_call', phones: phones.map(maskPhone), dryRun: sent.dryRun });
+      return sendJSON(res, 200, { call: sent, menu: menu.promptBangla, needs: [
+        cfg.menuVoice || cfg.surveyTemplate ? null : 'AWAJ_MENU_VOICE (an approved recording of the menu) or AWAJ_SURVEY_TEMPLATE',
+        cfg.webhookUrl ? null : 'PUBLIC_BASE_URL (where Awaj can reach this server) for the pressed keys',
+      ].filter(Boolean) });
+    }
+
     if (pathname === '/api/v1/calls/survey-webhook' && req.method === 'POST') {
       // Awaj posts once when a keypad survey completes. Optional shared secret in the webhook URL (?key=...).
       if (process.env.AWAJ_WEBHOOK_KEY && url.searchParams.get('key') !== process.env.AWAJ_WEBHOOK_KEY) {

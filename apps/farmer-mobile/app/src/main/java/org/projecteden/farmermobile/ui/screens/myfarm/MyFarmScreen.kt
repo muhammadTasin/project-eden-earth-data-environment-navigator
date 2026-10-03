@@ -1,5 +1,7 @@
 package org.projecteden.farmermobile.ui.screens.myfarm
 
+import org.projecteden.farmermobile.theme.bevel
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -215,7 +217,7 @@ fun MyFarmScreen(
                 // 1. Session / Authentication Card
                 Surface(
                     color = SurfaceContainerHigh,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(2.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -271,7 +273,7 @@ fun MyFarmScreen(
                             is AuthState.Authenticated -> {
                                 OutlinedButton(
                                     onClick = { viewModel.logout() },
-                                    shape = RoundedCornerShape(8.dp)
+                                    shape = RoundedCornerShape(2.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Logout,
@@ -286,7 +288,7 @@ fun MyFarmScreen(
                                 Button(
                                     onClick = { showLoginDialog = true },
                                     colors = ButtonDefaults.buttonColors(containerColor = Primary, contentColor = OnPrimary),
-                                    shape = RoundedCornerShape(8.dp)
+                                    shape = RoundedCornerShape(2.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Login,
@@ -304,9 +306,9 @@ fun MyFarmScreen(
                 // 2. Farm Identification Banner
                 Surface(
                     color = PrimaryContainer,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(2.dp),
                     shadowElevation = 2.dp,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.bevel().fillMaxWidth()
                 ) {
                     Row(
                         modifier = Modifier
@@ -322,7 +324,7 @@ fun MyFarmScreen(
                             Box(
                                 modifier = Modifier
                                     .size(44.dp)
-                                    .clip(RoundedCornerShape(10.dp))
+                                    .clip(RoundedCornerShape(2.dp))
                                     .background(PrimaryFixed.copy(alpha = 0.25f)),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -347,7 +349,7 @@ fun MyFarmScreen(
                                     )
                                     Box(
                                         modifier = Modifier
-                                            .clip(RoundedCornerShape(10.dp))
+                                            .clip(RoundedCornerShape(2.dp))
                                             .background(PrimaryFixed.copy(alpha = 0.2f))
                                             .padding(horizontal = 6.dp, vertical = 2.dp)
                                     ) {
@@ -369,7 +371,7 @@ fun MyFarmScreen(
 
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(2.dp))
                                 .background(Color.White.copy(alpha = 0.15f))
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
@@ -394,7 +396,7 @@ fun MyFarmScreen(
                             containerColor = Primary,
                             contentColor = OnPrimary
                         ),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(2.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp)
@@ -415,7 +417,7 @@ fun MyFarmScreen(
                     val currentDraft = draftProfile ?: farmProfile
                     Surface(
                         color = SurfaceContainerLow,
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(2.dp),
                         border = androidx.compose.foundation.BorderStroke(1.dp, Primary.copy(alpha = 0.5f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -461,7 +463,7 @@ fun MyFarmScreen(
                                 OutlinedButton(
                                     onClick = { viewModel.cancelEditing() },
                                     enabled = !isUpdating,
-                                    shape = RoundedCornerShape(10.dp),
+                                    shape = RoundedCornerShape(2.dp),
                                     modifier = Modifier
                                         .weight(1f)
                                         .height(44.dp)
@@ -475,7 +477,7 @@ fun MyFarmScreen(
                                     onClick = { viewModel.saveDraft() },
                                     enabled = !isUpdating,
                                     colors = ButtonDefaults.buttonColors(containerColor = Primary, contentColor = OnPrimary),
-                                    shape = RoundedCornerShape(10.dp),
+                                    shape = RoundedCornerShape(2.dp),
                                     modifier = Modifier
                                         .weight(1f)
                                         .height(44.dp)
@@ -539,7 +541,7 @@ fun MyFarmScreen(
                                 OutlinedButton(
                                     onClick = { viewModel.cancelEditing() },
                                     enabled = !isUpdating,
-                                    shape = RoundedCornerShape(10.dp),
+                                    shape = RoundedCornerShape(2.dp),
                                     modifier = Modifier
                                         .weight(1f)
                                         .height(48.dp)
@@ -553,7 +555,7 @@ fun MyFarmScreen(
                                     onClick = { viewModel.saveDraft() },
                                     enabled = !isUpdating,
                                     colors = ButtonDefaults.buttonColors(containerColor = Primary, contentColor = OnPrimary),
-                                    shape = RoundedCornerShape(10.dp),
+                                    shape = RoundedCornerShape(2.dp),
                                     modifier = Modifier
                                         .weight(1f)
                                         .height(48.dp)
@@ -580,7 +582,7 @@ fun MyFarmScreen(
                 // 4. Farm Location Card
                 Surface(
                     color = SurfaceContainerLow,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(2.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
@@ -647,7 +649,7 @@ fun MyFarmScreen(
                 // 5. Plot & Agro Info Card
                 Surface(
                     color = SurfaceContainerLow,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(2.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
@@ -707,7 +709,7 @@ fun MyFarmScreen(
                 // 6. Consent & Data Integrity Ledger
                 Surface(
                     color = SurfaceContainerLow,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(2.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -745,7 +747,7 @@ fun MyFarmScreen(
             ) {
                 Surface(
                     color = InverseSurface,
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(2.dp),
                     shadowElevation = 6.dp
                 ) {
                     Row(
@@ -779,7 +781,7 @@ fun MyFarmScreen(
             ) {
                 Surface(
                     color = MaterialTheme.colorScheme.errorContainer,
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(2.dp),
                     shadowElevation = 6.dp
                 ) {
                     Row(
@@ -851,7 +853,7 @@ private fun FarmEditField(
             unfocusedBorderColor = Outline,
             cursorColor = Primary
         ),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(2.dp),
         modifier = Modifier.fillMaxWidth()
     )
 }

@@ -1,5 +1,5 @@
 import type { IEvidenceDimensionPlugin, EvaluationContext, DimensionScoreResult } from '@project-eden/contracts';
-import { rabiOf, kharif1Of, clampScore } from '../data/lookup.ts';
+import { amanOrNull, rabiOf, kharif1Of, kharif2Of, clampScore } from '../data/lookup.ts';
 import { ILLUSTRATIVE_AMAN_GROSS_MARGIN_TK_PER_HA } from '../data/crop_catalog.ts';
 import { bnNumber } from '../bn.ts';
 
@@ -13,8 +13,11 @@ export class IncomeDimensionPlugin implements IEvidenceDimensionPlugin {
   evaluate(context: EvaluationContext): DimensionScoreResult {
     const { record: rabi, catalog: rabiName } = rabiOf(context);
     const k1 = kharif1Of(context);
+    const k2 = kharif2Of(context);
+    const hasAman = Boolean(amanOrNull(context));
     const rabiMargin = rabiName.illustrativeGrossMarginTkPerHa;
     const k1Margin = k1?.catalog.illustrativeGrossMarginTkPerHa ?? null;
+    const k2Margin = k2?.catalog.illustrativeGrossMarginTkPerHa ?? null;
 
     // A crop without price and cost data keeps the score at the midpoint instead of a guessed number
     if (rabiMargin === null) {
@@ -38,12 +41,14 @@ export class IncomeDimensionPlugin implements IEvidenceDimensionPlugin {
 
     // Team placeholders until DAM farm-gate prices and farmer cost interviews are in (see crop_catalog.ts); potato,
     // maize and Aus use the research net returns in crops/crop_parameters.csv (data/crop_choice.ts).
-    const total = ILLUSTRATIVE_AMAN_GROSS_MARGIN_TK_PER_HA + rabiMargin + (k1Margin ?? 0);
+    const total = (hasAman ? ILLUSTRATIVE_AMAN_GROSS_MARGIN_TK_PER_HA : 0) + (k2Margin ?? 0) + rabiMargin + (k1Margin ?? 0);
     const incomeScore = clampScore((total - 40000) / 80000, 0.35, 0.96);
-    const seasonsBangla = k1 && k1Margin !== null ? 'তিন মৌসুমে' : 'দুই মৌসুমে';
-    const seasonsEnglish = k1 && k1Margin !== null ? 'three seasons' : 'two seasons';
-    const k1Bangla = k1 && k1Margin === null ? ` ${k1.catalog.cropBangla}-এর দর-খরচ এখনো নেই, তাই ধরা হয়নি।` : '';
-    const k1English = k1 && k1Margin === null ? ` ${k1.catalog.crop} is left out: no price and cost data yet.` : '';
+    const counted = [hasAman, Boolean(k2 && k2Margin !== null), true, Boolean(k1 && k1Margin !== null)].filter(Boolean).length;
+    const seasonsBangla = ['এক মৌসুমে', 'দুই মৌসুমে', 'তিন মৌসুমে', 'চার মৌসুমে'][counted - 1];
+    const seasonsEnglish = ['one season', 'two seasons', 'three seasons', 'four seasons'][counted - 1];
+    const left = [k2 && k2Margin === null ? k2 : null, k1 && k1Margin === null ? k1 : null].filter(Boolean) as Array<NonNullable<typeof k1>>;
+    const k1Bangla = left.map(x => ` ${x.catalog.cropBangla}-এর দর-খরচ এখনো নেই, তাই ধরা হয়নি।`).join('');
+    const k1English = left.map(x => ` ${x.catalog.crop} is left out: no price and cost data yet.`).join('');
 
     return {
       dimensionId: this.id,
@@ -56,6 +61,7 @@ export class IncomeDimensionPlugin implements IEvidenceDimensionPlugin {
         illustrativeTotalBdtPerHa: total,
         illustrativeRabiBdtPerHa: rabiMargin,
         ...(k1 ? { illustrativeKharif1BdtPerHa: k1Margin ?? 'n/a' } : {}),
+        ...(k2 ? { illustrativeKharif2BdtPerHa: k2Margin ?? 'n/a' } : {}),
         districtYieldTPerHa: rabi.districtYieldTPerHa ?? 'n/a',
       },
       provenance: {

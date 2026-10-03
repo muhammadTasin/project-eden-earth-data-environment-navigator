@@ -420,6 +420,8 @@ window.runPlannerCalculation = async function(options = {}) {
         landType: $('planLandType').value,
         currentAmanCrop: $('planAmanCrop').value,
         preferredCrops: selectedCrops(),
+        heroCrop: $('planHeroCrop')?.value || undefined,
+        avoidCrops: $('planNoRice')?.checked ? ['rice'] : undefined,
         season: '2026-aman',
         farmerPriorities: { water: weight('weightWater'), income: weight('weightIncome'), soil: weight('weightSoil'), pest: weight('weightPest') },
       }),
@@ -538,6 +540,7 @@ window.selectCandidateOption = async function(optionId) {
   if (!currentAdvice) return;
   selectedOptionId = optionId;
   renderTimeline(selectedOption());
+  renderStewardship(selectedOption());
   await loadNarration(selectedOption());
   window.switchScreen('screen-delivery');
 };
@@ -548,7 +551,9 @@ window.selectCandidateOption = async function(optionId) {
 
 function renderEvidence(advice) {
   const top = advice.options[0];
-  const [aman, rabi] = top.cropSequence;
+  const [monsoon, rabi] = top.cropSequence;
+  // Plans built around another crop may have no Aman: the monsoon phase is then another crop or an empty field
+  const aman = monsoon.seasonType === 'Aman' ? monsoon : { variety: monsoon.crop, varietyBangla: monsoon.cropBangla };
   const water = top.dimensionDetails.water?.metrics || {};
   const soil = top.dimensionDetails.soil?.metrics || {};
   const income = top.dimensionDetails.income?.metrics || {};
@@ -558,8 +563,9 @@ function renderEvidence(advice) {
   setText('evidenceTitle', tr(`${aman.varietyBangla} → ${rabi.cropBangla} কেন তালন্দ ইউনিয়নের জন্য শীর্ষে?`, `Why ${aman.variety} → ${rabi.crop.toLowerCase()} tops the list for Talanda union`));
   setText('evidenceRelease', `${advice.release.id}, ${tr('গবেষণা কমিট', 'research commit')} ${advice.release.researchCommit}`);
 
-  setText('evRescueBig', `${num(water.amanRescueIrrigationSeasons)} / ${num(water.totalSeasonsSimulated)}`);
-  setText('evRescueText', tr(
+  setText('evRescueBig', water.amanRescueIrrigationSeasons === undefined ? '—' : `${num(water.amanRescueIrrigationSeasons)} / ${num(water.totalSeasonsSimulated)}`);
+  if (water.amanRescueIrrigationSeasons === undefined) setText('evRescueText', tr('এই চক্রে বর্ষায় আমন ধান নেই, তাই সম্পূরক সেচও নেই। নিচে প্রতিটি আমন জাতের হিসাব তুলনার জন্য।', 'This rotation has no Aman rice in the monsoon, so no rescue irrigation. Each Aman variety is listed below for comparison.'));
+  else setText('evRescueText', tr(
     `২০০১–২০২৫ সালের ${num(water.totalSeasonsSimulated)} মৌসুমের ${num(water.amanRescueIrrigationSeasons)}টিতে ${aman.varietyBangla}-এ ফুল আসার সময় সম্পূরক সেচ লেগেছে (বছর: ${num(water.rescueYears)})।`,
     `In ${water.amanRescueIrrigationSeasons} of the ${water.totalSeasonsSimulated} seasons from 2001 to 2025, ${aman.variety} needed rescue irrigation at flowering (years: ${water.rescueYears}).`,
   ));
@@ -650,8 +656,18 @@ function renderEvidence(advice) {
 // SCREEN 5: less pesticide (IPM)
 // ---------------------------------------------------------------------------
 
+function renderStewardship(option) {
+  const icons = { water: '💧', fertilizer: '🌱', pesticide: '🐛', soil: '🟫', metals: '⚠️' };
+  setHtml('stewardshipList', (option?.stewardship || []).map(t => `
+    <li class="care-item ${t.kind}">
+      <span class="care-icon" aria-hidden="true">${icons[t.kind] || '•'}</span>
+      <div><p>${escapeHtml(tr(t.bn, t.en))}</p><span class="ipm-source">${escapeHtml(t.source)}</span></div>
+    </li>`).join(''));
+}
+
 function renderIpm(advice) {
   renderLedger(advice);
+  renderStewardship(selectedOption() || advice.options[0]);
   const top = advice.options[0];
   const boro = advice.options.find(o => o.isBaseline);
   const column = (opt) => {
@@ -1360,8 +1376,18 @@ async function loadCropMenu() {
   } catch { /* the planner works with the five fixed rotations */ }
 }
 
+function renderHeroSelect() {
+  const select = $('planHeroCrop');
+  if (!select || !cropMenuData) return;
+  const current = select.value;
+  select.innerHTML = `<option value="">${escapeHtml(tr('কোনোটি নয়: আমন ধান ধরে', 'None: plan around Aman rice'))}</option>` +
+    cropMenuData.crops.map(c => `<option value="${c.id}">${escapeHtml(tr(c.cropBangla, c.cropEnglish))}</option>`).join('');
+  select.value = current;
+}
+
 function renderCropChips() {
   if (!cropMenuData) return;
+  renderHeroSelect();
   setHtml('cropChoiceChips', ['Rabi', 'Kharif-1'].map(season => `
     <div class="crop-chip-group">
       <span class="crop-chip-season">${escapeHtml(tr(...SEASON_LABEL[season]))}</span>
@@ -1451,7 +1477,8 @@ function renderVoice() {
       const asked = v.advice.crop_choice?.requested.find(r => r.id === id);
       return chip('tag-green', asked ? tr(asked.cropBangla, asked.cropEnglish) : cropName(id));
     }),
-    ...u.excluded.map(id => chip('tag-strike', cropName(id))),
+    u.hero ? chip('tag-blue', tr(`প্রধান ফসল: ${cropName(u.hero)}`, `Main crop: ${cropName(u.hero)}`)) : '',
+    ...u.excluded.map(id => chip('tag-strike', id === 'rice' ? tr('ধান', 'rice') : id === 'aman' ? tr('আমন', 'Aman') : cropName(id))),
     ...(v.advice.crop_choice?.notModelled ?? []).map(n => chip('tag-grey', tr(`${n.bn}: হিসাব নেই`, `${n.en}: not modelled`))),
     u.landType ? chip('tag-yellow', land(u.landType)) : '',
     ...Object.keys(u.priorities ?? {}).map(p => chip('tag-blue', tr(...(DIMENSIONS[p] || [p, p])))),
@@ -1498,6 +1525,29 @@ window.callVoiceReply = async function() {
     setHtml('voiceCallStatus', `<span class="log-line">${escapeHtml(call.dryRun
       ? tr(`পরীক্ষামূলক (ড্রাই রান): ${call.request.phone_numbers[0]} নম্বরে Awaj-এ এই অনুরোধ যেত; আসল কলের জন্য সার্ভারে AWAJ_API_TOKEN, AWAJ_SENDER ও AWAJ_LIVE=1 দিন।`, `Dry run: this request would go to Awaj for ${call.request.phone_numbers[0]}; set AWAJ_API_TOKEN, AWAJ_SENDER and AWAJ_LIVE=1 on the server for a real call.`)
       : tr(`Awaj কল পাঠানো হয়েছে (HTTP ${call.response.status})।`, `Sent to Awaj (HTTP ${call.response.status}).`))}</span>`);
+  } catch (err) {
+    setHtml('voiceCallStatus', `<span class="log-line">${escapeHtml(err.message || 'Error')}</span>`);
+  }
+};
+
+// The keypad call: the farmer hears the recorded crop menu, presses keys, and Awaj calls back with the plan
+window.callKeypadMenu = async function() {
+  try {
+    const res = await fetch('/api/v1/calls/keypad', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(officerSession?.token ? { Authorization: `Bearer ${officerSession.token}` } : {}) },
+      body: JSON.stringify({ phone: $('voicePhone').value.trim(), unionId: currentPlace }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    const lines = [
+      data.call.dryRun
+        ? tr(`পরীক্ষামূলক (ড্রাই রান): ${data.call.request.phone_numbers.join(', ')} নম্বরে কিপ্যাড মেনু কল যেত।`, `Dry run: a keypad menu call would go to ${data.call.request.phone_numbers.join(', ')}.`)
+        : tr(`কিপ্যাড মেনু কল পাঠানো হয়েছে (HTTP ${data.call.response.status})।`, `Keypad menu call sent (HTTP ${data.call.response.status}).`),
+      tr(`কৃষক শুনবেন: ${data.menu}`, `The farmer hears: ${data.menu}`),
+      ...(data.needs || []).map(n => tr(`বাকি: ${n}`, `Still needed: ${n}`)),
+    ];
+    setHtml('voiceCallStatus', lines.map(l => `<span class="log-line">${escapeHtml(l)}</span>`).join(''));
   } catch (err) {
     setHtml('voiceCallStatus', `<span class="log-line">${escapeHtml(err.message || 'Error')}</span>`);
   }

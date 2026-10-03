@@ -15,6 +15,12 @@ export const EN = {
 
   'planner.crops': 'Which crops does the farmer want? (one or more)',
   'planner.cropsHint': 'Pick none to see the five usual rotations. The number beside a crop is its irrigation need here, from NASA data.',
+  'planner.hero': 'Main crop (the year is planned around it)',
+  'planner.heroNone': 'None: plan around Aman rice',
+  'planner.noRice': 'No rice (leave out Aman, Boro and Aus)',
+  'care.title': 'Soil and water: what this rotation saves, and what to watch',
+  'care.badge': 'numbers from the rotation\'s own records',
+  'care.note': 'Against the usual Aman–Boro rotation: irrigation water, urea and TSP, the rice-pest cycle, the upazila\'s soil gaps (SRDI), and how to keep arsenic, cadmium, lead and mercury out of the soil. Satellites cannot measure heavy metals in soil; those tips come from trusted guidance.',
   'voice.title': 'Answer the farmer in their own words (voice or text)',
   'voice.badge': 'speech → crops → NASA replay → Bangla reply',
   'voice.subtitle': "From what a farmer says or types, the crops, land type and priorities are read; the engine plans the whole year from NASA data and answers in Bangla. On a phone call, Awaj reads the answer aloud.",
@@ -22,6 +28,7 @@ export const EN = {
   'voice.answer': 'Build the answer',
   'voice.play': '▶ Play the answer',
   'voice.call': '📞 Call with Awaj',
+  'voice.keypad': '📟 Keypad menu call',
 
   'nav.overview': 'Dashboard overview',
   'nav.planner': 'Rotation planner',

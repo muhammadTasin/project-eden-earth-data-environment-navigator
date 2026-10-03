@@ -1,5 +1,7 @@
 package org.projecteden.farmermobile.ui.components
 
+import org.projecteden.farmermobile.theme.bevel
+
 import android.util.Log
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -60,7 +62,7 @@ fun EdenTopAppBar(
     Surface(
         color = Surface.copy(alpha = 0.95f),
         shadowElevation = 2.dp,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.bevel().fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
@@ -106,7 +108,7 @@ fun EdenTopAppBar(
                     // Cache Sync Status Pill
                     Row(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(2.dp))
                             .background(SurfaceContainerHigh)
                             .padding(horizontal = 8.dp, vertical = 3.dp),
                         verticalAlignment = Alignment.CenterVertically,

@@ -2,6 +2,18 @@
 
 What changed in Project EDEN, newest first, with who made each change and the branch it came from. Every branch below was merged into `main` on 1 October 2026.
 
+## 4 October 2026 · Any main crop, rice optional; soil-and-water tips; keypad calls; one look (Tasrif, `feature/crop-choice-and-calls`)
+
+- Engine: `heroCrop` (every plan holds it, the rest of the year is filled from every crop) and `avoidCrops` (`rice` leaves out Aman, Boro and Aus). The monsoon slot holds Aman, a non-rice crop (soybean, mungbean or sesame in the monsoon) or nothing; jute is modelled. Plugins count only the crops grown; a main crop's own season ranks first; summer crops that run into August show at the start of the timeline.
+- `crop_choice_replay.py` adds the monsoon crops and jute and counts days with 50 mm+ of IMERG rain per crop; the flood score uses them for upland crops in the monsoon.
+- Soil-and-water tips on every option (`stewardship.ts`): groundwater, urea and TSP against the usual Aman-Boro rotation, NASA GLDAS groundwater, the rice-pest cycle, the SRDI soil atlas for the upazila (`soil_atlas_export.py`), arsenic, cadmium and other metals as sourced guidance.
+- MODIS greenness for every upazila: `national_greenness.py` turns the AppEEARS national NDVI request (downloaded 4 October, 185 MB) into crops a year and the winter peak for 530 upazilas.
+- Calls: keypad survey calls (`/api/v1/calls/keypad`, Direct Survey or a dashboard template), recorded-menu upload and voice list in `npm run call:test`, the officer's number for key 9, the public webhook address; the call script adds the plan's water saving.
+- Reader: main crop ("প্রধান", "শুধু", the only crop named) and rice refusals. API and the call test pass the main crop and refusals through one shared step.
+- Dashboard: main-crop list and no-rice switch, the tips card, a keypad-call button, and `theme.css` with the story site's material (warm bevel and emboss, 2px corners, Anek Bangla, an LCD screen for call text); the header no longer floats.
+- Android: the story site's colours and 2dp corners with bevelled raised cards; the assistant's mic asks in Bangla and answers with the plan for the named crops, read aloud. `EdenApiClient` is now `open`, so the unit tests' fake client (from PR #3) compiles.
+- Tests: TEST 14 (main crop without rice, jute, sunflower's own season) and TEST 15 (tips), and API checks for all of the above.
+
 ## 4 October 2026 · The farmer's own crops, and calls through Awaj (Tasrif, `feature/crop-choice-and-calls`)
 
 - `research/explore/crop_choice_replay.py` replays 12 more crops (potato, maize, sunflower in winter and summer, chickpea, grass pea, sweet potato, barley, soybean, mungbean, sesame, Aus rice) at the Talanda pilot and all 64 district points with the same FAO-56 and NASA POWER + GPM IMERG chain, for every 10th sowing day of each window; output `crop_choice_replay.json`.

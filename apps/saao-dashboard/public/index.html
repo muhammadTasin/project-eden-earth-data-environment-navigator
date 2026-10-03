@@ -4,10 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Project EDEN — Earth Data &amp; Environment Navigator · ফসল চক্র সিদ্ধান্ত সহায়ক সেবা</title>
+  <meta name="theme-color" content="#EEE9E2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wdth,wght@75..125,300..800&family=Hind+Siliguri:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="theme.css">
 </head>
 <body>
   <!--
@@ -340,6 +342,16 @@
             <div id="cropChoiceChips" class="crop-chips"></div>
           </div>
 
+          <div class="form-group hero-row">
+            <div>
+              <label for="planHeroCrop" data-i18n="planner.hero">প্রধান ফসল (যেটি ঘিরে পুরো বছর সাজানো হবে)</label>
+              <select id="planHeroCrop" class="form-control">
+                <option value="" data-i18n="planner.heroNone">কোনোটি নয়: আমন ধান ধরে</option>
+              </select>
+            </div>
+            <label class="no-rice-toggle"><input type="checkbox" id="planNoRice"> <span data-i18n="planner.noRice">ধান ছাড়া (আমন, বোরো, আউশ বাদ)</span></label>
+          </div>
+
           <div class="priority-sliders">
             <label><strong data-i18n="planner.priorities">কৃষকের অগ্রাধিকার নির্ধারণ (Priorities Weighting):</strong></label>
 
@@ -534,6 +546,15 @@
         </div>
         <p class="subtitle" data-i18n="ledger.note">জলাবদ্ধ ধানের দিন মিথেন নির্গমনের সূচক (মাপা নয়); খালি জমির দিনে মাটির জৈব পদার্থ ক্ষয় হয়। পানি তোলা = রবিতে সেচ, নাসা POWER ও IMERG দিয়ে হিসাব।</p>
         <div id="ledgerTable" class="table-responsive"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3 data-i18n="care.title">মাটি ও পানি রক্ষা: এই চক্রে কী বাঁচে, কী সাবধানে</h3>
+          <span class="badge badge-success" data-i18n="care.badge">সংখ্যা চক্রের নিজের হিসাব থেকে</span>
+        </div>
+        <p class="subtitle" data-i18n="care.note">প্রচলিত আমন–বোরো চক্রের সাথে তুলনা: সেচের পানি, ইউরিয়া ও টিএসপি, ধানের পোকার চক্র, উপজেলার মাটির ঘাটতি (SRDI), আর আর্সেনিক, ক্যাডমিয়াম, সীসা ও পারদ থেকে দূরে থাকার উপায়। উপগ্রহ মাটির ভারী ধাতু মাপতে পারে না; সেগুলো নির্ভরযোগ্য নির্দেশিকা থেকে।</p>
+        <ul id="stewardshipList" class="care-list"></ul>
       </div>
 
       <div class="card">
@@ -944,6 +965,7 @@
           <button class="btn btn-audio" onclick="speakVoiceReply()" data-i18n="voice.play">▶ উত্তর শুনুন</button>
           <input id="voicePhone" class="form-control" placeholder="01XXXXXXXXX" inputmode="tel" autocomplete="off">
           <button class="btn btn-success" onclick="callVoiceReply()" data-i18n="voice.call">📞 Awaj দিয়ে কল</button>
+          <button class="btn btn-secondary" onclick="callKeypadMenu()" data-i18n="voice.keypad">📟 কিপ্যাড মেনু কল</button>
         </div>
         <div id="voiceCallStatus" class="call-log-box"></div>
       </div>

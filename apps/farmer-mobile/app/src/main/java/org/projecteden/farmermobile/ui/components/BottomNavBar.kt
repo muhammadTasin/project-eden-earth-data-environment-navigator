@@ -82,7 +82,7 @@ fun EdenBottomNavBar(
                     Box(
                         modifier = Modifier
                             .size(width = 46.dp, height = 28.dp)
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(2.dp))
                             .background(if (isSelected) PrimaryContainer else androidx.compose.ui.graphics.Color.Transparent),
                         contentAlignment = Alignment.Center
                     ) {

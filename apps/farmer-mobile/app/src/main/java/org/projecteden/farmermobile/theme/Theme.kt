@@ -2,6 +2,7 @@ package org.projecteden.farmermobile.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -69,12 +70,13 @@ fun ProjectEDENFarmerTheme(
     darkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    // Retain Agro Precision color scheme for strict visual consistency under rural sunlight
+    // The Mather Kotha material (Color.kt), high contrast for reading in the sun; sharp corners as on the story site
     val colorScheme = if (darkTheme) AgroPrecisionDarkColorScheme else AgroPrecisionLightColorScheme
 
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = Shapes(extraSmall = EdenShape, small = EdenShape, medium = EdenShape, large = EdenShape, extraLarge = EdenShape),
         content = content
     )
 }

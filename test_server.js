@@ -82,6 +82,19 @@ async function run() {
   check(hook.handled.length === 1 && hook.handled[0].crops.join() === 'sunflower,lentil' && hook.handled[0].callBack.dryRun === true, 'keypad answers (6 = sunflower, 1 = lentil) trigger a planned call-back');
   console.log('✓ Crop choice:', menu.crops.length, 'crops at Godagari; voice top:', voice.advice.options[0].nameEnglish, '; call dry run', call.reply.durationSecondsEstimate, 's');
 
+  // Any main crop, and no rice when the farmer says so; soil-and-water tips; keypad calls; MODIS greenness everywhere
+  const wheat = await (await fetch(`${BASE}/api/v1/advice`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ unionId: 'ADM3_Godagari', heroCrop: 'wheat', avoidCrops: ['rice'] }) })).json();
+  const hasRice = (o) => o.cropSequence.some(p => p.seasonType === 'Aman' || p.seasonType === 'Aus' || p.crop === 'Boro rice');
+  check(wheat.options.length && wheat.options.every(o => o.cropSequence.some(p => p.crop === 'Wheat') && !hasRice(o)), 'a wheat plan without rice holds wheat and no rice');
+  check(wheat.options.every(o => (o.stewardship || []).some(t => t.kind === 'metals') && o.stewardship.some(t => t.kind === 'water')), 'every option carries soil-and-water tips');
+  const spoken = await (await fetch(`${BASE}/api/v1/voice/answer`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ unionId: 'ADM3_Godagari', text: 'আমি ধান করতে চাই না, শুধু গম করব' }) })).json();
+  check(spoken.understood.hero === 'wheat' && spoken.understood.excluded.includes('rice') && spoken.advice.crop_choice?.heroCrop === 'wheat' && !hasRice(spoken.advice.options[0]), 'a spoken "only wheat, no rice" plans wheat without rice');
+  const keypad = await (await fetch(`${BASE}/api/v1/calls/keypad`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: '01700000000', unionId: 'ADM3_Godagari' }) })).json();
+  check(keypad.call.dryRun === true && keypad.menu.includes('চাপুন') && keypad.call.request.dtmf_options.length === 8, 'the keypad menu call is a dry run with eight crop keys');
+  const gpl = await (await fetch(`${BASE}/api/v1/overview?place=ADM3_Godagari`)).json();
+  check(gpl.context.winterGreenness?.recent?.cyclesPerYear !== undefined, 'every upazila has its MODIS winter greenness and crops a year');
+  console.log('✓ Main crop without rice:', wheat.options[0].nameEnglish, '; Godagari crops a year', gpl.context.winterGreenness.early.cyclesPerYear, '->', gpl.context.winterGreenness.recent.cyclesPerYear);
+
   // 2. POST /api/v1/advice
   console.log('Testing POST /api/v1/advice ...');
   const resAdvice = await fetch(`${BASE}/api/v1/advice`, {

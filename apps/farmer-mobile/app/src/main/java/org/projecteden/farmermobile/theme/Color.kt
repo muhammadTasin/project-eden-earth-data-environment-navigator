@@ -2,55 +2,63 @@ package org.projecteden.farmermobile.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Agro Precision Design Tokens
-// Calibrated for high-contrast sunlight readability in rural Bangladesh
+// Mather Kotha material, the same as the story site (github.com/Tasrif-Ahmed-Mohsin/Mati-Kohon) and the SAAO
+// dashboard: matte warm paper, paddy green, rain blue and amber, high contrast for reading in the sun.
 
-val Primary = Color(0xFF183B1E)           // Deep Forest / Moss Anchor
-val PrimaryContainer = Color(0xFF2F5233)  // Deep Moss
-val OnPrimary = Color(0xFFFFFFFF)
-val OnPrimaryContainer = Color(0xFF9DC49D)
-val PrimaryFixed = Color(0xFFC4EDC3)
-val PrimaryFixedDim = Color(0xFFA9D1A8)
-val OnPrimaryFixed = Color(0xFF002108)
-val OnPrimaryFixedVariant = Color(0xFF2B4E30)
+val Primary = Color(0xFF2F6B48)           // paddy
+val PrimaryContainer = Color(0xFF1D4A31)  // paddy, deep
+val OnPrimary = Color(0xFFF7F2E7)         // cream
+val OnPrimaryContainer = Color(0xFFD5E5D3)
+val PrimaryFixed = Color(0xFFD5E5D3)      // paddy, soft
+val PrimaryFixedDim = Color(0xFFB7D2B3)
+val OnPrimaryFixed = Color(0xFF0E2A1A)
+val OnPrimaryFixedVariant = Color(0xFF245A3B)
 
-val Secondary = Color(0xFF715A3E)         // Silt Khaki
-val SecondaryContainer = Color(0xFFFADBB6)
-val OnSecondary = Color(0xFFFFFFFF)
-val OnSecondaryContainer = Color(0xFF765F41)
-val SecondaryFixed = Color(0xFFFDDDB9)
-val SecondaryFixedDim = Color(0xFFE0C29E)
-val OnSecondaryFixed = Color(0xFF281803)
-val OnSecondaryFixedVariant = Color(0xFF584328)
+val Secondary = Color(0xFF9A5A14)         // amber, deep
+val SecondaryContainer = Color(0xFFF1DFC6) // amber, soft
+val OnSecondary = Color(0xFFF7F2E7)
+val OnSecondaryContainer = Color(0xFF6E3C10)
+val SecondaryFixed = Color(0xFFF1DFC6)
+val SecondaryFixedDim = Color(0xFFDDBB8A)
+val OnSecondaryFixed = Color(0xFF3D2108)
+val OnSecondaryFixedVariant = Color(0xFF7A4510)
 
-val Tertiary = Color(0xFF003A42)          // River Teal
-val TertiaryContainer = Color(0xFF13525C)
+val Tertiary = Color(0xFF1F4F86)          // rain, deep
+val TertiaryContainer = Color(0xFF2F6FB3) // rain
 val OnTertiary = Color(0xFFFFFFFF)
-val OnTertiaryContainer = Color(0xFF8CC3CF)
-val TertiaryFixed = Color(0xFFB4ECF8)
-val TertiaryFixedDim = Color(0xFF98D0DB)
-val OnTertiaryFixed = Color(0xFF001F24)
-val OnTertiaryFixedVariant = Color(0xFF0D4E58)
+val OnTertiaryContainer = Color(0xFFCFE0F0)
+val TertiaryFixed = Color(0xFFCFE0F0)     // rain, soft
+val TertiaryFixedDim = Color(0xFFAFC9E6)
+val OnTertiaryFixed = Color(0xFF0F2A48)
+val OnTertiaryFixedVariant = Color(0xFF1F4F86)
 
-val Surface = Color(0xFFF7FBED)           // Warm low-glare organic off-white
-val SurfaceDim = Color(0xFFD7DCCE)
-val SurfaceBright = Color(0xFFF7FBED)
-val SurfaceContainerLowest = Color(0xFFFFFFFF)
-val SurfaceContainerLow = Color(0xFFF1F5E7)
-val SurfaceContainer = Color(0xFFEBF0E1)
-val SurfaceContainerHigh = Color(0xFFE5EADC)
-val SurfaceContainerHighest = Color(0xFFE0E4D6)
+val Surface = Color(0xFFEEE9E2)           // paper
+val SurfaceDim = Color(0xFFE6E0D6)
+val SurfaceBright = Color(0xFFF5F2ED)
+val SurfaceContainerLowest = Color(0xFFFAF8F5) // raised face, lit
+val SurfaceContainerLow = Color(0xFFF5F2ED)    // raised face
+val SurfaceContainer = Color(0xFFECE7DF)       // raised face, shaded
+val SurfaceContainerHigh = Color(0xFFE4DED4)   // sunk well
+val SurfaceContainerHighest = Color(0xFFDBD3C6)
 
-val OnSurface = Color(0xFF181D14)
-val OnSurfaceVariant = Color(0xFF424841)
-val InverseSurface = Color(0xFF2D3229)
-val InverseOnSurface = Color(0xFFEEF3E4)
+val OnSurface = Color(0xFF1D2320)         // ink
+val OnSurfaceVariant = Color(0xFF4A463F)  // text
+val InverseSurface = Color(0xFF303833)
+val InverseOnSurface = Color(0xFFF7F2E7)
 
-val Outline = Color(0xFF727970)
-val OutlineVariant = Color(0xFFC2C8BE)
-val SurfaceTint = Color(0xFF436746)
+val Outline = Color(0xFF6D675C)
+val OutlineVariant = Color(0xFFCFC6B8)
+val SurfaceTint = Color(0xFF2F6B48)
 
-val Error = Color(0xFFBA1A1A)
-val ErrorContainer = Color(0xFFFFDAD6)
+val Error = Color(0xFFA33A2A)
+val ErrorContainer = Color(0xFFF1D4CC)
 val OnError = Color(0xFFFFFFFF)
-val OnErrorContainer = Color(0xFF93000A)
+val OnErrorContainer = Color(0xFF8A2E20)
+
+// Bevel edges: the light from the top left, the shade bottom right
+val BevelLight = Color(0xF2FFFFFF)
+val BevelShade = Color(0x3868563E)
+
+// The LCD screen the story site uses for anything a phone says
+val Lcd = Color(0xFFC9D4A6)
+val LcdInk = Color(0xFF1F2A16)

@@ -1,5 +1,7 @@
 package org.projecteden.farmermobile.ui.screens.today
 
+import org.projecteden.farmermobile.theme.bevel
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -106,7 +108,7 @@ fun TodayAdviceScreen(
                     containerColor = SurfaceContainer,
                     contentColor = Primary
                 ),
-                shape = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(2.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (isRefreshing) {
@@ -138,7 +140,7 @@ fun TodayAdviceScreen(
             // 2. Selected Plot Card
             Surface(
                 color = SurfaceContainerLow,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(2.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -177,7 +179,7 @@ fun TodayAdviceScreen(
 
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(2.dp))
                             .background(SecondaryContainer)
                             .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
@@ -195,9 +197,9 @@ fun TodayAdviceScreen(
             // 3. Recommended Crop Rotation Card (Hero)
             Surface(
                 color = SurfaceContainerLowest,
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(2.dp),
                 shadowElevation = 2.dp,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.bevel().fillMaxWidth()
             ) {
                 Column(
                     modifier = Modifier
@@ -213,7 +215,7 @@ fun TodayAdviceScreen(
                     ) {
                         Row(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(14.dp))
+                                .clip(RoundedCornerShape(2.dp))
                                 .background(SurfaceContainer)
                                 .padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -268,7 +270,7 @@ fun TodayAdviceScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(2.dp))
                             .background(SurfaceContainerLow)
                             .padding(8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -276,7 +278,7 @@ fun TodayAdviceScreen(
                         // Season 1
                         Surface(
                             color = SurfaceContainerLowest,
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(2.dp),
                             modifier = Modifier.weight(1f)
                         ) {
                             Column(modifier = Modifier.padding(10.dp)) {
@@ -323,7 +325,7 @@ fun TodayAdviceScreen(
                         // Season 2
                         Surface(
                             color = SurfaceContainerLowest,
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(2.dp),
                             modifier = Modifier.weight(1f)
                         ) {
                             Column(modifier = Modifier.padding(10.dp)) {
@@ -373,7 +375,7 @@ fun TodayAdviceScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(88.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(2.dp))
                             .background(
                                 Brush.verticalGradient(
                                     colors = listOf(
@@ -408,7 +410,7 @@ fun TodayAdviceScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(2.dp))
                             .background(SurfaceContainer)
                             .padding(10.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -442,7 +444,7 @@ fun TodayAdviceScreen(
                             containerColor = SurfaceContainer,
                             contentColor = Primary
                         ),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(2.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp)
@@ -472,7 +474,7 @@ fun TodayAdviceScreen(
                             containerColor = SurfaceContainer,
                             contentColor = Primary
                         ),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(2.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp)
@@ -500,7 +502,7 @@ fun TodayAdviceScreen(
             // 4. Cache & Sync Info Notice
             Surface(
                 color = SurfaceContainerLow,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(2.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(

@@ -37,6 +37,16 @@ function nationalData() {
   return national;
 }
 
+/** NASA MODIS winter greenness and crops a year at each upazila's centre (research/explore/national_greenness.py). */
+let greenness: any = null;
+function greennessFor(id: string) {
+  if (!greenness) {
+    const file = new URL('./greenness_upazila.json', import.meta.url);
+    greenness = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')).upazilas : {};
+  }
+  return greenness[id] ?? null;
+}
+
 /** Every upazila the engine can advise: id, name and district. */
 export function listPlaces(): Array<{ id: string; name: string; district: string }> {
   return nationalData().upazilas;
@@ -55,7 +65,7 @@ export function placeFor(id: string | undefined | null): Place | null {
     conditions: {
       lat: d.lat, lon: d.lon, groundwater: d.conditions.groundwater, cattlePerKm2: d.conditions.cattlePerKm2,
       bmdStation: d.station?.name ?? null, bmdStationKm: d.station?.km ?? null,
-      smap: null, rainLast30Days: null, landUse: null, winterGreenness: null, rootZoneGldasMm: null,
+      smap: null, rainLast30Days: null, landUse: null, winterGreenness: greennessFor(u.id), rootZoneGldasMm: null,
     },
     advisories: null,
     dataNote: `District replay for ${u.district} (NASA POWER + GPM IMERG at the district's point, 2001-2025); fertilizer from the SRDI Talanda card until this upazila's card is added.`,

@@ -1,5 +1,5 @@
 import type { IEvidenceDimensionPlugin, EvaluationContext, DimensionScoreResult } from '@project-eden/contracts';
-import { amanOf, rabiOf, kharif1Of, clampScore } from '../data/lookup.ts';
+import { amanOrNull, rabiOf, kharif1Of, kharif2Of, clampScore } from '../data/lookup.ts';
 import { LOC } from '../data/location.ts';
 import { RESISTANT_VARIETIES } from '../data/ipm_catalog.ts';
 import { bnDigits, seasonDay } from '../bn.ts';
@@ -20,35 +20,44 @@ export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
   readonly isEnabled = true;
 
   evaluate(context: EvaluationContext): DimensionScoreResult {
-    const { catalog: amanName } = amanOf(context);
+    const amanSlot = amanOrNull(context);
     const { crop, record: rabi, catalog: rabiName } = rabiOf(context);
 
     const k1 = kharif1Of(context);
-    // Rice crops in the year: Aman, plus Boro and/or Aus. One breaks the rice-pest cycle; each more keeps it fed.
-    const riceCrops = 1 + (rabiName.hostGroup === 'rice' ? 1 : 0) + (k1?.catalog.hostGroup === 'rice' ? 1 : 0);
-    const hostBreak = riceCrops === 1;
-    const rotationUrea = Math.round(LOC.srdi.aman.ureaKgHa + rabi.fertilizer.ureaKgHa + (k1?.record.fertilizer.ureaKgHa ?? 0));
+    const k2 = kharif2Of(context);
+    // Rice crops in the year: Aman, Boro, Aus. One breaks the rice-pest cycle, none leaves rice pests no host, and
+    // each extra rice crop keeps them fed.
+    const riceCrops = (amanSlot ? 1 : 0) + (rabiName.hostGroup === 'rice' ? 1 : 0) + (k1?.catalog.hostGroup === 'rice' ? 1 : 0);
+    const hostBreak = riceCrops <= 1;
+    const rotationUrea = Math.round((amanSlot ? LOC.srdi.aman.ureaKgHa : 0) + (k2?.record.fertilizer.ureaKgHa ?? 0)
+      + rabi.fertilizer.ureaKgHa + (k1?.record.fertilizer.ureaKgHa ?? 0));
     const resistance = RESISTANT_VARIETIES[crop.variety];
     const deadline = rabi.sowingWindow?.[1];
     const sownOnTime = !deadline || seasonDay(rabi.sowing) <= seasonDay(deadline);
 
-    let score = hostBreak ? 0.85 : riceCrops === 2 ? 0.4 : 0.3;
-    if (rabiName.isLegume || k1?.catalog.isLegume) score += 0.05;
+    let score = riceCrops === 0 ? 0.9 : hostBreak ? 0.85 : riceCrops === 2 ? 0.4 : 0.3;
+    if (rabiName.isLegume || k1?.catalog.isLegume || k2?.catalog.isLegume) score += 0.05;
     score -= (Math.max(0, rotationUrea - 300) / 1000) * 0.3;
     if (resistance) score += 0.05;
     if (!sownOnTime) score -= 0.15;
     const pestScore = clampScore(score, 0.1, 0.95);
 
     const partsBn = [
-      hostBreak
-        ? `${amanName.varietyBangla}-এর পর ${rabiName.cropBangla}: ধানের পোকার চক্র ভাঙে।`
-        : 'ধানের পর আবার ধান: মাজরা পোকা ও বাদামি গাছফড়িং সারা বছর খাবার পায়।',
+      riceCrops === 0
+        ? 'সারা বছর ধান নেই: মাজরা পোকা ও বাদামি গাছফড়িং খাবার পায় না।'
+        : hostBreak && amanSlot
+          ? `${amanSlot.catalog.varietyBangla}-এর পর ${rabiName.cropBangla}: ধানের পোকার চক্র ভাঙে।`
+          : hostBreak
+            ? 'বছরে একবারই ধান: ধানের পোকার চক্র ভাঙে।'
+            : 'ধানের পর আবার ধান: মাজরা পোকা ও বাদামি গাছফড়িং সারা বছর খাবার পায়।',
       `পুরো চক্রে ইউরিয়া ${bnDigits(rotationUrea)} কেজি/হেক্টর (SRDI)।`,
       resistance ? `${rabiName.varietyBangla} ${resistance.bn}।` : '',
       sownOnTime ? '' : 'দেরিতে বোনায় পোকা ও রোগের চাপ বাড়ে।',
     ];
     const partsEn = [
-      hostBreak ? `${rabiName.crop} after Aman breaks the rice-pest cycle.` : 'Rice after rice keeps stem borers and planthoppers fed all year.',
+      riceCrops === 0
+        ? 'No rice in the year: stem borers and planthoppers find no host.'
+        : hostBreak ? `${rabiName.crop} after ${amanSlot ? 'Aman' : 'rice'} breaks the rice-pest cycle.` : 'Rice after rice keeps stem borers and planthoppers fed all year.',
       `Rotation urea ${rotationUrea} kg/ha (SRDI).`,
       resistance ? `${crop.variety} is ${resistance.en}.` : '',
       sownOnTime ? '' : 'Late sowing raises pest and disease pressure.',
@@ -62,6 +71,7 @@ export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
       summaryEnglish: partsEn.filter(Boolean).join(' '),
       metrics: {
         breaksRicePestCycle: hostBreak,
+        riceCropsInYear: riceCrops,
         rotationUreaKgHa: rotationUrea,
         resistantVariety: resistance ? resistance.en : 'none listed',
         sownOnTime,

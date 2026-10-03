@@ -48,13 +48,25 @@ class AiAssistantViewModel(application: Application) : AndroidViewModel(applicat
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     val promptSuggestions = listOf(
+        "আমি শুধু গম করতে চাই, ধান না",
+        "সূর্যমুখী আর মসুর করতে চাই",
         "আমার জমিতে সেচ কখন দেওয়া উচিত?",
         "আজকের আবহাওয়া ও মাটির অবস্থা কেমন?",
         "ব্রি ধান৭১ ও রবি মসুর চক্রের সুবিধা কি?",
         "নদীভাঙন ও আকস্মিক বন্যার ঝুঁকি আছে কি?"
     )
 
-    fun sendQuery(query: String) {
+    /** Read a reply aloud with the phone's Bangla voice. */
+    fun speak(text: String) {
+        app.ttsManager.playAdvice(text, durationEstimate = maxOf(20, text.length / 12))
+    }
+
+    /**
+     * A question from the keyboard or the microphone. When it names crops (to grow, as the main crop, or to avoid),
+     * the server plans the year for them and the plan answers; otherwise the evidence assistant answers. A spoken
+     * question gets a spoken answer.
+     */
+    fun sendQuery(query: String, spoken: Boolean = false) {
         val trimmed = query.trim()
         if (trimmed.isBlank() || _isLoading.value) return
 
@@ -79,6 +91,28 @@ class AiAssistantViewModel(application: Application) : AndroidViewModel(applicat
                 }
             } else null
 
+            val plan = apiClient.voiceAnswer(trimmed).getOrNull()
+            if (plan != null && plan.namedCrops) {
+                val text = buildString {
+                    append(plan.speechBangla)
+                    if (plan.tipsBangla.isNotEmpty()) {
+                        append("\n\nমাটি ও পানি রক্ষা:\n")
+                        plan.tipsBangla.take(3).forEach { append("• ").append(it).append('\n') }
+                    }
+                }.trim()
+                _messages.value = _messages.value + ChatMessage(
+                    id = "plan_${System.currentTimeMillis()}",
+                    isUser = false,
+                    text = text,
+                    sources = listOf("NASA POWER", "GPM IMERG", "NASA GLDAS", "SRDI", "BRRI/BARI"),
+                    timeFormatted = currentTime()
+                )
+                if (spoken) speak(plan.speechBangla)
+                Log.i(TAG, "ai_assistant_plan_answer:crops=${plan.crops.size}")
+                _isLoading.value = false
+                return@launch
+            }
+
             val res = apiClient.askAi(trimmed, profileJson)
             res.fold(
                 onSuccess = { aiResp ->
@@ -91,6 +125,7 @@ class AiAssistantViewModel(application: Application) : AndroidViewModel(applicat
                         timeFormatted = currentTime()
                     )
                     _messages.value = _messages.value + aiMsg
+                    if (spoken) speak(aiResp.answer)
                     Log.i(TAG, "ai_assistant_response_received:evidence=${aiResp.evidenceLevel}")
                 },
                 onFailure = { err ->

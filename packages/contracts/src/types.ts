@@ -34,7 +34,7 @@ export interface EvaluationContext {
   seasonYear: number;
   rotationId: string;
   crops: Array<{
-    season: 'Aman' | 'Rabi' | 'Kharif-1'; // explicit, so plugins never guess the crop from its name
+    season: 'Aman' | 'Kharif-2' | 'Rabi' | 'Kharif-1'; // explicit, so plugins never guess the crop from its name
     cropName: string;
     variety: string;
     sowingDate: string; // ISO format or relative
@@ -63,7 +63,8 @@ export interface CropPhase {
   cropBangla?: string;
   variety: string;
   varietyBangla?: string;
-  seasonType: 'Aman' | 'Rabi' | 'Aus' | 'Pre-Kharif';
+  seasonType: 'Aman' | 'Kharif-2' | 'Rabi' | 'Aus' | 'Pre-Kharif';
+  fallow?: boolean; // the monsoon slot left empty (no rice and no other crop)
   sowingWindow: string;
   harvestWindow: string;
   durationDays: number;
@@ -98,6 +99,15 @@ export interface CandidateRotation {
   fieldFreeDateEnglish?: string; // e.g. "10 Nov"
   ipmActions?: IpmTip[];
   ledger?: EnvironmentLedger;
+  stewardship?: StewardshipTip[]; // soil-and-water tips: what the rotation saves and what to watch for
+}
+
+/** One soil-and-water tip beside a rotation, with its numbers from the plan's own records and its source. */
+export interface StewardshipTip {
+  kind: 'water' | 'fertilizer' | 'pesticide' | 'soil' | 'metals';
+  bn: string;
+  en: string;
+  source: string;
 }
 
 /** What a rotation takes from the land in one year (the research's environment ledger method). */
@@ -150,13 +160,13 @@ export interface AdviceJSON {
 
 /** How the crops a farmer asked for fit the year at their place, and what else fits the gap before Aman. */
 export interface CropChoiceResult {
-  requested: Array<{ id: string; cropBangla: string; cropEnglish: string; season: 'Rabi' | 'Kharif-1' }>;
+  requested: Array<{ id: string; cropBangla: string; cropEnglish: string; season: 'Kharif-2' | 'Rabi' | 'Kharif-1' }>;
   notModelled: Array<{ id: string; bn: string; en: string }>;
   fits: Array<{
     id: string;
     cropBangla: string;
     cropEnglish: string;
-    season: 'Rabi' | 'Kharif-1';
+    season: 'Kharif-2' | 'Rabi' | 'Kharif-1';
     fits: boolean;
     bestOptionId: string | null;
     sowingBangla: string | null;
@@ -171,6 +181,8 @@ export interface CropChoiceResult {
   gapFillers: Array<{ id: string; cropBangla: string; cropEnglish: string; sowingBangla: string; sowingEnglish: string; harvestBangla: string; harvestEnglish: string; netIrrigationMm: number }>;
   notesBangla: string[];
   notesEnglish: string[];
+  heroCrop: string | null; // the farmer's main crop, held by every option
+  avoided: string[]; // crop ids left out at the farmer's word ('aman', 'boro', 'aus' for rice)
 }
 
 /** What still fits this season if a given Aman variety is already in the field. */

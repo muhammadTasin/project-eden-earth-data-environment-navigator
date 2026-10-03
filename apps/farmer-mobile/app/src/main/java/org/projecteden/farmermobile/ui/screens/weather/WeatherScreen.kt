@@ -161,7 +161,7 @@ private fun WeatherContent(
         if (!errorMessage.isNullOrBlank()) {
             Surface(
                 color = MaterialTheme.colorScheme.errorContainer,
-                shape = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(2.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -187,7 +187,7 @@ private fun WeatherContent(
         // Location & Lat/Lon Header
         Surface(
             color = PrimaryContainer,
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(2.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -225,7 +225,7 @@ private fun WeatherContent(
                 Button(
                     onClick = onRefresh,
                     enabled = !isRefreshing,
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(2.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryFixed, contentColor = Primary)
                 ) {
                     if (isRefreshing) {
@@ -246,7 +246,7 @@ private fun WeatherContent(
         // Observation vs Forecast Disclaimer Pill
         Surface(
             color = SurfaceContainerHigh,
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(2.dp),
             border = androidx.compose.foundation.BorderStroke(1.dp, Tertiary.copy(alpha = 0.3f)),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -280,7 +280,7 @@ private fun WeatherContent(
         // Hero Metric Card: Temperature
         Surface(
             color = SurfaceContainerLow,
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(2.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
@@ -375,7 +375,7 @@ private fun WeatherContent(
         // Soil Wetness Analysis Card
         Surface(
             color = SurfaceContainerLow,
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(2.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
@@ -405,7 +405,7 @@ private fun WeatherContent(
         if (weather.history.isNotEmpty()) {
             Surface(
                 color = SurfaceContainerLow,
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(2.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -440,7 +440,7 @@ private fun WeatherContent(
         // Data Provenance & Source Badge
         Surface(
             color = SurfaceContainerHigh,
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(2.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
@@ -481,7 +481,7 @@ private fun MetricTile(
 ) {
     Surface(
         color = SurfaceContainerLow,
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(2.dp),
         modifier = modifier
     ) {
         Column(

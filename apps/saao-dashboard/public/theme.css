@@ -1,0 +1,349 @@
+/* Mather Kotha look for the SAAO dashboard: the same bevel-and-emboss material as the story site
+   (github.com/Tasrif-Ahmed-Mohsin/Mati-Kohon). Matte warm slabs lit from the top left, sharp 2px corners, Anek Bangla
+   headings and Hind Siliguri text, an LCD screen for anything a phone would say. Loaded after styles.css, so the
+   dashboard keeps its layout and only its material changes. */
+
+:root {
+  /* the story site's material */
+  --paper: #EEE9E2;
+  --paper-2: #E6E0D6;
+  --face: #F5F2ED;
+  --face-hi: #FAF8F5;
+  --face-lo: #ECE7DF;
+  --sunk: #E4DED4;
+  --edge: rgba(104, 86, 62, .22);
+  --drop: rgba(92, 74, 50, .30);
+  --hi: rgba(255, 255, 255, .95);
+  --amb: rgba(255, 255, 255, .9);
+  --ink: #1D2320;
+  --ink-2: #303833;
+  --text: #4A463F;
+  --muted-ink: #6D675C;
+  --paddy: #2F6B48;
+  --paddy-deep: #1D4A31;
+  --paddy-soft: #D5E5D3;
+  --rain: #2F6FB3;
+  --rain-deep: #1F4F86;
+  --rain-soft: #CFE0F0;
+  --amber: #C77B26;
+  --amber-deep: #9A5A14;
+  --amber-soft: #F1DFC6;
+  --cream: #F7F2E7;
+  --lcd: #C9D4A6;
+  --lcd-ink: #1F2A16;
+  --lcd-dim: #4E5B3A;
+  --font-display: "Anek Bangla", "Hind Siliguri", "Noto Sans Bengali", system-ui, sans-serif;
+  --font-body: "Hind Siliguri", "Anek Bangla", "Noto Sans Bengali", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --spring: cubic-bezier(.3, 1.35, .4, 1);
+
+  /* the dashboard's own tokens, mapped onto that material */
+  --primary: var(--paddy);
+  --primary-dark: var(--paddy-deep);
+  --primary-light: #46845F;
+  --accent: var(--amber-deep);
+  --earth: #6E3C10;
+  --water: var(--rain);
+  --bg-main: var(--paper);
+  --card-bg: var(--face);
+  --text-main: var(--ink);
+  --text-muted: var(--muted-ink);
+  --border: rgba(104, 86, 62, .16);
+  --success: var(--paddy);
+  --warning: var(--amber-deep);
+  --danger: #A33A2A;
+  --radius: 2px;
+  --shadow: none;
+  --raised:
+    inset 2px 2px 0 0 var(--hi),
+    inset -2px -2px 0 0 var(--edge),
+    inset 6px 6px 9px -7px var(--hi),
+    inset -6px -6px 9px -7px var(--edge),
+    12px 14px 28px -14px var(--drop),
+    -8px -8px 20px -12px var(--amb);
+  --sunken: inset 3px 3px 7px -1px var(--edge), inset -3px -3px 7px -1px var(--hi), 0 1px 0 var(--hi);
+  color-scheme: light;
+}
+
+/* sharp corners everywhere; only status dots stay round */
+*, *::before, *::after { border-radius: var(--radius) !important; }
+.status-dot { border-radius: 50% !important; }
+
+body {
+  font-family: var(--font-body);
+  color: var(--text);
+  background: linear-gradient(180deg, var(--paper), var(--paper-2)) fixed;
+  -webkit-font-smoothing: antialiased;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .3;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .36 0 0 0 0 .28 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+html[lang="en"] body { font-family: var(--font-body); }
+h1, h2, h3, h4,
+.brand-title, .stat-number, .stat-value, .comp-card-title, .ipm-score {
+  font-family: var(--font-display);
+  font-stretch: 112.5%;
+  color: var(--ink);
+  letter-spacing: -.005em;
+}
+h2, h3 { text-shadow: 0 1px 0 var(--hi); }
+.subtitle, .dim-note, .candidate-meta, .stat-sub { color: var(--muted-ink); }
+:focus-visible { outline: 2px solid var(--rain); outline-offset: 3px; }
+
+/* ---------- header and tabs: in the page, not floating ---------- */
+.app-header {
+  position: relative;
+  background: linear-gradient(180deg, var(--face-hi), var(--face));
+  border: 0;
+  box-shadow: inset 0 -2px 0 var(--edge), 0 1px 0 var(--hi);
+}
+.brand-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  background: linear-gradient(145deg, #3F7C59, var(--paddy-deep));
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .3), inset -1px -1px 0 rgba(0, 0, 0, .35);
+}
+.brand-title { color: var(--ink); font-weight: 700; }
+.brand-subtitle { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted-ink); }
+.location-badge, .release-status, .lang-switch {
+  background: linear-gradient(145deg, var(--sunk), var(--face-lo));
+  border: 0;
+  box-shadow: var(--sunken);
+  color: var(--ink-2);
+}
+.release-status { color: var(--paddy); }
+.lang-btn.active { background: linear-gradient(145deg, #3F7C59, var(--paddy-deep)); color: var(--cream); }
+.avatar {
+  background: linear-gradient(145deg, #3F7C59, var(--paddy-deep));
+  color: var(--cream);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .3), inset -1px -1px 0 rgba(0, 0, 0, .35);
+}
+
+.screen-nav {
+  background: transparent;
+  border: 0;
+  padding: 14px 24px 4px;
+  gap: 8px;
+}
+.nav-tab {
+  border: 0;
+  padding: 9px 14px;
+  color: var(--ink-2);
+  background: linear-gradient(145deg, var(--face-hi), var(--face) 52%, var(--face-lo));
+  box-shadow: inset 1px 1px 0 var(--hi), inset -1px -1px 0 var(--edge), 6px 8px 16px -10px var(--drop);
+  transition: transform .35s var(--spring), box-shadow .25s ease, background .25s ease;
+}
+.nav-tab:hover { color: var(--paddy); background: linear-gradient(145deg, var(--face-hi), var(--face)); transform: translateY(-2px); }
+.nav-tab.active {
+  color: var(--paddy);
+  border: 0;
+  transform: none;
+  background: linear-gradient(145deg, var(--sunk), var(--face-lo));
+  box-shadow: var(--sunken);
+}
+.tab-num {
+  font-family: var(--font-mono);
+  background: linear-gradient(145deg, var(--sunk), var(--face-lo));
+  box-shadow: inset 1px 1px 2px var(--edge);
+  color: var(--muted-ink);
+}
+.nav-tab.active .tab-num { background: linear-gradient(145deg, #3F7C59, var(--paddy-deep)); color: var(--cream); box-shadow: none; }
+
+/* ---------- raised slabs ---------- */
+.card,
+.candidate-card-summary,
+.comp-card,
+.stat-card,
+.ipm-column,
+.care-item,
+.keypad-item,
+.channel-option,
+.profile-field,
+.pest-report,
+.crop-chips .crop-chip {
+  border: 0;
+  background: linear-gradient(145deg, var(--face-hi), var(--face) 52%, var(--face-lo));
+  box-shadow: var(--raised);
+}
+.candidate-card-summary, .comp-card { transition: transform .35s var(--spring), box-shadow .25s ease; }
+.candidate-card-summary:hover, .comp-card:hover { transform: translateY(-3px); }
+.candidate-card-summary.selected, .comp-card.recommended {
+  background: linear-gradient(145deg, #E6EFE2, var(--paddy-soft) 60%, #C9DCC6);
+  box-shadow: var(--raised), inset 0 0 0 2px rgba(47, 107, 72, .35);
+}
+.card-header h2, .card-header h3 { font-weight: 650; }
+
+/* the overview's green statement slab and the dark evidence slabs, in the site's green and ink */
+.banner-card {
+  background: linear-gradient(145deg, #46845F, #3B7856 52%, #316E4C);
+  color: var(--cream);
+  box-shadow:
+    inset 2px 2px 0 0 rgba(255, 255, 255, .26),
+    inset -2px -2px 0 0 rgba(0, 18, 6, .34),
+    12px 14px 28px -14px rgba(2, 24, 10, .5);
+}
+.banner-card h1, .banner-card h2, .banner-card h3 { color: var(--cream); text-shadow: 0 2px 0 rgba(0, 0, 0, .2); }
+.evidence-hero, .quality-hero {
+  background: linear-gradient(145deg, #3A433E, var(--ink));
+  color: var(--cream);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .2), inset -1px -1px 0 rgba(0, 0, 0, .4), 12px 14px 28px -14px var(--drop);
+}
+.evidence-hero h2, .quality-hero h2 { color: var(--cream); text-shadow: none; }
+.evidence-header-tag { font-family: var(--font-mono); letter-spacing: .14em; color: var(--lcd); }
+
+/* ---------- sunk wells: inputs, tracks, notes ---------- */
+.form-control, select, textarea, input[type="text"], input[type="tel"], input[type="number"], input[type="password"] {
+  border: 0 !important;
+  background: linear-gradient(145deg, var(--sunk), var(--face-lo));
+  box-shadow: var(--sunken);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+input[type="range"], input[type="checkbox"], input[type="radio"] { accent-color: var(--paddy); }
+.dim-bar-wrap, .audio-progress-bar {
+  background: linear-gradient(145deg, var(--sunk), var(--face-lo));
+  box-shadow: inset 2px 2px 4px -1px var(--edge), inset -1px -1px 2px var(--hi);
+}
+.this-season-note { background: var(--amber-soft); color: var(--amber-deep); box-shadow: inset 2px 2px 3px -1px var(--edge); }
+.crop-choice-note { background: var(--paddy-soft); color: var(--paddy-deep); box-shadow: inset 2px 2px 3px -1px var(--edge); }
+
+/* ---------- presses ---------- */
+.btn {
+  border: 0;
+  font-weight: 600;
+  color: var(--ink);
+  background: linear-gradient(145deg, var(--face-hi), var(--face) 52%, var(--face-lo));
+  box-shadow: inset 1px 1px 0 var(--hi), inset -1px -1px 0 var(--edge), 8px 10px 20px -12px var(--drop);
+  transition: transform .35s var(--spring), box-shadow .25s ease, background .25s ease;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn:active { transform: none; background: linear-gradient(145deg, var(--sunk), var(--face-lo)); box-shadow: var(--sunken); }
+.btn-primary, .btn-success {
+  color: var(--cream);
+  background: linear-gradient(145deg, #3F7C59, var(--paddy-deep));
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .28), inset -1px -1px 0 rgba(0, 0, 0, .3), 10px 12px 22px -12px var(--drop);
+}
+.btn-primary:hover, .btn-success:hover { background: linear-gradient(145deg, #46845F, var(--paddy)); }
+.btn-audio, .btn-dark {
+  color: var(--cream);
+  background: linear-gradient(145deg, #3A433E, var(--ink));
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .25), inset -1px -1px 0 rgba(0, 0, 0, .4), 10px 12px 22px -12px var(--drop);
+}
+.btn-key { font-family: var(--font-display); font-weight: 600; }
+
+/* ---------- small labels ---------- */
+.badge, .tag, .season-badge, .offline-badge {
+  font-family: var(--font-body);
+  font-weight: 600;
+  border: 0;
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .5), inset -1px -1px 0 rgba(0, 0, 0, .08);
+}
+.badge-success, .tag-green, .offline-badge { background: var(--paddy-soft); color: var(--paddy-deep); }
+.badge-warning, .tag-yellow { background: var(--amber-soft); color: var(--amber-deep); }
+.badge-danger, .tag-strike { background: #F1D4CC; color: #8A2E20; }
+.badge-neutral, .tag-grey { background: var(--sunk); color: var(--ink-2); }
+.badge-primary, .badge-info, .tag-blue { background: var(--rain-soft); color: var(--rain-deep); }
+.season-badge { background: rgba(255, 255, 255, .18); color: var(--cream); }
+.candidate-score-pill {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--paddy-deep);
+  background: linear-gradient(145deg, var(--sunk), var(--face-lo));
+  box-shadow: var(--sunken);
+}
+
+/* ---------- tables, as on the site ---------- */
+.data-table th {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted-ink);
+  background: transparent;
+  border-bottom: 1px solid var(--edge);
+}
+.data-table td { border-top: 1px solid rgba(29, 35, 32, .1); border-bottom: 0; color: var(--ink); }
+.data-table tbody tr:hover td { background: rgba(255, 255, 255, .55); }
+
+/* ---------- the year, month by month ---------- */
+.slot-indicator {
+  font-weight: 600;
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .5), inset -1px -1px 0 rgba(0, 0, 0, .12), 3px 4px 8px -5px var(--drop);
+}
+.slot-indicator.occupied { background: linear-gradient(145deg, #3F7C59, var(--paddy-deep)); color: var(--cream); }
+.slot-indicator.transplanting { background: linear-gradient(145deg, #E3EEF8, var(--rain-soft)); color: var(--rain-deep); }
+.slot-indicator.harvesting { background: linear-gradient(145deg, #DA9447, var(--amber-deep)); color: var(--cream); }
+.slot-indicator.fallow_available, .slot-indicator.available {
+  background: linear-gradient(145deg, var(--sunk), var(--face-lo));
+  color: var(--muted-ink);
+  box-shadow: var(--sunken);
+}
+.dim-bar-fill { background: var(--paddy); }
+.dim-bar-fill.water { background: var(--rain); }
+.dim-bar-fill.heat { background: var(--amber); }
+.dim-bar-fill.income { background: var(--amber-deep); }
+.dim-bar-fill.pest { background: #6E8A3A; }
+
+/* ---------- anything a phone says: the LCD screen ---------- */
+.preview-speech-box, #voiceReply {
+  background: var(--lcd);
+  color: var(--lcd-ink);
+  border: 0;
+  box-shadow: inset 3px 3px 7px rgba(40, 50, 20, .38), inset -2px -2px 5px rgba(255, 255, 255, .45);
+}
+.preview-speech-box .speech-text { font-family: var(--font-display); color: var(--lcd-ink); }
+.call-log-box {
+  background: var(--lcd);
+  color: var(--lcd-ink);
+  font-family: var(--font-mono);
+  box-shadow: inset 3px 3px 6px rgba(40, 50, 20, .35), inset -2px -2px 4px rgba(255, 255, 255, .5);
+}
+.call-log-box .key-line { color: var(--paddy-deep); font-weight: 600; }
+.voice-sms { background: linear-gradient(145deg, var(--sunk), var(--face-lo)); box-shadow: var(--sunken); color: var(--ink); }
+.smartphone-frame {
+  border: 12px solid var(--ink-2);
+  box-shadow: 12px 16px 32px -14px var(--drop), inset 0 0 0 2px rgba(255, 255, 255, .15);
+  background: var(--face);
+}
+.phone-header { background: linear-gradient(145deg, #3F7C59, var(--paddy-deep)); color: var(--cream); }
+
+/* ---------- the farmer's crops ---------- */
+.crop-chips .crop-chip.on {
+  color: var(--paddy-deep);
+  background: linear-gradient(145deg, var(--sunk), var(--face-lo));
+  box-shadow: var(--sunken), inset 0 0 0 2px rgba(47, 107, 72, .35);
+}
+.crop-chip small { color: var(--rain-deep); font-family: var(--font-mono); }
+.crop-chip-season { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted-ink); }
+.care-item.water .care-icon { color: var(--rain); }
+.care-item.metals { background: linear-gradient(145deg, #F7EEE2, var(--amber-soft)); }
+.ipm-source { font-family: var(--font-mono); font-size: 11px; color: var(--muted-ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn, .nav-tab, .candidate-card-summary, .comp-card { transition: none; }
+  .btn:hover, .nav-tab:hover, .candidate-card-summary:hover, .comp-card:hover { transform: none; }
+}
+
+/* presses on the green slab */
+.banner-card .btn-primary {
+  color: var(--paddy-deep);
+  background: linear-gradient(145deg, var(--face-hi), var(--cream));
+  box-shadow: inset 1px 1px 0 var(--hi), inset -1px -1px 0 rgba(0, 0, 0, .18), 10px 12px 22px -12px rgba(2, 24, 10, .5);
+}
+.banner-actions .btn-secondary, .banner-card .btn-secondary {
+  color: var(--cream);
+  background: rgba(255, 255, 255, .1);
+  border: 0;
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .3), inset -1px -1px 0 rgba(0, 0, 0, .3);
+}
+.banner-card .form-control { color: var(--ink); }

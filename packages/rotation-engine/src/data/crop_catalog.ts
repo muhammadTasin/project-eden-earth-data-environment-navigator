@@ -19,7 +19,7 @@ export interface RabiCatalogEntry {
   varietyBangla: string;
   isLegume: boolean;
   isRice: boolean;
-  hostGroup: 'rice' | 'legume' | 'brassica' | 'cereal' | 'oilseed' | 'tuber'; // pests carry over between crops of the same group
+  hostGroup: 'rice' | 'legume' | 'brassica' | 'cereal' | 'oilseed' | 'tuber' | 'fibre'; // pests carry over between crops of the same group
   fodderValue: 'high' | 'medium' | 'low';
   fodderNoteBangla: string;
   illustrativeGrossMarginTkPerHa: number | null; // null: no price and cost data yet, so income stays neutral

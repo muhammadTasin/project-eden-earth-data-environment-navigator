@@ -1,5 +1,7 @@
 package org.projecteden.farmermobile.ui.screens.cropplan
 
+import org.projecteden.farmermobile.theme.bevel
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -94,7 +96,7 @@ fun CropPlanScreen(
             // 1. Selected Plot Header Pill
             Surface(
                 color = SurfaceContainerHigh,
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(2.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -159,7 +161,7 @@ fun CropPlanScreen(
 
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(2.dp))
                         .background(SecondaryContainer)
                         .padding(horizontal = 10.dp, vertical = 3.dp)
                 ) {
@@ -180,9 +182,9 @@ fun CropPlanScreen(
                 // Step 1: Aman Paddy
                 Surface(
                     color = SurfaceContainerLowest,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(2.dp),
                     shadowElevation = 2.dp,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.bevel().fillMaxWidth()
                 ) {
                     Row(
                         modifier = Modifier
@@ -225,7 +227,7 @@ fun CropPlanScreen(
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
+                                        .clip(RoundedCornerShape(2.dp))
                                         .background(PrimaryFixed)
                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                 ) {
@@ -283,7 +285,7 @@ fun CropPlanScreen(
 
                                 Surface(
                                     color = SurfaceContainerLow,
-                                    shape = RoundedCornerShape(8.dp),
+                                    shape = RoundedCornerShape(2.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Row(
@@ -314,9 +316,9 @@ fun CropPlanScreen(
                 // Step 2: Mustard (Subsequent proposed crop)
                 Surface(
                     color = SurfaceContainerLowest,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(2.dp),
                     shadowElevation = 2.dp,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.bevel().fillMaxWidth()
                 ) {
                     Row(
                         modifier = Modifier
@@ -359,7 +361,7 @@ fun CropPlanScreen(
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
+                                        .clip(RoundedCornerShape(2.dp))
                                         .background(SecondaryContainer)
                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                 ) {
@@ -417,7 +419,7 @@ fun CropPlanScreen(
 
                                 Surface(
                                     color = SurfaceContainerLow,
-                                    shape = RoundedCornerShape(8.dp),
+                                    shape = RoundedCornerShape(2.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Row(
@@ -471,7 +473,7 @@ fun CropPlanScreen(
 
                 Surface(
                     color = SurfaceContainer,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(2.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -501,7 +503,7 @@ fun CropPlanScreen(
 
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(RoundedCornerShape(2.dp))
                                     .background(SurfaceContainerHigh)
                                     .padding(horizontal = 8.dp, vertical = 3.dp)
                             ) {
@@ -519,7 +521,7 @@ fun CropPlanScreen(
                         ) {
                             Surface(
                                 color = SurfaceContainerLow,
-                                shape = RoundedCornerShape(8.dp),
+                                shape = RoundedCornerShape(2.dp),
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Column(modifier = Modifier.padding(8.dp)) {
@@ -539,7 +541,7 @@ fun CropPlanScreen(
 
                             Surface(
                                 color = SurfaceContainerLow,
-                                shape = RoundedCornerShape(8.dp),
+                                shape = RoundedCornerShape(2.dp),
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Column(modifier = Modifier.padding(8.dp)) {
@@ -562,7 +564,7 @@ fun CropPlanScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(6.dp))
+                                .clip(RoundedCornerShape(2.dp))
                                 .background(SurfaceContainerHigh.copy(alpha = 0.6f))
                                 .padding(horizontal = 8.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -591,7 +593,7 @@ fun CropPlanScreen(
                     containerColor = PrimaryContainer,
                     contentColor = OnPrimary
                 ),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(2.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)

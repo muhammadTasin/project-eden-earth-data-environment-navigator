@@ -198,14 +198,14 @@ async function runTests() {
 
   // TEST 12: The farmer's own crops: every plan holds them, and every crop fits the calendar
   console.log('[TEST 12] Testing plans built around the crops a farmer names...');
-  const chosen = engine.generateAdvice({ ...TALANDA, preferredCrops: ['sunflower', 'lentil', 'jute'], farmerPriorities: { water: 0.5, income: 0.3, soil: 0.2 } });
+  const chosen = engine.generateAdvice({ ...TALANDA, preferredCrops: ['sunflower', 'lentil', 'onion'], farmerPriorities: { water: 0.5, income: 0.3, soil: 0.2 } });
   const choice = chosen.crop_choice!;
   const holds = (o: typeof chosen.options[number], crop: string) => o.cropSequence.slice(1).some(p => p.crop.toLowerCase() === crop);
   if (!choice || chosen.options.some(o => !holds(o, 'sunflower') && !holds(o, 'lentil'))) {
     throw new Error('Every option must hold sunflower or lentil');
   }
-  if (!choice.fits.every(f => f.fits) || !choice.notModelled.some(n => n.id === 'jute')) {
-    throw new Error('Sunflower and lentil should fit at Talanda, and jute should be reported as not modelled');
+  if (!choice.fits.every(f => f.fits) || !choice.notModelled.some(n => n.id === 'onion')) {
+    throw new Error('Sunflower and lentil should fit at Talanda, and onion should be reported as not modelled');
   }
   if (!chosen.options.some(o => holds(o, 'sunflower') && o.cropSequence.length === 2)) {
     throw new Error('Winter sunflower on its own should be among the options');
@@ -219,8 +219,8 @@ async function runTests() {
   console.log(`Top for sunflower + lentil: ${chosen.options[0].nameEnglish}`);
   console.log(`Notes: ${choice.notesEnglish.join(' | ')}`);
   const k1Only = engine.generateAdvice({ ...TALANDA, preferredCrops: ['mungbean'], farmerPriorities: { water: 1 } });
-  if (k1Only.options.some(o => o.cropSequence[2]?.crop !== 'Mungbean')) {
-    throw new Error('A summer crop alone is planned after the best winter crop, in every option');
+  if (k1Only.options.some(o => !o.cropSequence.some((p, i) => i !== 1 && p.crop === 'Mungbean'))) {
+    throw new Error('Mungbean alone is planned before the next monsoon or in it, around the best winter crop, in every option');
   }
   const plain = engine.generateAdvice({ ...TALANDA, farmerPriorities: { water: 0.5, income: 0.3, soil: 0.2 } });
   if (plain.crop_choice || plain.options.map(o => o.id).join() !== advice.options.map(o => o.id).join()) {
@@ -240,8 +240,48 @@ async function runTests() {
   console.log(`Heard: ${JSON.stringify({ crops: heard.crops, excluded: heard.excluded, land: heard.landType })}`);
   console.log('✓ TEST 13 PASSED: Requests in Bangla are read into crops.\n');
 
+  // TEST 14: Any crop as the main crop, and no rice at all when the farmer says so
+  console.log('[TEST 14] Testing a main crop other than rice, with rice left out...');
+  const noRice = engine.generateAdvice({ ...TALANDA, heroCrop: 'wheat', avoidCrops: ['rice'], farmerPriorities: { water: 0.5, income: 0.3, soil: 0.2 } });
+  const riceIn = (o: typeof noRice.options[number]) => o.cropSequence.some(p => p.seasonType === 'Aman' || p.seasonType === 'Aus' || p.crop === 'Boro rice');
+  if (!noRice.options.length || noRice.options.some(o => !o.cropSequence.some(p => p.crop === 'Wheat') || riceIn(o))) {
+    throw new Error('Every option must hold wheat and no rice');
+  }
+  if (noRice.crop_choice?.heroCrop !== 'wheat' || !noRice.crop_choice.avoided.includes('aman')) {
+    throw new Error('The advice must say the plan follows the main crop and leaves rice out');
+  }
+  const monsoon = noRice.options.map(o => o.cropSequence[0]);
+  if (!monsoon.every(p => p.seasonType === 'Kharif-2') || !noRice.options[0].timeline.length || noRice.options.some(o => o.dimensionDetails.pest.metrics.riceCropsInYear !== 0)) {
+    throw new Error('Without rice the monsoon slot holds another crop or nothing, and rice pests lose their host');
+  }
+  const sunflowerHero = engine.generateAdvice({ ...TALANDA, heroCrop: 'sunflower', avoidCrops: ['rice'], landType: 'high', farmerPriorities: { water: 0.5, income: 0.3, soil: 0.2 } });
+  if (sunflowerHero.options[0].cropSequence[1].crop !== 'Sunflower') {
+    throw new Error('A main crop goes in its own season first (winter sunflower before summer sunflower)');
+  }
+  const jute = engine.generateAdvice({ ...TALANDA, heroCrop: 'jute', farmerPriorities: { water: 0.5, income: 0.3, soil: 0.2 } });
+  const juteTop = jute.options[0];
+  if (!juteTop.cropSequence.some(p => p.crop === 'Jute') || !juteTop.timeline.some(s => s.cropNameEnglish === 'Jute harvest')) {
+    throw new Error('Jute plans show the August jute harvest at the start of the cycle');
+  }
+  console.log(`Wheat, no rice: ${noRice.options[0].nameEnglish}`);
+  console.log(`Sunflower as main crop: ${sunflowerHero.options[0].nameEnglish}`);
+  console.log('✓ TEST 14 PASSED: Any crop can lead the year, and rice can be left out.\n');
+
+  // TEST 15: Soil-and-water tips with numbers from the plan's own records
+  console.log('[TEST 15] Testing the soil-and-water tips...');
+  const tips = lentil.stewardship ?? [];
+  const kinds = new Set(tips.map(t => t.kind));
+  if (!['water', 'fertilizer', 'pesticide', 'metals'].every(k => kinds.has(k as never)) || tips.some(t => !t.bn || !t.en || !t.source)) {
+    throw new Error('Every option needs sourced water, fertilizer, pesticide and metal tips in Bangla and English');
+  }
+  if (!tips.find(t => t.kind === 'water')!.en.includes('less groundwater') || !(boro.stewardship ?? []).find(t => t.kind === 'metals')!.en.includes('alternate wetting')) {
+    throw new Error('Lentil must show its groundwater saving; the Boro baseline must get the AWD arsenic advice instead of a saving');
+  }
+  console.log(`Lentil water tip: ${tips.find(t => t.kind === 'water')!.en}`);
+  console.log('✓ TEST 15 PASSED: Soil-and-water tips carry numbers and sources.\n');
+
   console.log('========================================================');
-  console.log('  ALL 13 CORE TESTS PASSED SUCCESSFULLY!                ');
+  console.log('  ALL 15 CORE TESTS PASSED SUCCESSFULLY!                ');
   console.log('========================================================');
 }
 

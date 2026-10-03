@@ -6,7 +6,15 @@
  *   AWAJ_LIVE=1     the switch that turns dry runs into real, billed calls
  * Without them every function returns the exact request it would send ({ dryRun: true, ... }).
  * Awaj needs the "direct broadcast" and "AI TTS" permissions on the account for Direct TTS (ask their support).
+ *
+ * The keypad menu (farmer presses 1-8 for a crop, 9 for the officer) is an Awaj survey. Surveys play recorded
+ * voices, so record the menu text (GET /api/v1/crops returns it), upload it with uploadVoice and wait for Awaj to
+ * approve it; then either name it in AWAJ_MENU_VOICE (one question, Direct Survey) or build a two-question template
+ * in the Awaj dashboard and name it in AWAJ_SURVEY_TEMPLATE. Awaj posts the pressed keys to
+ * PUBLIC_BASE_URL/api/v1/calls/survey-webhook?key=AWAJ_WEBHOOK_KEY when the survey completes.
  */
+import fs from 'node:fs';
+import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 const BASE = (process.env.AWAJ_BASE_URL || 'https://api.awajdigital.com/api').replace(/\/$/, '');
@@ -20,6 +28,12 @@ export function awajConfig() {
     sender: sender || null,
     live: process.env.AWAJ_LIVE === '1' && Boolean(token) && Boolean(sender),
     voice: process.env.AWAJ_VOICE === 'male' ? 'male' : 'female',
+    menuVoice: process.env.AWAJ_MENU_VOICE || null,
+    surveyTemplate: process.env.AWAJ_SURVEY_TEMPLATE || null,
+    officerNumber: process.env.AWAJ_OFFICER_NUMBER || null,
+    webhookUrl: process.env.PUBLIC_BASE_URL
+      ? `${process.env.PUBLIC_BASE_URL.replace(/\/$/, '')}/api/v1/calls/survey-webhook${process.env.AWAJ_WEBHOOK_KEY ? `?key=${encodeURIComponent(process.env.AWAJ_WEBHOOK_KEY)}` : ''}`
+      : null,
   };
 }
 
@@ -83,6 +97,47 @@ export async function broadcastResult(broadcastId: number | string) {
 
 export async function balance() {
   return call('GET', '/balance');
+}
+
+/** The account's recorded voices and whether Awaj approved them (the keypad menu must be approved). */
+export async function listVoices() {
+  return call('GET', '/voices');
+}
+
+/**
+ * Upload a recorded voice (mp3, wav, ogg, m4a, aac, webm or flac, up to 10 MB) for the keypad menu. Awaj reviews it
+ * before it can be played; check with listVoices.
+ */
+export async function uploadVoice(filePath: string, name: string) {
+  const size = fs.statSync(filePath).size;
+  if (size > 10 * 1024 * 1024) return { dryRun: !awajConfig().live, error: 'Awaj accepts voices up to 10 MB' };
+  if (!awajConfig().live) return { dryRun: true, endpoint: `POST ${BASE}/voices/upload`, request: { name, audio: `${path.basename(filePath)} (${Math.round(size / 1024)} KB)` } };
+  const form = new FormData();
+  form.append('name', name);
+  form.append('audio', new Blob([fs.readFileSync(filePath)]), path.basename(filePath));
+  const res = await fetch(`${BASE}/voices/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.AWAJ_API_TOKEN}`, Accept: 'application/json' },
+    body: form,
+  });
+  return { dryRun: false, status: res.status, data: await res.json().catch(() => null) };
+}
+
+/** A keypad survey from a template built in the Awaj dashboard (several questions, so two crops can be asked for). */
+export async function sendTemplateSurvey(opts: { phoneNumbers: string[]; templateName: string; webhookUrl?: string; metadata?: Record<string, unknown> }) {
+  const cfg = awajConfig();
+  const numbers = [...new Set(opts.phoneNumbers.map(bdMobile).filter((n): n is string => Boolean(n)))];
+  const body = {
+    request_id: requestId('mk_tpl'),
+    template_name: opts.templateName,
+    sender: cfg.sender ?? '<AWAJ_SENDER>',
+    phone_numbers: numbers,
+    metadata: opts.metadata ?? {},
+    ...(opts.webhookUrl ? { webhook_url: opts.webhookUrl } : {}),
+  };
+  if (!numbers.length) return { dryRun: !cfg.live, error: 'No valid Bangladeshi mobile number (01XXXXXXXXX)', request: body };
+  if (!cfg.live) return { dryRun: true, endpoint: `POST ${BASE}/surveys`, request: body };
+  return { dryRun: false, endpoint: `POST ${BASE}/surveys`, response: await call('POST', '/surveys', body) };
 }
 
 export async function senders() {

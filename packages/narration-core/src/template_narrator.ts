@@ -17,6 +17,11 @@ export class TemplateNarrator {
 
     const amanName = amanCrop.varietyBangla ?? amanCrop.variety;
     const rabiName = rabiCrop.cropBangla ?? rabiCrop.crop;
+    // The first phase is Aman, another monsoon crop, or the empty monsoon field (plans built around other crops)
+    const isAman = amanCrop.seasonType === 'Aman';
+    const harvestBefore = isAman
+      ? `${bnDateOf(option.fieldFreeDateBangla)} মধ্যে ধান কেটে `
+      : amanCrop.fallow ? '' : `${bnDateOf(option.fieldFreeDateBangla)} মধ্যে ${amanCrop.cropBangla ?? amanCrop.crop} কেটে `;
     const plantRabi = rabiName.includes('ধান') ? 'রোপণ করলে' : 'বুনলে';
     const land = LAND_TYPE_BANGLA[advice.scope.land_type];
 
@@ -28,7 +33,7 @@ export class TemplateNarrator {
         ? `গত ${bnDigits(totalSeasons as number)} মৌসুমের নাসা তথ্যে ${amanName} লাগালে ফুল আসার সময় ${bnDigits(rescueCount as number)} বার বাড়তি সেচ লেগেছে।`
         : '',
       rabiIrrigation !== undefined
-        ? `${bnDateOf(option.fieldFreeDateBangla)} মধ্যে ধান কেটে ${rabiName} ${plantRabi} সেচ লাগবে প্রায় ${bnDigits(rabiIrrigation as number)} মিলিমিটার।`
+        ? `${harvestBefore}${rabiName} ${plantRabi} সেচ লাগবে প্রায় ${bnDigits(rabiIrrigation as number)} মিলিমিটার।`
         : '',
       'প্রশ্ন থাকলে আপনার উপসহকারী কৃষি কর্মকর্তার (SAAO) সাথে কথা বলুন। ধন্যবাদ।',
     ];
@@ -45,7 +50,7 @@ export class TemplateNarrator {
         ? `In NASA data from the last ${totalSeasons} seasons, ${amanCrop.variety} needed extra irrigation at flowering ${rescueCount} times.`
         : '',
       rabiIrrigation !== undefined
-        ? `Harvest by ${option.fieldFreeDateEnglish ?? option.fieldFreeDateBangla} and ${plantEnglish} ${rabiCrop.crop.toLowerCase()}: it needs about ${rabiIrrigation} mm of irrigation.`
+        ? `${amanCrop.fallow ? '' : `Harvest by ${option.fieldFreeDateEnglish ?? option.fieldFreeDateBangla} and `}${amanCrop.fallow ? plantEnglish[0].toUpperCase() + plantEnglish.slice(1) : plantEnglish} ${rabiCrop.crop.toLowerCase()}: it needs about ${rabiIrrigation} mm of irrigation.`
         : '',
       'If you have questions, talk to your Sub-Assistant Agriculture Officer (SAAO). Thank you.',
     ].filter(Boolean).join(' ');

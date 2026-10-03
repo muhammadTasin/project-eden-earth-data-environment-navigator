@@ -1,9 +1,10 @@
 /**
  * Crops a farmer can ask for, beyond the five fixed rotations. The hand-written facts live here: names, crop family,
  * residue class, income source and the words farmers use for each crop. The per-place numbers come from
- * research/explore/crop_choice_replay.py (crop_choice_replay.json): sowing dates, irrigation, heat and fertilizer.
- * Rabi crops follow Aman; Kharif-1 crops fill the gap between the winter crop and the next Aman. Lentil, mustard,
- * wheat and Boro keep their research-release records (data/location.ts).
+ * research/explore/crop_choice_replay.py (crop_choice_replay.json): sowing dates, irrigation, heat, heavy rain and
+ * fertilizer. A year has three slots in field order: the monsoon (Kharif-2: Aman rice, a non-rice crop, or nothing),
+ * the winter (Rabi) and the pre-monsoon (Kharif-1) before the next monsoon. Lentil, mustard, wheat and Boro keep
+ * their research-release records (data/location.ts).
  *
  * Income: the team estimates already in crop_catalog.ts for the original crops; research net returns (BBS 2024-25
  * harvest prices and yields, Agriculture Census 2019 costs; crops/crop_parameters.csv) for potato, maize and Aus;
@@ -15,14 +16,14 @@ import { AMAN_CATALOG, RABI_CATALOG, type RabiCatalogEntry } from './crop_catalo
 import { LOC } from './location.ts';
 import { enDate, seasonDay } from '../bn.ts';
 
-export type ChoiceSeason = 'Rabi' | 'Kharif-1';
+export type ChoiceSeason = 'Kharif-2' | 'Rabi' | 'Kharif-1';
 
 export interface ChoiceCrop extends RabiCatalogEntry {
   id: string;
   season: ChoiceSeason;
   /** The research-release records behind the original crops; other crops come from the crop-choice replay. */
   releaseKeys?: string[];
-  /** A request for this id also covers these (sunflower also grows in Kharif-1). */
+  /** A request for this id also covers these (sunflower also grows in Kharif-1, soybean in the monsoon). */
   alsoCovers?: string[];
   /** Words for this crop in Bangla, Banglish and English, for spoken or typed requests. */
   aliases: string[];
@@ -81,23 +82,44 @@ export const CHOICE_CROPS: ChoiceCrop[] = [
   {
     id: 'soybean', season: 'Rabi', crop: 'Soybean', cropBangla: 'সয়াবিন', cropInBangla: 'সয়াবিনে', varietyBangla: 'বারি সয়াবিন-৬',
     isLegume: true, isRice: false, hostGroup: 'legume', fodderValue: 'medium', fodderNoteBangla: 'সয়াবিনের খড় ও খৈল গোখাদ্য।',
-    illustrativeGrossMarginTkPerHa: null, incomeSource: NO_PRICE, aliases: ['সয়াবিন', 'সয়াবীন', 'soybean', 'soyabean', 'soya'],
+    illustrativeGrossMarginTkPerHa: null, incomeSource: NO_PRICE, alsoCovers: ['soybean_k2'], aliases: ['সয়াবিন', 'সয়াবীন', 'soybean', 'soyabean', 'soya'],
   },
   {
     id: 'mungbean', season: 'Kharif-1', crop: 'Mungbean', cropBangla: 'মুগ', cropInBangla: 'মুগে', varietyBangla: 'বারি মুগ-৬',
     isLegume: true, isRice: false, hostGroup: 'legume', fodderValue: 'medium',
     fodderNoteBangla: 'ফল তোলার পর মুগের গাছ মাটিতে মিশালে সবুজ সার হয়, বা গরুকে খাওয়ানো যায়।',
-    illustrativeGrossMarginTkPerHa: null, incomeSource: NO_PRICE, aliases: ['মুগ', 'মুগডাল', 'mug', 'mung', 'moong', 'mungbean'],
+    illustrativeGrossMarginTkPerHa: null, incomeSource: NO_PRICE, alsoCovers: ['mungbean_k2'], aliases: ['মুগ', 'মুগডাল', 'mug', 'mung', 'moong', 'mungbean'],
   },
   {
     id: 'sesame', season: 'Kharif-1', crop: 'Sesame', cropBangla: 'তিল', cropInBangla: 'তিলে', varietyBangla: 'বারি তিল-৪',
     isLegume: false, isRice: false, hostGroup: 'oilseed', fodderValue: 'low', fodderNoteBangla: 'তিলের গাছ গোখাদ্য নয়; তিলের খৈল গরুর খাবার।',
-    illustrativeGrossMarginTkPerHa: null, incomeSource: NO_PRICE, aliases: ['তিল', 'til', 'sesame'],
+    illustrativeGrossMarginTkPerHa: null, incomeSource: NO_PRICE, alsoCovers: ['sesame_k2'], aliases: ['তিল', 'til', 'sesame'],
   },
   {
     id: 'aus', season: 'Kharif-1', crop: 'Aus rice', cropBangla: 'আউশ ধান', cropInBangla: 'আউশ ধানে', varietyBangla: 'ব্রি ধান৪৮',
     isLegume: false, isRice: true, hostGroup: 'rice', fodderValue: 'high', fodderNoteBangla: 'আউশের খড় শুকনা গোখাদ্য।',
     illustrativeGrossMarginTkPerHa: 38067, incomeSource: RESEARCH_RETURN, aliases: ['আউশ', 'আউস', 'aus', 'aush'],
+  },
+  {
+    id: 'jute', season: 'Kharif-1', crop: 'Jute', cropBangla: 'পাট', cropInBangla: 'পাটে', varietyBangla: 'বিজেআরআই তোষা পাট-৪',
+    isLegume: false, isRice: false, hostGroup: 'fibre', fodderValue: 'low', fodderNoteBangla: 'পাটের কচি পাতা শাক হিসেবে খাওয়া যায়; গাছ গোখাদ্য নয়।',
+    illustrativeGrossMarginTkPerHa: 69624, incomeSource: RESEARCH_RETURN, aliases: ['পাট', 'jute'],
+  },
+  {
+    id: 'soybean_k2', season: 'Kharif-2', crop: 'Soybean', cropBangla: 'সয়াবিন', cropInBangla: 'সয়াবিনে', varietyBangla: 'বারি সয়াবিন-৬ (বর্ষা)',
+    isLegume: true, isRice: false, hostGroup: 'legume', fodderValue: 'medium', fodderNoteBangla: 'সয়াবিনের খড় ও খৈল গোখাদ্য।',
+    illustrativeGrossMarginTkPerHa: null, incomeSource: NO_PRICE, aliases: [],
+  },
+  {
+    id: 'mungbean_k2', season: 'Kharif-2', crop: 'Mungbean', cropBangla: 'মুগ', cropInBangla: 'মুগে', varietyBangla: 'বারি মুগ-৬ (বর্ষা)',
+    isLegume: true, isRice: false, hostGroup: 'legume', fodderValue: 'medium',
+    fodderNoteBangla: 'ফল তোলার পর মুগের গাছ মাটিতে মিশালে সবুজ সার হয়, বা গরুকে খাওয়ানো যায়।',
+    illustrativeGrossMarginTkPerHa: null, incomeSource: NO_PRICE, aliases: [],
+  },
+  {
+    id: 'sesame_k2', season: 'Kharif-2', crop: 'Sesame', cropBangla: 'তিল', cropInBangla: 'তিলে', varietyBangla: 'বারি তিল-৪ (বর্ষা)',
+    isLegume: false, isRice: false, hostGroup: 'oilseed', fodderValue: 'low', fodderNoteBangla: 'তিলের গাছ গোখাদ্য নয়; তিলের খৈল গরুর খাবার।',
+    illustrativeGrossMarginTkPerHa: null, incomeSource: NO_PRICE, aliases: [],
   },
   {
     id: 'sunflower_kharif', season: 'Kharif-1', crop: 'Sunflower', cropBangla: 'সূর্যমুখী', cropInBangla: 'সূর্যমুখীতে',
@@ -110,7 +132,6 @@ export const CHOICE_BY_ID: Record<string, ChoiceCrop> = Object.fromEntries(CHOIC
 
 /** Crops farmers name that the engine does not replay yet, so a request for them is answered honestly. */
 export const NOT_MODELLED: Array<{ id: string; bn: string; en: string; aliases: string[] }> = [
-  { id: 'jute', bn: 'পাট', en: 'jute', aliases: ['পাট', 'jute'] },
   { id: 'onion', bn: 'পেঁয়াজ', en: 'onion', aliases: ['পেঁয়াজ', 'পিঁয়াজ', 'পেয়াজ', 'piyaj', 'peyaj', 'onion'] },
   { id: 'garlic', bn: 'রসুন', en: 'garlic', aliases: ['রসুন', 'roshun', 'rosun', 'garlic'] },
   { id: 'groundnut', bn: 'চীনাবাদাম', en: 'groundnut', aliases: ['চীনাবাদাম', 'চিনাবাদাম', 'বাদাম', 'badam', 'groundnut', 'peanut'] },
@@ -120,6 +141,13 @@ export const NOT_MODELLED: Array<{ id: string; bn: string; en: string; aliases: 
   { id: 'chilli', bn: 'মরিচ', en: 'chilli', aliases: ['মরিচ', 'morich', 'chilli', 'chili'] },
   { id: 'sugarcane', bn: 'আখ', en: 'sugarcane', aliases: ['আখ', 'sugarcane'] },
 ];
+
+/** Rice in a request to avoid it: 'rice' stands for Aman, Boro and Aus; 'aman' for the monsoon rice alone. */
+export const RICE_WORDS: Array<{ id: string; aliases: string[] }> = [
+  { id: 'aman', aliases: ['আমন', 'aman'] },
+  { id: 'rice', aliases: ['ধান', 'dhan', 'rice', 'paddy'] },
+];
+export const RICE_IDS = ['aman', 'boro', 'aus'];
 
 /** A spoken group word that stands for several crops; the engine picks the best of them. */
 export const CROP_GROUPS: Array<{ id: string; bn: string; en: string; crops: string[]; aliases: string[] }> = [
@@ -131,7 +159,7 @@ export const CROP_GROUPS: Array<{ id: string; bn: string; en: string; crops: str
 // Per-place replay (research/explore/crop_choice_replay.py)
 // ---------------------------------------------------------------------------
 
-type Row = [MonthDay, MonthDay, number, number, number, number, number | null];
+type Row = [MonthDay, MonthDay, number, number, number, number, number | null, number?];
 
 interface ReplayCrop {
   season: ChoiceSeason;
@@ -143,6 +171,7 @@ interface ReplayCrop {
   seedlingDays: number | null;
   relayDays: number;
   kcSource: string;
+  kcAssumed?: boolean;
   waterMethod: 'upland' | 'paddy';
   heat: (Omit<HeatExposure, 'hotDays'> & { source: string; assumed: boolean }) | null;
   fertilizer: FertilizerDose & { source: string };
@@ -237,43 +266,60 @@ export function yearDay(monthDay: MonthDay, laterThan?: MonthDay): number {
 export type Fit = { key: string } | { reason: 'window_closed' | 'aman_clash' | 'no_data'; deadline: MonthDay; ready: MonthDay };
 
 /**
- * The winter crop after this Aman. Original crops keep their release record when the field is free by the
- * handbook deadline (wheat falls back to the late sowing, as the five fixed rotations do). Other crops start on the
- * first replayed sowing date after the field is free; relay crops (grass pea) go in before the Aman harvest.
+ * The winter crop once the field is ready (`ready`: Aman's field-free date, a week after a monsoon crop's harvest,
+ * or null when the monsoon field stands empty). Original crops keep their release record when the field is ready by
+ * the handbook deadline (wheat falls back to the late sowing, as the five fixed rotations do). Other crops start on
+ * the first replayed sowing date after that; relay crops (grass pea) go into standing Aman before its harvest.
  */
-export function rabiFit(crop: ChoiceCrop, aman: AmanRecord): Fit {
-  const free = aman.fieldFree;
+export function rabiFit(crop: ChoiceCrop, ready: MonthDay | null, amanMaturity?: MonthDay): Fit {
   if (crop.releaseKeys) {
     for (const key of crop.releaseKeys) {
       const r = LOC.rabi[key];
       if (!r) continue;
       const last = key === 'BARI Gom 33 (Late)' ? r.sowing : r.sowingWindow?.[1] ?? r.sowing;
-      if (seasonDay(free) <= seasonDay(last)) return { key };
+      if (!ready || seasonDay(ready) <= seasonDay(last)) return { key };
     }
     const r = LOC.rabi[crop.releaseKeys[crop.releaseKeys.length - 1]];
-    const deadline = r?.sowingWindow?.[1] ?? r?.sowing ?? free;
-    return { reason: 'window_closed', deadline, ready: free };
+    const deadline = r?.sowingWindow?.[1] ?? r?.sowing ?? ready ?? '11-30';
+    return { reason: 'window_closed', deadline, ready: ready ?? deadline };
   }
   const facts = replayFacts(crop.id);
   const rows = placeRows(crop.id);
-  if (!facts || !rows.length) return { reason: 'no_data', deadline: free, ready: free };
-  const ready = facts.relayDays ? addDays(aman.maturity, -facts.relayDays) : free;
-  const row = rows.find(r => seasonDay(r[0]) >= seasonDay(ready));
-  return row ? { key: `${crop.id}@${row[0]}` } : { reason: 'window_closed', deadline: facts.window[1], ready };
+  if (!facts || !rows.length) return { reason: 'no_data', deadline: ready ?? '11-30', ready: ready ?? '11-30' };
+  const from = facts.relayDays && amanMaturity ? addDays(amanMaturity, -facts.relayDays) : ready;
+  const row = from ? rows.find(r => seasonDay(r[0]) >= seasonDay(from)) : rows[0];
+  return row ? { key: `${crop.id}@${row[0]}` } : { reason: 'window_closed', deadline: facts.window[1], ready: from ?? facts.window[0] };
 }
 
-/** A Kharif-1 crop between the winter crop's harvest and the next Aman's transplanting. */
-export function kharif1Fit(crop: ChoiceCrop, rabiHarvest: MonthDay, nextAman: AmanRecord): Fit {
+/**
+ * A Kharif-1 crop between the winter crop's harvest and the next monsoon slot: `nextStart` is when the field is
+ * needed again (the next Aman's transplanting, a monsoon crop's sowing, or the next winter sowing when the monsoon
+ * field stands empty).
+ */
+export function kharif1Fit(crop: ChoiceCrop, rabiHarvest: MonthDay, nextStart: MonthDay): Fit {
   const ready = addDays(rabiHarvest, TURNAROUND_DAYS);
   const rows = placeRows(crop.id);
   const facts = replayFacts(crop.id);
   if (!facts || !rows.length) return { reason: 'no_data', deadline: ready, ready };
-  const amanDay = seasonDay(nextAman.transplant) + 365;
-  const row = rows.find(r => yearDay(r[0]) >= yearDay(ready) && yearDay(addDays(r[1], TURNAROUND_DAYS), r[0]) <= amanDay);
+  const limit = seasonDay(nextStart) + 365;
+  const row = rows.find(r => yearDay(r[0]) >= yearDay(ready) && yearDay(addDays(r[1], TURNAROUND_DAYS), r[0]) <= limit);
   if (row) return { key: `${crop.id}@${row[0]}` };
   return rows.some(r => yearDay(r[0]) >= yearDay(ready))
-    ? { reason: 'aman_clash', deadline: nextAman.transplant, ready }
+    ? { reason: 'aman_clash', deadline: nextStart, ready }
     : { reason: 'window_closed', deadline: facts.window[1], ready };
+}
+
+/** Every replayed sowing of a monsoon (Kharif-2) crop at this place, as record keys. */
+export function kharif2Keys(crop: ChoiceCrop): string[] {
+  return placeRows(crop.id).map(r => `${crop.id}@${r[0]}`);
+}
+
+/** Days with 50 mm or more of rain while the crop is in the field (median of the replayed seasons), or null. */
+export function heavyRainDays(key: string): number | null {
+  const at = key.indexOf('@');
+  if (at < 0) return null;
+  const row = placeRows(key.slice(0, at)).find(r => r[0] === key.slice(at + 1));
+  return row && row.length > 7 ? (row[7] as number) : null;
 }
 
 export function isFit(fit: Fit): fit is { key: string } {
@@ -297,13 +343,13 @@ export function cropMenu() {
       alsoSummer: Boolean(crop.alsoCovers?.length),
       incomeData: crop.illustrativeGrossMarginTkPerHa !== null,
     };
-    if (crop.season === 'Kharif-1') {
+    if (crop.season !== 'Rabi') {
       const row = placeRows(crop.id)[0];
       return { ...base, window: facts?.window ?? null, netIrrigationMm: row ? row[2] : null, afterAman: [] as Array<{ aman: string; sowing: MonthDay }> };
     }
     const afterAman = Object.keys(AMAN_CATALOG).flatMap(aman => {
       const record = LOC.aman[aman];
-      const fit = record ? rabiFit(crop, record) : null;
+      const fit = record ? rabiFit(crop, record.fieldFree, record.maturity) : null;
       return fit && isFit(fit) ? [{ aman, sowing: recordFor(fit.key)!.sowing, netIrrigationMm: recordFor(fit.key)!.netIrrigationMm }] : [];
     });
     const window = facts?.window ?? (crop.releaseKeys ? LOC.rabi[crop.releaseKeys[0]]?.sowingWindow ?? null : null);

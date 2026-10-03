@@ -131,12 +131,26 @@ data class RemoteAiResponse(
     val timestamp: String
 )
 
+/** A farmer's sentence read by the server (crops, main crop, crops to avoid) and the plan's Bangla reply. */
+data class RemoteVoiceAnswer(
+    val crops: List<String>,
+    val heroCrop: String?,
+    val excluded: List<String>,
+    val speechBangla: String,
+    val smsBangla: String,
+    val topOptionBangla: String,
+    val tipsBangla: List<String>
+) {
+    /** True when the sentence named a crop to grow or to avoid, so the plan answers it. */
+    val namedCrops: Boolean get() = crops.isNotEmpty() || heroCrop != null || excluded.isNotEmpty()
+}
+
 /**
  * Lightweight HTTP client with adaptive multi-host connectivity.
  * Supports USB reverse tethering (127.0.0.1:4000 via adb reverse),
  * local LAN Wi-Fi (192.168.0.244:4000), and Android emulator (10.0.2.2:4000).
  */
-class EdenApiClient(
+open class EdenApiClient(
     val baseUrl: String? = null
 ) {
     private val candidateUrls: List<String> = if (!baseUrl.isNullOrBlank()) {
@@ -442,6 +456,28 @@ class EdenApiClient(
     suspend fun logout(token: String): Result<Boolean> = withContext(Dispatchers.IO) {
         val res = sendRequest("/api/v1/auth/logout", method = "POST", authToken = token)
         res.mapCatching { true }
+    }
+
+    /** POST /api/v1/voice/answer: the crops in a spoken or typed sentence, the year's plan and its Bangla reply. */
+    suspend fun voiceAnswer(text: String, unionId: String = "talanda_tanore"): Result<RemoteVoiceAnswer> = withContext(Dispatchers.IO) {
+        val payload = """{"text":"${escapeJson(text)}","unionId":"${escapeJson(unionId)}"}"""
+        sendRequest("/api/v1/voice/answer", method = "POST", bodyJson = payload).mapCatching { body ->
+            val json = JSONObject(body)
+            val understood = json.getJSONObject("understood")
+            val reply = json.getJSONObject("reply")
+            val top = json.getJSONObject("advice").getJSONArray("options").getJSONObject(0)
+            val strings = { arr: JSONArray? -> (0 until (arr?.length() ?: 0)).map { arr!!.getString(it) } }
+            val tips = top.optJSONArray("stewardship")
+            RemoteVoiceAnswer(
+                crops = strings(understood.optJSONArray("crops")),
+                heroCrop = understood.optString("hero").takeIf { it.isNotBlank() && it != "null" },
+                excluded = strings(understood.optJSONArray("excluded")),
+                speechBangla = reply.getString("speechBangla"),
+                smsBangla = reply.optString("smsBangla"),
+                topOptionBangla = top.optString("nameBangla"),
+                tipsBangla = (0 until (tips?.length() ?: 0)).map { tips!!.getJSONObject(it).getString("bn") }
+            )
+        }
     }
 
     suspend fun askAi(query: String, farmProfile: JSONObject?): Result<RemoteAiResponse> = withContext(Dispatchers.IO) {

@@ -6,15 +6,15 @@ EDEN is a Bangla-first crop-rotation decision-support system for Bangladesh. Its
 
 ## Project status (4 October 2026)
 
-Branch `sync/all-latest` holds all of the team's work up to 2 October, including Rayyanul's Android fixes (PR #3), ready to merge into `main`. Branch `feature/crop-choice-and-calls` adds the farmer's own crop choice and the phone channel on top of it (see [Branches](#branches)):
+Branch `sync/all-latest` holds all of the team's work up to 2 October, including Rayyanul's Android fixes (PR #3), ready to merge into `main`. Branch `feature/crop-choice-and-calls` adds, on top of it, the farmer's own crops (any main crop, with or without rice), soil-and-water tips, the phone channel with Awaj Digital, MODIS greenness for every upazila and the story site's look for the dashboard and the app (see [Branches](#branches)):
 
 | Part | Folder | What works |
 |---|---|---|
 | Research and data | `research/` | NASA and local datasets with their checks, the 25-season replay for the Tanore pilot, signals for five pilots, and the generator for the app's data release |
 | Rotation engine | `packages/rotation-engine/` | 5 rotations replayed through 25 seasons, 7 scores. The Talanda pilot uses data release `tanore-2026.09.30` (research commit `0469020`); every other upazila uses its district's replay (`national_replay.json`). With the farmer's crops named, it plans the whole year around them from 16 crops (`crop_choice_replay.json`) |
 | API | `services/api/` | Advice, checked Bangla narration, keypad events, Krishi officer desk, early warnings, NASA POWER weather, river erosion, the evidence-only assistant, sign-in, the farmer's crop choice, a Bangla request reader, and phone calls through Awaj Digital (dry runs until switched on) |
-| SAAO dashboard | `apps/saao-dashboard/` | Any of the 544 upazilas, Bangla and English, officer desk, less-pesticide (IPM) tab, early warnings with today's haor reading, environment ledger, daily NASA conditions |
-| Android app | `apps/farmer-mobile/` | Farmer card synced from the API with an offline cache, weather, river erosion, assistant, sign-in, farm profile editing |
+| SAAO dashboard | `apps/saao-dashboard/` | Any of the 544 upazilas, Bangla and English, the farmer's crops and main crop (with a no-rice switch), officer desk, less-pesticide tab with soil-and-water tips, early warnings with today's haor reading, environment ledger, daily NASA conditions, a voice card (speech to plan to Bangla reply and Awaj call), the story site's bevel-and-emboss look |
+| Android app | `apps/farmer-mobile/` | Farmer card synced from the API with an offline cache, weather, river erosion, assistant (ask by voice in Bangla: the plan for the named crops, read aloud), sign-in, farm profile editing; the story site's colours and sharp corners |
 | Screen designs | `design/` | Six SAAO desktop screens and the portrait mobile companion |
 | Daily NASA update | `research/live/` | NASA POWER every day for all 544 upazilas (64 districts), GPM IMERG rain at 10 km with an Earthdata Login, and the live haor flash-flood check with the MODIS flood map |
 
@@ -24,7 +24,7 @@ The dashboard advises any of the 544 upazilas (pick the district and upazila at 
 
 ```bash
 npm install
-npm test          # 13 engine tests and every API check
+npm test          # 15 engine tests and every API check
 npm start         # API and SAAO dashboard on http://localhost:4000
 npm run call:test -- --to 01XXXXXXXXX --crops sunflower,lentil   # the Bangla call script; a dry run until Awaj is set up
 ```
@@ -55,6 +55,20 @@ The five fixed rotations always end with lentil on top, because lentil needs the
 
 Scores stay honest about gaps: crops without price and cost data keep a neutral income score (potato, maize and Aus use the research net returns in `research/crops/crop_parameters.csv`), and heat limits not in that table (potato 30 °C, maize and chickpea 35 °C, mungbean and sesame 40 °C, sunflower and soybean 35 °C, barley 30 °C) are literature values marked as assumed.
 
+### Any main crop, with or without rice
+
+`heroCrop` names the farmer's main crop: wheat, sunflower, potato, jute, anything in the menu. Every plan holds it, and the engine fills the rest of the year from every crop it knows. `avoidCrops: ["rice"]` leaves out Aman, Boro and Aus (or name single crops). Without Aman the monsoon slot holds a non-rice crop or stands empty:
+
+- **Monsoon crops without rice** come from the BARI handbook's second windows: soybean (sown 15 Jul-15 Aug), mungbean (8 Aug-7 Sep) and sesame (15 Aug-15 Sep), replayed like the others, plus the days with 50 mm or more of IMERG rain while they stand. They drown where water stands, so the flood score drops them on medium-high and low land.
+- **Jute** (sown 15 Apr-5 May, harvested in August, SRDI dose, research net return) is now modelled; its crop coefficient is a fibre-crop value marked as assumed, since FAO-56 lists none.
+- **Scores follow the crops grown**: no Aman means no rescue irrigation, no rice straw, no Aman urea; a year without rice leaves rice pests no host and keeps the soil unpuddled.
+- **A main crop in its own season comes first** (winter sunflower before summer sunflower), and a summer crop that runs into August (jute) shows its harvest at the start of the year's timeline.
+- The Bangla reader marks a main crop ("প্রধান ফসল গম", "শুধু গম", or the only crop named) and refusals ("ধান করব না" leaves out all rice; "বোরো ধান করব না" only Boro). The dashboard planner has a main-crop list and a "ধান ছাড়া" switch.
+
+### Soil and water tips
+
+Every option carries tips (`stewardship`) with numbers from its own records, against the usual Aman-Boro rotation at the same place: groundwater pumped per bigha (the NASA replay) with NASA GRACE-GLDAS groundwater's change; urea and TSP per bigha (SRDI cards) and what legumes add; the rice-pest cycle and safe pesticide use; the upazila's soil gaps from the SRDI Soil Fertility Atlas (low organic matter, strong acidity, low zinc or boron; `research/export/soil_atlas_export.py`); and metals: arsenic rides on irrigation water (so the tip scales with the plan's pumping), cadmium on phosphate fertilizer, lead, chromium and mercury on factory and tannery waste water. No satellite measures metals in soil, so those tips are sourced guidance (BGS/DPHE, Meharg and Rahman 2003, EU 2019/1009, WHO 2006), and the farmer is pointed to a well test and an SRDI soil test. NASA's SEDAC PEST-CHEMGRIDS (pesticide application by crop, 5 arc-minutes) could put numbers on pesticide loads; it is a 2.1 GB download, not fetched yet.
+
 ### Phone calls and the farmer's voice (Awaj Digital)
 
 `services/api/src/awaj.ts` speaks to Awaj Digital's API (https://awajdigital.com/api-docs). Awaj reads Bangla text aloud (`POST /broadcasts/direct-tts`, `language_code: bn-BD`), runs keypad surveys (keys 1–9, the pressed keys come back by webhook) and records calls that officers place from its call-centre widget. It does not turn a farmer's speech into text, so listening works in three ways:
@@ -63,7 +77,13 @@ Scores stay honest about gaps: crops without price and cost data keep a neutral 
 2. **Speech to text, then the same engine.** Any speech-to-text that handles Bangla gives a sentence; `POST /api/v1/voice/answer` reads the crops, exclusions ("বোরো করব না"), land type and priorities from it (`packages/rotation-engine/src/understand.ts`, rule-based so an officer can see why) and returns the call script and SMS. The dashboard's delivery screen does this with the browser's microphone (Chrome's Bangla speech recognition). For phone calls, the speech must be recorded first: officer calls through Awaj's call-centre widget come with a recording URL, or a provider whose IVR records a spoken answer, and the recording goes to a speech-to-text service.
 3. **A conversational AI voice line, later.** Real-time speech needs a telephony provider that streams call audio (a SIP line with Asterisk or FreeSWITCH, or a cloud provider with media streams), streaming Bangla speech-to-text and text-to-speech; the engine still decides, and any model wording passes the narration gates.
 
-Calls stay dry runs (they return the exact request) until `.env` has `AWAJ_API_TOKEN`, `AWAJ_SENDER` and `AWAJ_LIVE=1` (see `.env.example`); with live calls on, `POST /api/v1/calls/advice` needs an officer sign-in. `npm run call:test -- --to 01XXXXXXXXX --place ADM3_Godagari --text "আমি সূর্যমুখী আর মসুর করতে চাই"` prints the script and, with `--live`, places one call and prints Awaj's per-number result.
+Calls stay dry runs (they return the exact request) until `.env` has `AWAJ_API_TOKEN`, `AWAJ_SENDER` and `AWAJ_LIVE=1` (see `.env.example`); with live calls on, the call routes need an officer sign-in.
+
+The keypad call, step by step: record the menu text (`npm run call:test -- --upload-menu menu.m4a` prints it and uploads the recording as the voice `mather-kotha-menu`); wait for Awaj to approve it (`--voices`); set `AWAJ_MENU_VOICE` (or `AWAJ_SURVEY_TEMPLATE` for a two-question template made in the Awaj dashboard), `AWAJ_OFFICER_NUMBER` for key 9 and `PUBLIC_BASE_URL` so Awaj can reach `/api/v1/calls/survey-webhook`; then `npm run call:test -- --keypad --to 01XXXXXXXXX --live`, or the dashboard's "কিপ্যাড মেনু কল" button. The farmer presses keys, Awaj posts them, and the webhook calls back with the plan. `npm run call:test -- --to 01XXXXXXXXX --place ADM3_Godagari --text "আমি সূর্যমুখী আর মসুর করতে চাই"` prints the script and, with `--live`, places one call and prints Awaj's per-number result.
+
+### What the fields grow: MODIS greenness for every upazila
+
+`python research/explore/national_greenness.py` reads the AppEEARS request `fieldshift_ndvi_national_20260927` (MODIS MOD13Q1 250 m NDVI at the 544 upazila centres, February 2000 to September 2026, plus VIIRS 500 m) and counts crops a year and the winter peak with the pilots' method (`field_cycles.py`). 530 upazilas have enough clear composites: Tanore went from 1.8 to 2.6 crops a year and its winter peak from 0.50 to 0.80 (the pilot's 9-pixel study read 0.81-0.83); parts of Bogura grow about 3. The overview shows it for any upazila (`greenness_upazila.json`). One pixel mixes fields, so it is context beside the replay, not a score input.
 
 ### Daily NASA update (all 544 upazilas)
 
@@ -152,7 +172,7 @@ Do not commit secrets, local environment files, dependency folders, generated AP
 | Method | Path | What it does |
 |---|---|---|
 | GET | `/api/v1/overview` | Dated research conditions, alerts, sample farmer rows, union pest reports, `early_warnings` (haor, warm nights, cattle heat) and `soil_carbon` |
-| POST | `/api/v1/advice` | Ranked rotations; `farmerId` applies that farmer's officer observation; `currentAmanCrop` adds the this-season check; `preferredCrops` plans the year around the farmer's crops (`crop_choice` in the response); 422 for unions without research data |
+| POST | `/api/v1/advice` | Ranked rotations; `farmerId` applies that farmer's officer observation; `currentAmanCrop` adds the this-season check; `preferredCrops`, `heroCrop` and `avoidCrops` plan the year around the farmer's crops (`crop_choice` in the response); every option carries `stewardship` tips; 422 for unions without research data |
 | POST | `/api/v1/narrate` | Checked Bangla script, with `englishGloss`, for one option |
 | POST | `/api/v1/channel-events` | Simulated IVR keypad: 1–4 re-rank by priority, 9 creates an officer call-back |
 | GET | `/api/v1/data-release` | Datasets, periods, calibration and status |
@@ -170,7 +190,8 @@ Do not commit secrets, local environment files, dependency folders, generated AP
 | GET | `/api/v1/crops?place=` | The crops a farmer can name, where each fits after Aman and its irrigation need there, and the keypad menu |
 | POST | `/api/v1/voice/understand` | `{ text }`: the crops, exclusions, land type and priorities in a Bangla, Banglish or English sentence |
 | POST | `/api/v1/voice/answer` | `{ text, unionId }`: the plan for that sentence, with the Bangla call script and SMS |
-| GET | `/api/v1/calls/status` | Whether Awaj calls are live or dry runs, and the keypad menu |
+| GET | `/api/v1/calls/status` | Whether Awaj calls are live or dry runs, whether the keypad menu and webhook are set, and the menu |
+| POST | `/api/v1/calls/keypad` | `{ phone or phones, unionId }`: a keypad survey call with the recorded crop menu; the pressed keys come back to the webhook |
 | POST | `/api/v1/calls/advice` | `{ phone, unionId, text or preferredCrops }`: reads the advice to a phone through Awaj (officer sign-in when live) |
 | POST | `/api/v1/calls/survey-webhook` | Awaj keypad-survey results: keys to crops, then a call-back with the plan; optional `?key=` secret |
 | GET | `/api/v1/officer/calls` | Recent phone-channel events, numbers masked (Bearer token) |
@@ -194,7 +215,8 @@ Do not commit secrets, local environment files, dependency folders, generated AP
 - officer sign-in, queue order, observation priority, the note filter, keypad-9 call-backs and the reference pack;
 - that every dashboard text has an English translation;
 - NASA POWER weather, river erosion, the farmer sign-in lifecycle and the assistant's grounded answers and refusals;
-- plans built around named crops (every option holds them, the calendar fits, a summer crop alone follows the best winter crop, the default five rotations are unchanged), the Bangla request reader, the crop menu, a spoken request answered, and Awaj calls and keypad answers as dry runs (the test server forces `AWAJ_LIVE=0`).
+- plans built around named crops (every option holds them, the calendar fits, a summer crop alone follows the best winter crop, the default five rotations are unchanged), the Bangla request reader, the crop menu, a spoken request answered, and Awaj calls and keypad answers as dry runs (the test server forces `AWAJ_LIVE=0`);
+- a main crop without rice (wheat, sunflower, jute), the tips' numbers and sources, a spoken "only wheat, no rice", the keypad call and MODIS greenness for an upazila.
 
 Online, the weather check reads NASA POWER live; offline, the API serves a fixed baseline marked `isLive: false`, so the tests also pass without internet.
 
@@ -244,7 +266,8 @@ The latest SMAP soil-moisture values come from the downloaded cache (`research/d
 - Upazilas outside the Talanda pilot use their district's NASA point (about 50 km grid), the SRDI Talanda fertilizer card as a stand-in, and no SMAP, MODIS greenness or land-use context yet. Unknown places get HTTP 422.
 - Income is a team estimate until DAM farm-gate prices and farmer cost interviews are in; crops without either keep a neutral income score.
 - Kharif-1 irrigation assumes no soil water left by the winter crop, so it is an upper estimate; heat limits for crops outside `crop_parameters.csv` are literature values marked as assumed. Onion, garlic, jute, groundnut and vegetables are not replayed yet.
-- Speech-to-text runs in the browser (Chrome) for now; phone speech needs a recording first (see the phone section).
+- Speech-to-text runs in the browser (Chrome) and on Android phones with Google's recogniser; phone-call speech needs a recording first (see the phone section).
+- Monsoon upland crops are judged by land type and heavy-rain days, not a flood model; the Android app keeps system fonts (the story site's Anek Bangla is not bundled).
 - The pest score is rule-based until officers log pest counts.
 - Floods are not modelled for Barind land. The haor warning shows the 25-season hindcast and the season status; a live trigger needs a daily IMERG Early feed and river-gauge confirmation. Rotation advice is not modelled for the haor.
 - Flooded-rice days stand in for methane; they are not a methane measurement.
@@ -256,7 +279,7 @@ The latest SMAP soil-moisture values come from the downloaded cache (`research/d
 
 | Branch | What it holds |
 |---|---|
-| `feature/crop-choice-and-calls` | `sync/all-latest` plus the farmer's own crop choice, the Bangla request reader, the voice answer and Awaj calls |
+| `feature/crop-choice-and-calls` | `sync/all-latest` plus the farmer's own crops and main crop (rice optional), soil-and-water tips, the Bangla request reader, the voice answer, Awaj calls and keypad menu, MODIS greenness for every upazila, and the story site's look for the dashboard and the app |
 | `sync/all-latest` | Everything: `research/data-access` (`0469020`) and `codex/android-app-latest` (`8e633aa`, which already carried `codex/android-apk`, `feature/eden-screen-recreation` and `demo/research-data`), plus the daily NASA update, the live haor check, advice for every upazila and Rayyanul's Android fixes (`f5a1b11`, PR #3). Merge it into `main` with a pull request ("Create a merge commit"). |
 | `feature/daily-nasa-update` | The daily NASA update, the live haor check and every-upazila advice; the same commits as `sync/all-latest` |
 | `main` | Research up to 27 September and the README; it catches up when `sync/all-latest` is merged |

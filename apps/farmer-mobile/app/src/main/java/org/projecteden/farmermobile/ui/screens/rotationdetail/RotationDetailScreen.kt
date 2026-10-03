@@ -1,5 +1,7 @@
 package org.projecteden.farmermobile.ui.screens.rotationdetail
 
+import org.projecteden.farmermobile.theme.bevel
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -105,7 +107,7 @@ fun RotationDetailScreen(
                 // 1. Plot Header Banner
                 Surface(
                     color = SurfaceContainerHigh,
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(2.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -144,7 +146,7 @@ fun RotationDetailScreen(
 
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(2.dp))
                                 .background(SecondaryContainer)
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
@@ -204,9 +206,9 @@ fun RotationDetailScreen(
                     // Season 1: Kharif-2
                     Surface(
                         color = SurfaceContainerLowest,
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(2.dp),
                         shadowElevation = 2.dp,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.bevel().fillMaxWidth()
                     ) {
                         Row(
                             modifier = Modifier
@@ -233,7 +235,7 @@ fun RotationDetailScreen(
                                 ) {
                                     Box(
                                         modifier = Modifier
-                                            .clip(RoundedCornerShape(8.dp))
+                                            .clip(RoundedCornerShape(2.dp))
                                             .background(PrimaryFixed)
                                             .padding(horizontal = 6.dp, vertical = 2.dp)
                                     ) {
@@ -293,9 +295,9 @@ fun RotationDetailScreen(
                     // Season 2: Rabi
                     Surface(
                         color = SurfaceContainerLowest,
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(2.dp),
                         shadowElevation = 2.dp,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.bevel().fillMaxWidth()
                     ) {
                         Row(
                             modifier = Modifier
@@ -322,7 +324,7 @@ fun RotationDetailScreen(
                                 ) {
                                     Box(
                                         modifier = Modifier
-                                            .clip(RoundedCornerShape(8.dp))
+                                            .clip(RoundedCornerShape(2.dp))
                                             .background(SecondaryContainer)
                                             .padding(horizontal = 6.dp, vertical = 2.dp)
                                     ) {
@@ -378,7 +380,7 @@ fun RotationDetailScreen(
 
                                 Row(
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
+                                        .clip(RoundedCornerShape(2.dp))
                                         .background(SurfaceContainer)
                                         .padding(horizontal = 8.dp, vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically,
@@ -404,7 +406,7 @@ fun RotationDetailScreen(
                 // 5. Provenance & Reliability Notice
                 Surface(
                     color = SurfaceContainer,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(2.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -444,7 +446,7 @@ fun RotationDetailScreen(
                         containerColor = if (isConfirmed) Primary else PrimaryContainer,
                         contentColor = OnPrimary
                     ),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(2.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp)
@@ -481,7 +483,7 @@ fun RotationDetailScreen(
             ) {
                 Surface(
                     color = InverseSurface,
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(2.dp),
                     shadowElevation = 6.dp
                 ) {
                     Row(

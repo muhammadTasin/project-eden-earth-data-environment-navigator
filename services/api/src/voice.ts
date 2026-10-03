@@ -72,33 +72,38 @@ function speakable(text: string): string {
  */
 export function replyFor(advice: AdviceJSON, understood?: Pick<Understood, 'crops' | 'notModelled'> | null) {
   const top = advice.options[0];
-  const [aman, rabi, k1] = top.cropSequence;
+  const [monsoon, rabi, k1] = top.cropSequence;
   const water = top.dimensionDetails.water?.metrics ?? {};
   const choice = advice.crop_choice;
   const place = advice.scope.union_id === 'talanda_tanore' ? bnGenitive(advice.scope.union_name_bangla) : 'আপনার এলাকার';
   const asked = choice?.requested.map(r => r.cropBangla) ?? [];
   const rabiAction = top.approvedActionBangla[2] ?? '';
   const rabiMm = water.rabiNetIrrigationMm;
-  const notes = (choice?.notesBangla ?? []).filter(n => !n.includes('বাজারদর') && !n.includes('স্কোর')).slice(0, 2);
+  // Spoken notes: what the farmer must know (main crop, crops that compete, crops not modelled); not price gaps,
+  // scores or the list of monsoon alternatives, which the officer sees on screen
+  const notes = (choice?.notesBangla ?? []).filter(n => !n.includes('বাজারদর') && !n.includes('স্কোর') && !n.startsWith('কোনো চক্রে ধান')).slice(0, 2);
 
   const speech = speakable([
     'আসসালামু আলাইকুম। মাঠের কথা থেকে বলছি।',
     asked.length ? `আপনি ${andJoin(asked)} করতে চেয়েছেন।` : '',
-    `নাসার পঁচিশ বছরের আবহাওয়া ও বৃষ্টির হিসাবে ${place} জন্য ভালো চক্র: আমনে ${aman.varietyBangla}, তারপর ${rabi.cropBangla}${k1 ? `, তারপর ${k1.cropBangla}` : ''}।`,
+    `নাসার পঁচিশ বছরের আবহাওয়া ও বৃষ্টির হিসাবে ${place} জন্য ভালো চক্র: ${[
+      monsoon.seasonType === 'Aman' ? `আমনে ${monsoon.varietyBangla}` : monsoon.fallow ? '' : `বর্ষায় ${monsoon.cropBangla}`,
+      `${monsoon.fallow ? 'শীতে ' : ''}${rabi.cropBangla}`,
+      k1 ? k1.cropBangla : '',
+    ].filter(Boolean).join(', তারপর ')}।`,
     top.approvedActionBangla[0] ?? '',
     rabiAction,
     typeof rabiMm === 'number' && !rabiAction.includes('মিমি') ? `${rabi.cropBangla} চাষে সেচ লাগবে প্রায় ${bnDigits(rabiMm)} মিমি।` : '',
     top.approvedActionBangla[3] ?? '',
+    // One soil-and-water saving the farmer can hear: the first sentence of the water tip
+    (top.stewardship?.find(t => t.kind === 'water')?.bn.split('।')[0] ?? '') + (top.stewardship?.some(t => t.kind === 'water') ? '।' : ''),
     ...notes,
     notes.some(n => n.includes('কর্মকর্তা')) ? 'ধন্যবাদ।' : 'বিস্তারিত জানতে আপনার উপসহকারী কৃষি কর্মকর্তার সাথে কথা বলুন। ধন্যবাদ।',
   ].filter(Boolean).join(' '));
 
-  const when = (p: typeof aman, verb: string) => (p.sowingBangla ? ` (${verb} ~${p.sowingBangla})` : '');
-  const sms = [
-    `মাঠের কথা: ${aman.varietyBangla}${when(aman, 'রোপণ')} → ${rabi.cropBangla}${when(rabi, rabi.seasonType === 'Rabi' && rabi.crop.includes('rice') ? 'রোপণ' : 'বপন')}`,
-    k1 ? ` → ${k1.cropBangla}${when(k1, k1.seasonType === 'Aus' ? 'রোপণ' : 'বপন')}` : '',
-    '। প্রশ্নে SAAO-কে ফোন করুন।',
-  ].join('');
+  const verb = (p: typeof rabi) => (p.seasonType === 'Aman' || p.seasonType === 'Aus' || p.crop.toLowerCase().includes('rice') ? 'রোপণ' : 'বপন');
+  const named = (p: typeof rabi) => `${p.seasonType === 'Aman' ? p.varietyBangla : p.cropBangla}${p.sowingBangla ? ` (${verb(p)} ~${p.sowingBangla})` : ''}`;
+  const sms = `মাঠের কথা: ${[monsoon, rabi, k1].filter(p => p && !p.fallow).map(p => named(p!)).join(' → ')}${monsoon.fallow ? '; বর্ষায় ধান নেই' : ''}। প্রশ্নে SAAO-কে ফোন করুন।`;
 
   return {
     speechBangla: speech,
@@ -114,4 +119,21 @@ export function replyFor(advice: AdviceJSON, understood?: Pick<Understood, 'crop
 /** A typed or transcribed sentence -> what to plan for. */
 export function understand(text: string): Understood {
   return understandRequest(text);
+}
+
+/**
+ * What a heard sentence asks the engine for: the main crop, the other crops (crops we do not model ride along so the
+ * advice can say so), the crops to avoid, the land type and the priorities. Fields the sentence did not name are
+ * left out, so a caller's own values stay.
+ */
+export function requestFromWords(heard: Understood) {
+  const others = heard.crops.filter(c => c !== heard.hero);
+  const crops = [...others, ...heard.notModelled];
+  return {
+    ...(heard.hero ? { heroCrop: heard.hero } : {}),
+    ...(crops.length ? { preferredCrops: crops } : {}),
+    ...(heard.excluded.length ? { avoidCrops: heard.excluded } : {}),
+    ...(heard.landType ? { landType: heard.landType } : {}),
+    ...(heard.priorities ? { farmerPriorities: heard.priorities } : {}),
+  };
 }
