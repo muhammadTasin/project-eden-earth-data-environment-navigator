@@ -18,6 +18,9 @@ import { getNasaWeather } from './weather.ts';
 import { getRiverErosion } from './erosion.ts';
 import { liveHaor, liveStatus, liveUpazila, liveUpazilas } from './live.ts';
 import { askAiAssistant } from './ai_assistant.ts';
+import { cropMenu } from '../../../packages/rotation-engine/src/data/crop_choice.ts';
+import { cropsFromKeys, keypadMenu, replyFor, understand } from './voice.ts';
+import { awajConfig, bdMobile, sendTtsCall } from './awaj.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -75,6 +78,13 @@ function parseBody(req: http.IncomingMessage): Promise<any> {
   });
 }
 
+/** Crops a request names: an array of ids, or one comma-separated string ('sunflower,lentil'). */
+function cropList(value: unknown): string[] | undefined {
+  const list = Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : [];
+  const ids = list.map(v => String(v).trim().toLowerCase()).filter(Boolean);
+  return ids.length ? ids : undefined;
+}
+
 function planRequest(body: any): PlanOptionsRequest {
   const place = placeFor(body.unionId || 'talanda_tanore');
   return {
@@ -85,9 +95,34 @@ function planRequest(body: any): PlanOptionsRequest {
     landType: body.landType || 'medium_high',
     season: body.season || '2026-aman',
     currentAmanCrop: body.currentAmanCrop,
+    preferredCrops: cropList(body.preferredCrops),
     farmerPriorities: body.farmerPriorities || DEFAULT_PRIORITIES,
   };
 }
+
+/**
+ * A farmer's sentence (typed, or from speech-to-text) -> the engine's plan for it -> the Bangla call script and SMS.
+ * What the sentence names overrides the request's crops, land type and priorities.
+ */
+function voiceAnswer(body: any) {
+  const heard = understand(String(body.text ?? ''));
+  const request = planRequest({
+    ...body,
+    preferredCrops: heard.crops.length || heard.notModelled.length ? [...heard.crops, ...heard.notModelled] : body.preferredCrops,
+    landType: heard.landType ?? body.landType,
+    farmerPriorities: heard.priorities ?? body.farmerPriorities,
+  });
+  const advice = adviseWithNarration(request, body.farmerId);
+  return { understood: heard, request: { unionId: request.unionId, preferredCrops: request.preferredCrops ?? [], landType: request.landType, farmerPriorities: request.farmerPriorities }, reply: replyFor(advice, heard), advice };
+}
+
+/** Recent phone-channel events (Awaj survey answers and the call-backs they triggered), newest first. */
+const CALL_LOG: Array<Record<string, unknown>> = [];
+function logCall(event: Record<string, unknown>) {
+  CALL_LOG.unshift({ at: new Date().toISOString(), ...event });
+  CALL_LOG.length = Math.min(CALL_LOG.length, 50);
+}
+const maskPhone = (phone: string | null) => (phone ? `${phone.slice(0, 3)}XXXX${phone.slice(-4)}` : null);
 
 /**
  * Engine advice plus the checked spoken script for the phone app's cached card. With a farmer ID, the Krishi
@@ -444,6 +479,64 @@ const server = http.createServer(async (req, res) => {
       return ov ? sendJSON(res, 200, ov) : sendJSON(res, 422, { error: 'No research data for this place yet' });
     }
 
+    // API: the crops a farmer can ask for at a place, and after which Aman varieties each one fits
+    if (pathname === '/api/v1/crops' && req.method === 'GET') {
+      const place = placeFor(url.searchParams.get('place'));
+      if (!place) return sendJSON(res, 422, { error: 'No research data for this place yet' });
+      return sendJSON(res, 200, { place: place.id, crops: withPlace(place, () => cropMenu()), keypad: keypadMenu() });
+    }
+
+    // API: what a farmer asked for, from a sentence in Bangla, Banglish or English
+    if (pathname === '/api/v1/voice/understand' && req.method === 'POST') {
+      const body = await parseBody(req);
+      return sendJSON(res, 200, understand(String(body.text ?? '')));
+    }
+
+    // API: sentence -> plan -> spoken Bangla reply and SMS (the phone channel without the phone)
+    if (pathname === '/api/v1/voice/answer' && req.method === 'POST') {
+      const body = await parseBody(req);
+      return sendJSON(res, 200, voiceAnswer(body));
+    }
+
+    // API: phone calls through Awaj Digital (dry runs until AWAJ_API_TOKEN, AWAJ_SENDER and AWAJ_LIVE=1 are set)
+    if (pathname === '/api/v1/calls/status' && req.method === 'GET') {
+      const cfg = awajConfig();
+      return sendJSON(res, 200, { provider: 'Awaj Digital', live: cfg.live, tokenSet: cfg.tokenSet, senderSet: Boolean(cfg.sender), voice: cfg.voice, keypad: keypadMenu() });
+    }
+    if (pathname === '/api/v1/calls/advice' && req.method === 'POST') {
+      const body = await parseBody(req);
+      // A real, billed call needs a signed-in officer; a dry run shows what would be sent
+      if (awajConfig().live && !desk.officerForToken(req.headers.authorization)) {
+        return sendJSON(res, 401, { error: 'Officer sign-in required to place a real call' });
+      }
+      const phone = bdMobile(String(body.phone ?? ''));
+      if (!phone) return sendJSON(res, 400, { error: 'phone must be a Bangladeshi mobile number (01XXXXXXXXX)' });
+      const answer = body.text ? voiceAnswer(body) : { reply: replyFor(adviseWithNarration(planRequest(body), body.farmerId)) };
+      const sent = await sendTtsCall({ phoneNumbers: [phone], texts: [answer.reply.speechBangla], metadata: { channel: 'mather-kotha', unionId: body.unionId ?? 'talanda_tanore', option: answer.reply.topOptionId } });
+      logCall({ kind: 'advice_call', phone: maskPhone(phone), crops: answer.reply.understoodCrops, dryRun: sent.dryRun });
+      return sendJSON(res, 200, { reply: answer.reply, call: sent });
+    }
+    if (pathname === '/api/v1/calls/survey-webhook' && req.method === 'POST') {
+      // Awaj posts once when a keypad survey completes. Optional shared secret in the webhook URL (?key=...).
+      if (process.env.AWAJ_WEBHOOK_KEY && url.searchParams.get('key') !== process.env.AWAJ_WEBHOOK_KEY) {
+        return sendJSON(res, 401, { error: 'Unknown webhook key' });
+      }
+      const body = await parseBody(req);
+      const unionId = String(body.metadata?.unionId ?? 'talanda_tanore');
+      const handled = [];
+      for (const r of Array.isArray(body.results) ? body.results : []) {
+        const phone = bdMobile(String(r.phone_number ?? ''));
+        if (!phone || r.status !== 'answered') continue;
+        const { crops, officer } = cropsFromKeys(Array.isArray(r.responses) ? r.responses.map(String) : [String(r.response ?? '')]);
+        const callback = officer ? desk.requestCallback(String(body.metadata?.farmerId ?? 'F01'), 'ivr_keypad_9') : null;
+        const reply = crops.length ? replyFor(adviseWithNarration(planRequest({ unionId, preferredCrops: crops }))) : null;
+        const sent = reply ? await sendTtsCall({ phoneNumbers: [phone], texts: [reply.speechBangla], metadata: { channel: 'mather-kotha', surveyId: body.survey_id, unionId } }) : null;
+        logCall({ kind: 'survey_answer', surveyId: body.survey_id, phone: maskPhone(phone), keys: r.responses ?? [r.response], crops, officer, callbackId: callback?.id ?? null, dryRun: sent?.dryRun ?? null });
+        handled.push({ phone: maskPhone(phone), crops, officer, callBack: sent ? { dryRun: sent.dryRun } : null });
+      }
+      return sendJSON(res, 200, { ok: true, handled });
+    }
+
     // API: every place the engine can advise (the pilot and all upazilas)
     if (pathname === '/api/v1/places' && req.method === 'GET') {
       return sendJSON(res, 200, { pilot: { id: 'talanda_tanore', name: 'Talanda union', upazila: 'Tanore', district: 'Rajshahi' }, upazilas: listPlaces() });
@@ -594,6 +687,9 @@ const server = http.createServer(async (req, res) => {
       if (resolve && req.method === 'POST') {
         const request = desk.resolveCallback(decodeURIComponent(resolve[1]));
         return request ? sendJSON(res, 200, request) : sendJSON(res, 404, { error: 'Unknown call-back request' });
+      }
+      if (pathname === '/api/v1/officer/calls' && req.method === 'GET') {
+        return sendJSON(res, 200, { calls: CALL_LOG, provider: awajConfig() });
       }
       if (pathname === '/api/v1/officer/knowledge' && req.method === 'GET') {
         return sendJSON(res, 200, knowledgePack());

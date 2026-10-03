@@ -3,6 +3,7 @@ import { RotationEngine, UnsupportedUnionError } from './packages/rotation-engin
 import { TANORE_LEDGER_RESEARCH, TANORE_RABI_REPLAY } from './packages/rotation-engine/src/data/tanore_replay_data.ts';
 import { DualGateNarrationValidator, type ILocalLLMClient } from './packages/narration-core/src/dual_gate_validator.ts';
 import { TemplateNarrator } from './packages/narration-core/src/template_narrator.ts';
+import { understandRequest } from './packages/rotation-engine/src/understand.ts';
 
 const BN = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
 const bn = (v: unknown) => String(v).replace(/\d/g, d => BN[Number(d)]);
@@ -195,8 +196,52 @@ async function runTests() {
   console.log(`✓ TEST 11 PASSED: The engine reproduces the research ledger for ${TANORE_LEDGER_RESEARCH.length} rotations.
 `);
 
+  // TEST 12: The farmer's own crops: every plan holds them, and every crop fits the calendar
+  console.log('[TEST 12] Testing plans built around the crops a farmer names...');
+  const chosen = engine.generateAdvice({ ...TALANDA, preferredCrops: ['sunflower', 'lentil', 'jute'], farmerPriorities: { water: 0.5, income: 0.3, soil: 0.2 } });
+  const choice = chosen.crop_choice!;
+  const holds = (o: typeof chosen.options[number], crop: string) => o.cropSequence.slice(1).some(p => p.crop.toLowerCase() === crop);
+  if (!choice || chosen.options.some(o => !holds(o, 'sunflower') && !holds(o, 'lentil'))) {
+    throw new Error('Every option must hold sunflower or lentil');
+  }
+  if (!choice.fits.every(f => f.fits) || !choice.notModelled.some(n => n.id === 'jute')) {
+    throw new Error('Sunflower and lentil should fit at Talanda, and jute should be reported as not modelled');
+  }
+  if (!chosen.options.some(o => holds(o, 'sunflower') && o.cropSequence.length === 2)) {
+    throw new Error('Winter sunflower on its own should be among the options');
+  }
+  for (const o of chosen.options) {
+    const [aman, rabi, k1] = o.cropSequence;
+    const sown = o.timeline.some(s => /sowing|transplanting/.test(s.cropNameEnglish ?? '') && (s.cropNameEnglish ?? '').toLowerCase().includes(rabi.crop.toLowerCase()));
+    if (!aman.variety.startsWith('BRRI') || !sown) throw new Error(`${o.id}: the timeline does not show the ${rabi.crop} sowing`);
+    if (k1 && !o.approvedActionEnglish?.some(a => a.includes('before Aman'))) throw new Error(`${o.id}: the Kharif-1 crop must be off the field before Aman`);
+  }
+  console.log(`Top for sunflower + lentil: ${chosen.options[0].nameEnglish}`);
+  console.log(`Notes: ${choice.notesEnglish.join(' | ')}`);
+  const k1Only = engine.generateAdvice({ ...TALANDA, preferredCrops: ['mungbean'], farmerPriorities: { water: 1 } });
+  if (k1Only.options.some(o => o.cropSequence[2]?.crop !== 'Mungbean')) {
+    throw new Error('A summer crop alone is planned after the best winter crop, in every option');
+  }
+  const plain = engine.generateAdvice({ ...TALANDA, farmerPriorities: { water: 0.5, income: 0.3, soil: 0.2 } });
+  if (plain.crop_choice || plain.options.map(o => o.id).join() !== advice.options.map(o => o.id).join()) {
+    throw new Error('Without named crops the five fixed rotations must stay as they were');
+  }
+  console.log('✓ TEST 12 PASSED: Plans follow the farmer\'s crops and the calendar.\n');
+
+  // TEST 13: A spoken or typed request becomes crop ids, exclusions and the land type
+  console.log('[TEST 13] Testing the Bangla request reader...');
+  const heard = understandRequest('আমি সূর্যমুখী আর কিছু মসুর ডাল করতে চাই। আমার নিচু জমি, বোরো করব না');
+  if (heard.crops.join() !== 'sunflower,lentil' || heard.excluded.join() !== 'boro' || heard.landType !== 'low') {
+    throw new Error(`Request read wrongly: ${JSON.stringify(heard)}`);
+  }
+  if (understandRequest('মিষ্টি আলু আর আলু').crops.join() !== 'sweetpotato,potato' || understandRequest('আমি মুগ্ধ, গমগম করছে').crops.length) {
+    throw new Error('The reader must tell sweet potato from potato and ignore look-alike words');
+  }
+  console.log(`Heard: ${JSON.stringify({ crops: heard.crops, excluded: heard.excluded, land: heard.landType })}`);
+  console.log('✓ TEST 13 PASSED: Requests in Bangla are read into crops.\n');
+
   console.log('========================================================');
-  console.log('  ALL 11 CORE TESTS PASSED SUCCESSFULLY!                ');
+  console.log('  ALL 13 CORE TESTS PASSED SUCCESSFULLY!                ');
   console.log('========================================================');
 }
 

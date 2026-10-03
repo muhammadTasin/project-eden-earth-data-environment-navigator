@@ -1543,3 +1543,50 @@ html[lang="en"] body { font-family: 'Inter', 'Hind Siliguri', sans-serif; }
 .live-card { margin-top: 16px; }
 .live-pick { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 4px; }
 .live-pick select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: #fff; font: inherit; min-width: 160px; }
+
+/* ================= THE FARMER'S CROPS AND WORDS ================= */
+.crop-hint { font-size: 12px; color: var(--text-muted); margin: 2px 0 8px; line-height: 1.5; }
+.crop-chips { display: flex; flex-direction: column; gap: 10px; }
+.crop-chip-group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.crop-chip-season { width: 100%; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.crop-chips .crop-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card-bg);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+}
+.crop-chip input { accent-color: var(--primary); }
+.crop-chip small { color: var(--water); font-size: 11px; }
+.crop-chip.on { border-color: var(--primary); background: #dcfce7; }
+.crop-chip.off { opacity: 0.5; cursor: not-allowed; }
+.crop-choice-note {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #14532d;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.crop-choice-note ul { margin: 4px 0 0 18px; }
+.tag-blue { background-color: #dbeafe; color: var(--water); }
+.tag-grey { background-color: #f1f5f9; color: #475569; }
+.tag-strike { background-color: #fee2e2; color: var(--danger); text-decoration: line-through; }
+.candidate-card-summary .tag-blue { margin-bottom: 6px; }
+.voice-card { margin-top: 20px; }
+.voice-input-row { display: flex; gap: 8px; margin: 12px 0; align-items: stretch; }
+.voice-input-row textarea { flex: 1; font-size: 15px; min-width: 0; }
+.voice-heard { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 12px 0; }
+.voice-sms { font-size: 13px; padding: 8px 12px; background: #f1f5f9; border-radius: 8px; margin-top: 8px; }
+.voice-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+.voice-actions .form-control { width: 170px; }
+@media (max-width: 640px) {
+  .voice-input-row { flex-direction: column; }
+}

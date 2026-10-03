@@ -10,8 +10,9 @@
     "services/*"
   ],
   "scripts": {
-    "start": "node --experimental-strip-types services/api/src/server.ts",
-    "test": "node --experimental-strip-types test_pipeline.ts && node test_server.js"
+    "start": "node --env-file-if-exists=.env --experimental-strip-types services/api/src/server.ts",
+    "test": "node --experimental-strip-types test_pipeline.ts && node test_server.js",
+    "call:test": "node --env-file-if-exists=.env --experimental-strip-types services/api/src/call_cli.ts"
   },
   "author": "muhammadTasin",
   "license": "MIT"

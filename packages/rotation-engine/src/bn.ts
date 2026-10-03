@@ -65,6 +65,16 @@ export function bnOf(name: string): string {
   return name.endsWith('ইউনিয়ন') ? `${name}ের` : `${name}-এর`;
 }
 
+/** Genitive of a crop or place name: 'সূর্যমুখী' -> 'সূর্যমুখীর', 'মুগ' -> 'মুগের' */
+export function bnGenitive(name: string): string {
+  return /[\u0985-\u0994\u09BE-\u09CC]$/.test(name) ? `${name}র` : `${name}ের`;
+}
+
+/** 'সেচ লাগে প্রায় ১৯৯ মিমি', or 'সেচ প্রায় লাগে না' below 20 mm (the replay's rain covers it) */
+export function bnIrrigation(mm: number): string {
+  return mm < 20 ? 'সেচ প্রায় লাগে না' : `সেচ লাগে প্রায় ${bnDigits(mm)} মিমি`;
+}
+
 /** Genitive of a date or range ending in a month: '১০ নভেম্বর' -> '১০ নভেম্বরের', '৫–১৫ জুলাই' -> '৫–১৫ জুলাইয়ের' */
 export function bnDateOf(text: string): string {
   if (text.endsWith('ি') || text.endsWith('ে')) return `${text}র`;

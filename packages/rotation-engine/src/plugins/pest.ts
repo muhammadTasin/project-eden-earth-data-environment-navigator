@@ -1,5 +1,5 @@
 import type { IEvidenceDimensionPlugin, EvaluationContext, DimensionScoreResult } from '@project-eden/contracts';
-import { amanOf, rabiOf, clampScore } from '../data/lookup.ts';
+import { amanOf, rabiOf, kharif1Of, clampScore } from '../data/lookup.ts';
 import { LOC } from '../data/location.ts';
 import { RESISTANT_VARIETIES } from '../data/ipm_catalog.ts';
 import { bnDigits, seasonDay } from '../bn.ts';
@@ -23,14 +23,17 @@ export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
     const { catalog: amanName } = amanOf(context);
     const { crop, record: rabi, catalog: rabiName } = rabiOf(context);
 
-    const hostBreak = rabiName.hostGroup !== 'rice';
-    const rotationUrea = Math.round(LOC.srdi.aman.ureaKgHa + rabi.fertilizer.ureaKgHa);
+    const k1 = kharif1Of(context);
+    // Rice crops in the year: Aman, plus Boro and/or Aus. One breaks the rice-pest cycle; each more keeps it fed.
+    const riceCrops = 1 + (rabiName.hostGroup === 'rice' ? 1 : 0) + (k1?.catalog.hostGroup === 'rice' ? 1 : 0);
+    const hostBreak = riceCrops === 1;
+    const rotationUrea = Math.round(LOC.srdi.aman.ureaKgHa + rabi.fertilizer.ureaKgHa + (k1?.record.fertilizer.ureaKgHa ?? 0));
     const resistance = RESISTANT_VARIETIES[crop.variety];
     const deadline = rabi.sowingWindow?.[1];
     const sownOnTime = !deadline || seasonDay(rabi.sowing) <= seasonDay(deadline);
 
-    let score = hostBreak ? 0.85 : 0.4;
-    if (rabiName.isLegume) score += 0.05;
+    let score = hostBreak ? 0.85 : riceCrops === 2 ? 0.4 : 0.3;
+    if (rabiName.isLegume || k1?.catalog.isLegume) score += 0.05;
     score -= (Math.max(0, rotationUrea - 300) / 1000) * 0.3;
     if (resistance) score += 0.05;
     if (!sownOnTime) score -= 0.15;

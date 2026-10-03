@@ -13,6 +13,16 @@ export const EN = {
   'profile.name': 'Sample officer',
   'profile.role': 'SAAO, Talanda block',
 
+  'planner.crops': 'Which crops does the farmer want? (one or more)',
+  'planner.cropsHint': 'Pick none to see the five usual rotations. The number beside a crop is its irrigation need here, from NASA data.',
+  'voice.title': 'Answer the farmer in their own words (voice or text)',
+  'voice.badge': 'speech → crops → NASA replay → Bangla reply',
+  'voice.subtitle': "From what a farmer says or types, the crops, land type and priorities are read; the engine plans the whole year from NASA data and answers in Bangla. On a phone call, Awaj reads the answer aloud.",
+  'voice.mic': '🎤 Speak',
+  'voice.answer': 'Build the answer',
+  'voice.play': '▶ Play the answer',
+  'voice.call': '📞 Call with Awaj',
+
   'nav.overview': 'Dashboard overview',
   'nav.planner': 'Rotation planner',
   'nav.comparison': '7-dimension comparison',

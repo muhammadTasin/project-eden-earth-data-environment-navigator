@@ -2,6 +2,16 @@
 
 What changed in Project EDEN, newest first, with who made each change and the branch it came from. Every branch below was merged into `main` on 1 October 2026.
 
+## 4 October 2026 · The farmer's own crops, and calls through Awaj (Tasrif, `feature/crop-choice-and-calls`)
+
+- `research/explore/crop_choice_replay.py` replays 12 more crops (potato, maize, sunflower in winter and summer, chickpea, grass pea, sweet potato, barley, soybean, mungbean, sesame, Aus rice) at the Talanda pilot and all 64 district points with the same FAO-56 and NASA POWER + GPM IMERG chain, for every 10th sowing day of each window; output `crop_choice_replay.json`.
+- Engine: `preferredCrops` plans the year around the farmer's crops (Aman, a winter crop, and a Kharif-1 crop before the next Aman), checks the calendar for every Aman variety, ranks plans by how many named crops they hold and then by score, and explains what does not fit, crops that compete for the same season, and summer crops that fit the gap. The seven scores count the Kharif-1 crop. Without named crops the five fixed rotations are unchanged.
+- `understand.ts` reads crops, exclusions, land type and priorities from Bangla, Banglish or English sentences.
+- API: `/api/v1/crops`, `/api/v1/voice/understand`, `/api/v1/voice/answer`, `/api/v1/calls/*` and `/api/v1/officer/calls`; `services/api/src/awaj.ts` (Direct TTS calls, keypad surveys, results) runs dry until `AWAJ_LIVE=1`; `npm run call:test` prints the script and places one test call when live.
+- Dashboard: crop choices in the planner, with the notes and a "farmer's choice" tag on each option; a voice card on the delivery screen (browser microphone, the answer, SMS, playback and an Awaj call).
+- Tests: two engine tests (crop choice, request reader) and API checks for the menu, voice answer, call and keypad webhook.
+- Merged Rayyanul's Android fixes (`f5a1b11`, PR #3) from `sync/all-latest` first.
+
 ## 1 October 2026 · Advice for every upazila (Tasrif, `feature/daily-nasa-update`)
 
 - `research/explore/national_replay.py` runs the 25-season replay (FAO-56 water balance, BRRI/BARI calendars, heat windows) at all 64 districts' NASA POWER + GPM IMERG points, correcting temperatures against the nearest BMD station, and writes `national_replay.json` with the 544-upazila index. Rajshahi district matches the Tanore research (dhan71 7 of 25 rescue seasons; Boro 790 mm against 797).

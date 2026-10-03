@@ -9,7 +9,7 @@ const STORE = path.join(os.tmpdir(), `eden-officer-test-${process.pid}.json`);
 const OFFICER_CODE = process.env.EDEN_OFFICER_CODE || 'talanda-demo';
 const serverProc = spawn('node', ['--experimental-strip-types', 'services/api/src/server.ts'], {
   stdio: ['inherit', 'pipe', 'pipe'],
-  env: { ...process.env, EDEN_OFFICER_STORE: STORE },
+  env: { ...process.env, EDEN_OFFICER_STORE: STORE, AWAJ_LIVE: '0' }, // tests never place a real call
 });
 
 serverProc.stdout.on('data', (d) => process.stdout.write(d));
@@ -67,6 +67,20 @@ async function run() {
   const sylhet = await (await fetch(`${BASE}/api/v1/overview?place=${sylhetId}`)).json();
   check(sylhet.scope.district === 'Sylhet' && sylhet.aman_replay.length >= 5, 'the overview follows the chosen place');
   console.log('✓ Any upazila:', places.upazilas.length, 'places; Godagari top:', godagari.options[0].nameEnglish, '; Sylhet overview district:', sylhet.scope.district);
+
+  // The farmer's own crops: the menu for a place, a spoken request answered, and the phone call (dry run)
+  const menu = await (await fetch(`${BASE}/api/v1/crops?place=ADM3_Godagari`)).json();
+  const sunflowerItem = menu.crops?.find(c => c.id === 'sunflower');
+  check(menu.crops?.length >= 14 && sunflowerItem?.afterAman?.length && menu.keypad?.options?.length === 8, 'the crop menu lists the crops, where they fit, and the keypad menu');
+  const voice = await (await fetch(`${BASE}/api/v1/voice/answer`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ unionId: 'ADM3_Godagari', text: 'আমি সূর্যমুখী আর মসুর করতে চাই' }) })).json();
+  check(voice.understood.crops.join() === 'sunflower,lentil' && voice.advice.crop_choice?.fits.length === 2, 'a spoken request becomes a plan for those crops');
+  check(voice.reply.speechBangla.includes('মাঠের কথা') && !/[0-9~]/.test(voice.reply.speechBangla), 'the call script is speakable Bangla with Bangla digits');
+  const callRes = await fetch(`${BASE}/api/v1/calls/advice`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: '+8801700000000', unionId: 'ADM3_Godagari', preferredCrops: 'potato' }) });
+  const call = await callRes.json();
+  check(callRes.status === 200 && call.call.dryRun === true && call.call.request.language_code === 'bn-BD' && call.call.request.phone_numbers[0] === '01700000000', 'the Awaj call is a dry run with the bn-BD script');
+  const hook = await (await fetch(`${BASE}/api/v1/calls/survey-webhook`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ survey_id: 1, metadata: { unionId: 'talanda_tanore' }, results: [{ phone_number: '01700000000', status: 'answered', response: '6', responses: ['6', '1'] }, { phone_number: '01800000000', status: 'not_answered' }] }) })).json();
+  check(hook.handled.length === 1 && hook.handled[0].crops.join() === 'sunflower,lentil' && hook.handled[0].callBack.dryRun === true, 'keypad answers (6 = sunflower, 1 = lentil) trigger a planned call-back');
+  console.log('✓ Crop choice:', menu.crops.length, 'crops at Godagari; voice top:', voice.advice.options[0].nameEnglish, '; call dry run', call.reply.durationSecondsEstimate, 's');
 
   // 2. POST /api/v1/advice
   console.log('Testing POST /api/v1/advice ...');

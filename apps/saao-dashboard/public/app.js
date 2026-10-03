@@ -419,6 +419,7 @@ window.runPlannerCalculation = async function(options = {}) {
         district: 'Rajshahi',
         landType: $('planLandType').value,
         currentAmanCrop: $('planAmanCrop').value,
+        preferredCrops: selectedCrops(),
         season: '2026-aman',
         farmerPriorities: { water: weight('weightWater'), income: weight('weightIncome'), soil: weight('weightSoil'), pest: weight('weightPest') },
       }),
@@ -453,6 +454,7 @@ function renderPlannerResults(advice) {
   const note = $('thisSeasonNote');
   note.hidden = !advice.this_season;
   note.textContent = advice.this_season ? tr(`এই মৌসুম: ${advice.this_season.noteBangla}`, `This season: ${advice.this_season.noteEnglish}`) : '';
+  renderCropChoice(advice);
 
   setHtml('plannerResultsContainer', advice.options.map((opt, idx) => `
     <div class="candidate-card-summary ${idx === 0 ? 'selected' : ''}" onclick="selectCandidateOption('${opt.id}')">
@@ -460,6 +462,7 @@ function renderPlannerResults(advice) {
         <h4>${num(opt.rank)}. ${escapeHtml(tr(opt.nameBangla, opt.nameEnglish))}</h4>
         <span class="candidate-score-pill">${tr('স্কোর', 'Score')}: ${num(Math.round(opt.totalWeightedScore * 100))}%</span>
       </div>
+      ${coverageTag(advice, opt.id)}
       <p class="candidate-meta">
         ${tr('জমি খালি', 'Field free')}: <strong>${escapeHtml(tr(opt.fieldFreeDateBangla, opt.fieldFreeDateEnglish))}</strong>${opt.isBaseline ? ` • ${tr('বর্তমান প্রচলিত চক্র', 'current practice')}` : ''}${opt.id === advice.this_season_option_id ? ` <span class="tag tag-green">${tr('এ মৌসুমে সম্ভব', 'possible this season')}</span>` : ''}
       </p>
@@ -1295,6 +1298,7 @@ async function choosePlace(id) {
   currentPlace = id;
   try { localStorage.setItem('eden.place', id); } catch { /* the choice lasts for this page only */ }
   await loadOverview();
+  await loadCropMenu();
   if (typeof window.runPlannerCalculation === 'function') await window.runPlannerCalculation({ switchScreenAfter: false });
   renderAll();
   applyPlaceText();
@@ -1324,3 +1328,185 @@ async function loadPlaces() {
 const setLanguageBeforePlace = window.setLanguage;
 window.setLanguage = function(next) { setLanguageBeforePlace(next); applyPlaceText(); };
 document.addEventListener('DOMContentLoaded', loadPlaces);
+
+
+// ---------------------------------------------------------------------------
+// The farmer's own crops (planner) and the farmer's own words (delivery screen)
+// ---------------------------------------------------------------------------
+
+let cropMenuData = null;
+const chosenCrops = new Set();
+let voiceAnswerData = null;
+const SEASON_LABEL = {
+  Rabi: ['শীতের ফসল (রবি, আমনের পরে)', 'Winter crops (Rabi, after Aman)'],
+  'Kharif-1': ['গ্রীষ্মের ফসল (খরিফ-১, পরের আমনের আগে)', 'Summer crops (Kharif-1, before the next Aman)'],
+};
+
+function selectedCrops() {
+  return [...chosenCrops];
+}
+
+const cropName = (id) => {
+  const c = cropMenuData?.crops.find(x => x.id === id);
+  return c ? tr(c.cropBangla, c.cropEnglish) : id;
+};
+
+async function loadCropMenu() {
+  try {
+    const res = await fetch(`/api/v1/crops?place=${encodeURIComponent(currentPlace)}`);
+    if (!res.ok) return;
+    cropMenuData = await res.json();
+    renderCropChips();
+  } catch { /* the planner works with the five fixed rotations */ }
+}
+
+function renderCropChips() {
+  if (!cropMenuData) return;
+  setHtml('cropChoiceChips', ['Rabi', 'Kharif-1'].map(season => `
+    <div class="crop-chip-group">
+      <span class="crop-chip-season">${escapeHtml(tr(...SEASON_LABEL[season]))}</span>
+      ${cropMenuData.crops.filter(c => c.season === season).map(c => {
+        const fits = season !== 'Rabi' || c.afterAman.length > 0;
+        const after = c.afterAman.map(a => `${amanName(a.aman)} (${tr('বপন', 'sow')} ${num(a.sowing.split('-').reverse().join('/'))})`).join(', ');
+        const title = fits ? (after ? tr(`যে আমনের পরে মেলে: ${after}`, `Fits after: ${after}`) : '') : tr('এখানে কোনো আমনের পরে সময়মতো বোনা যায় না', 'No Aman here leaves time for it');
+        const on = chosenCrops.has(c.id);
+        return `<label class="crop-chip${on ? ' on' : ''}${fits ? '' : ' off'}" title="${escapeHtml(title)}">
+          <input type="checkbox" ${on ? 'checked' : ''} ${fits ? '' : 'disabled'} onchange="toggleCrop('${c.id}', this.checked)">
+          <span>${escapeHtml(tr(c.cropBangla, c.cropEnglish))}</span>${c.netIrrigationMm !== null ? `<small>${num(c.netIrrigationMm)} ${tr('মিমি', 'mm')}</small>` : ''}
+        </label>`;
+      }).join('')}
+    </div>`).join(''));
+}
+
+window.toggleCrop = function(id, on) {
+  if (on) chosenCrops.add(id);
+  else chosenCrops.delete(id);
+  renderCropChips();
+};
+
+function coverageTag(advice, optionId) {
+  const cover = advice.crop_choice?.coverage?.find(c => c.optionId === optionId);
+  if (!cover?.cropIds.length) return '';
+  const names = cover.cropIds.map(id => advice.crop_choice.requested.find(r => r.id === id)).filter(Boolean).map(r => tr(r.cropBangla, r.cropEnglish));
+  return `<span class="tag tag-blue">${tr('আপনার পছন্দ', 'Farmer\'s choice')}: ${escapeHtml(names.join(', '))}</span>`;
+}
+
+function renderCropChoice(advice) {
+  const box = $('cropChoiceNote');
+  if (!box) return;
+  const c = advice.crop_choice;
+  box.hidden = !c;
+  if (!c) return;
+  const fits = c.fits.map(f => f.fits
+    ? tr(`${f.cropBangla}: বপন ~${f.sowingBangla}, কাটা ~${f.harvestBangla}, ${f.netIrrigationMm < 20 ? 'সেচ প্রায় লাগে না' : `সেচ প্রায় ${num(f.netIrrigationMm)} মিমি`}`, `${f.cropEnglish}: sow ~${f.sowingEnglish}, harvest ~${f.harvestEnglish}, ${f.netIrrigationMm < 20 ? 'almost no irrigation' : `about ${f.netIrrigationMm} mm of irrigation`}`)
+    : tr(`${f.cropBangla}: মেলে না। ${f.reasonBangla}`, `${f.cropEnglish}: does not fit. ${f.reasonEnglish}`));
+  const notes = tr(c.notesBangla, c.notesEnglish);
+  box.innerHTML = `<strong>${tr('কৃষকের পছন্দের ফসল', 'The farmer\'s crops')}</strong><ul>${[...fits, ...notes].map(l => `<li>${escapeHtml(l)}</li>`).join('')}</ul>`;
+}
+
+// Speech to text in the browser (Chrome's Web Speech API, Bangla); the server only ever receives text
+window.startVoiceInput = function() {
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Recognition) {
+    setHtml('voiceCallStatus', `<span class="log-line">${escapeHtml(tr('এই ব্রাউজারে কথা থেকে লেখা হয় না; Google Chrome-এ চেষ্টা করুন, অথবা বাক্যটি লিখে দিন।', 'This browser has no speech-to-text; try Google Chrome, or type the sentence.'))}</span>`);
+    return;
+  }
+  const rec = new Recognition();
+  rec.lang = 'bn-BD';
+  rec.interimResults = true;
+  setText('btnMic', tr('🎙️ শুনছি…', '🎙️ Listening…'));
+  rec.onresult = (e) => { $('voiceText').value = [...e.results].map(r => r[0].transcript).join(' '); };
+  rec.onerror = (e) => setHtml('voiceCallStatus', `<span class="log-line">${escapeHtml(tr('মাইক্রোফোন', 'Microphone'))}: ${escapeHtml(e.error)}</span>`);
+  rec.onend = () => {
+    setText('btnMic', tr('🎤 বলুন', '🎤 Speak'));
+    if ($('voiceText').value.trim()) window.answerVoice();
+  };
+  rec.start();
+};
+
+window.answerVoice = async function() {
+  const text = $('voiceText').value.trim();
+  if (!text) return;
+  try {
+    const res = await fetch('/api/v1/voice/answer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, unionId: currentPlace, landType: $('planLandType')?.value }),
+    });
+    voiceAnswerData = await res.json();
+    if (!res.ok) throw new Error(voiceAnswerData.error);
+    renderVoice();
+  } catch (err) {
+    setHtml('voiceCallStatus', `<span class="log-line">${escapeHtml(err.message || tr('উত্তর তৈরি করা যায়নি', 'Could not build the answer'))}</span>`);
+  }
+};
+
+function renderVoice() {
+  const v = voiceAnswerData;
+  if (!v?.reply) return;
+  const u = v.understood;
+  const chip = (cls, text) => `<span class="tag ${cls}">${escapeHtml(text)}</span>`;
+  const parts = [
+    ...u.crops.map(id => {
+      const asked = v.advice.crop_choice?.requested.find(r => r.id === id);
+      return chip('tag-green', asked ? tr(asked.cropBangla, asked.cropEnglish) : cropName(id));
+    }),
+    ...u.excluded.map(id => chip('tag-strike', cropName(id))),
+    ...(v.advice.crop_choice?.notModelled ?? []).map(n => chip('tag-grey', tr(`${n.bn}: হিসাব নেই`, `${n.en}: not modelled`))),
+    u.landType ? chip('tag-yellow', land(u.landType)) : '',
+    ...Object.keys(u.priorities ?? {}).map(p => chip('tag-blue', tr(...(DIMENSIONS[p] || [p, p])))),
+  ].filter(Boolean);
+  setHtml('voiceHeard', parts.length
+    ? `<span class="crop-chip-season">${tr('যা বোঝা গেছে', 'Understood')}:</span> ${parts.join(' ')}`
+    : `<span class="crop-chip-season">${tr('কোনো ফসলের নাম পাওয়া যায়নি; প্রচলিত চক্র দেখানো হলো', 'No crop named; showing the usual rotations')}</span>`);
+  const reply = $('voiceReply');
+  reply.hidden = false;
+  reply.innerHTML = `<div class="speech-quote-icon">📢</div><p class="speech-text">${escapeHtml(v.reply.speechBangla)}</p>`;
+  const sms = $('voiceSms');
+  sms.hidden = false;
+  sms.textContent = `SMS (${tr(`${num(v.reply.smsSegments)} অংশ`, `${v.reply.smsSegments} part${v.reply.smsSegments > 1 ? 's' : ''}`)}): ${v.reply.smsBangla}`;
+  setHtml('voiceCallStatus', `<span class="log-line">${escapeHtml(tr(`শীর্ষ চক্র: ${v.advice.options[0].nameBangla}; কল প্রায় ${num(v.reply.durationSecondsEstimate)} সেকেন্ড`, `Top option: ${v.advice.options[0].nameEnglish}; call about ${v.reply.durationSecondsEstimate} s`))}</span>`);
+}
+
+window.speakVoiceReply = function() {
+  const text = voiceAnswerData?.reply?.speechBangla;
+  if (!text) return window.answerVoice();
+  const voice = window.speechSynthesis?.getVoices().find(v => v.lang.toLowerCase().startsWith('bn'));
+  if (!voice) {
+    setHtml('voiceCallStatus', `<span class="log-line">${escapeHtml(tr('এই কম্পিউটারে বাংলা কণ্ঠ নেই; ফোন কলে Awaj-এর bn-BD কণ্ঠ পড়বে।', 'No Bangla voice on this computer; on a phone call Awaj reads it in its bn-BD voice.'))}</span>`);
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.voice = voice;
+  utterance.lang = voice.lang;
+  window.speechSynthesis.speak(utterance);
+};
+
+window.callVoiceReply = async function() {
+  const phone = $('voicePhone').value.trim();
+  const text = $('voiceText').value.trim();
+  try {
+    const res = await fetch('/api/v1/calls/advice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(officerSession?.token ? { Authorization: `Bearer ${officerSession.token}` } : {}) },
+      body: JSON.stringify({ phone, text, unionId: currentPlace, landType: $('planLandType')?.value }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    const call = data.call;
+    setHtml('voiceCallStatus', `<span class="log-line">${escapeHtml(call.dryRun
+      ? tr(`পরীক্ষামূলক (ড্রাই রান): ${call.request.phone_numbers[0]} নম্বরে Awaj-এ এই অনুরোধ যেত; আসল কলের জন্য সার্ভারে AWAJ_API_TOKEN, AWAJ_SENDER ও AWAJ_LIVE=1 দিন।`, `Dry run: this request would go to Awaj for ${call.request.phone_numbers[0]}; set AWAJ_API_TOKEN, AWAJ_SENDER and AWAJ_LIVE=1 on the server for a real call.`)
+      : tr(`Awaj কল পাঠানো হয়েছে (HTTP ${call.response.status})।`, `Sent to Awaj (HTTP ${call.response.status}).`))}</span>`);
+  } catch (err) {
+    setHtml('voiceCallStatus', `<span class="log-line">${escapeHtml(err.message || 'Error')}</span>`);
+  }
+};
+
+const setLanguageBeforeCrops = window.setLanguage;
+window.setLanguage = function(next) {
+  setLanguageBeforeCrops(next);
+  renderCropChips();
+  renderVoice();
+};
+document.addEventListener('DOMContentLoaded', loadCropMenu);

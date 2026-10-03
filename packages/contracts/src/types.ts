@@ -34,7 +34,7 @@ export interface EvaluationContext {
   seasonYear: number;
   rotationId: string;
   crops: Array<{
-    season: 'Aman' | 'Rabi'; // explicit, so plugins never guess the crop from its name
+    season: 'Aman' | 'Rabi' | 'Kharif-1'; // explicit, so plugins never guess the crop from its name
     cropName: string;
     variety: string;
     sowingDate: string; // ISO format or relative
@@ -68,6 +68,8 @@ export interface CropPhase {
   harvestWindow: string;
   durationDays: number;
   daysToFieldFree: number;
+  sowingBangla?: string; // the date this crop goes in the field in this option ('১০ নভেম্বর')
+  harvestBangla?: string;
 }
 
 export interface MonthTimelineSlot {
@@ -143,6 +145,32 @@ export interface AdviceJSON {
   this_season?: ThisSeasonFit | null;
   this_season_option_id?: string | null; // best option that starts from the Aman already in the field
   farmer_card?: FarmerCard;
+  crop_choice?: CropChoiceResult | null; // set when the farmer named the crops they want
+}
+
+/** How the crops a farmer asked for fit the year at their place, and what else fits the gap before Aman. */
+export interface CropChoiceResult {
+  requested: Array<{ id: string; cropBangla: string; cropEnglish: string; season: 'Rabi' | 'Kharif-1' }>;
+  notModelled: Array<{ id: string; bn: string; en: string }>;
+  fits: Array<{
+    id: string;
+    cropBangla: string;
+    cropEnglish: string;
+    season: 'Rabi' | 'Kharif-1';
+    fits: boolean;
+    bestOptionId: string | null;
+    sowingBangla: string | null;
+    sowingEnglish: string | null;
+    harvestBangla: string | null;
+    harvestEnglish: string | null;
+    netIrrigationMm: number | null;
+    reasonBangla: string | null;
+    reasonEnglish: string | null;
+  }>;
+  coverage: Array<{ optionId: string; cropIds: string[] }>; // which asked crops each option holds
+  gapFillers: Array<{ id: string; cropBangla: string; cropEnglish: string; sowingBangla: string; sowingEnglish: string; harvestBangla: string; harvestEnglish: string; netIrrigationMm: number }>;
+  notesBangla: string[];
+  notesEnglish: string[];
 }
 
 /** What still fits this season if a given Aman variety is already in the field. */

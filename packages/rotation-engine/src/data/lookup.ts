@@ -1,10 +1,12 @@
 import type { EvaluationContext } from '@project-eden/contracts';
 import { LOC } from './location.ts';
-import { AMAN_CATALOG, RABI_CATALOG } from './crop_catalog.ts';
+import { AMAN_CATALOG } from './crop_catalog.ts';
+import { catalogFor, recordFor } from './crop_choice.ts';
 
 /*
  * Look up a rotation's crops by their explicit season. These throw instead of falling back to a default crop:
  * a silent fallback once made the dhan49 -> Boro rotation score with lentil's water and heat numbers.
+ * Rabi and Kharif-1 varieties are research-release keys ('BARI Masur-8') or crop-choice keys ('sunflower@11-25').
  */
 
 export function amanOf(context: EvaluationContext) {
@@ -19,10 +21,22 @@ export function amanOf(context: EvaluationContext) {
 
 export function rabiOf(context: EvaluationContext) {
   const crop = context.crops.find(c => c.season === 'Rabi');
-  const record = crop ? LOC.rabi[crop.variety] : undefined;
-  const catalog = crop ? RABI_CATALOG[crop.variety] : undefined;
+  const record = crop ? recordFor(crop.variety) : undefined;
+  const catalog = crop ? catalogFor(crop.variety) : undefined;
   if (!crop || !record || !catalog) {
     throw new Error(`No Rabi replay data for "${crop?.variety ?? 'none'}" in rotation ${context.rotationId}`);
+  }
+  return { crop, record, catalog };
+}
+
+/** The crop between the winter crop and the next Aman, when the rotation has one. */
+export function kharif1Of(context: EvaluationContext) {
+  const crop = context.crops.find(c => c.season === 'Kharif-1');
+  if (!crop) return null;
+  const record = recordFor(crop.variety);
+  const catalog = catalogFor(crop.variety);
+  if (!record || !catalog) {
+    throw new Error(`No Kharif-1 replay data for "${crop.variety}" in rotation ${context.rotationId}`);
   }
   return { crop, record, catalog };
 }

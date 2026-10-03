@@ -1,5 +1,5 @@
 import type { IEvidenceDimensionPlugin, EvaluationContext, DimensionScoreResult } from '@project-eden/contracts';
-import { rabiOf } from '../data/lookup.ts';
+import { rabiOf, kharif1Of, clampScore } from '../data/lookup.ts';
 import { LOC } from '../data/location.ts';
 import { bnDigits, bnDecimal } from '../bn.ts';
 
@@ -12,11 +12,21 @@ export class SoilDimensionPlugin implements IEvidenceDimensionPlugin {
 
   evaluate(context: EvaluationContext): DimensionScoreResult {
     const { record: rabi, catalog: rabiName } = rabiOf(context);
+    const k1 = kharif1Of(context);
     const dose = rabi.fertilizer;
-    const rotationUrea = Math.round(LOC.srdi.aman.ureaKgHa + dose.ureaKgHa);
+    const rotationUrea = Math.round(LOC.srdi.aman.ureaKgHa + dose.ureaKgHa + (k1?.record.fertilizer.ureaKgHa ?? 0));
+    const handbookDose = (dose as { source?: string }).source?.startsWith('BARI');
 
-    // Legumes add nitrogen and cut urea; two rice crops in a year work the soil hardest.
-    const soilScore = rabiName.isLegume ? 0.9 : rabiName.isRice ? 0.45 : 0.7;
+    // Legumes add nitrogen and cut urea; two rice crops in a year work the soil hardest. A third crop before Aman
+    // adds nitrogen if it is a legume, and otherwise draws more nutrients (more still if it is rice).
+    const base = rabiName.isLegume ? 0.9 : rabiName.isRice ? 0.45 : 0.7;
+    const soilScore = k1 ? clampScore(base + (k1.catalog.isLegume ? 0.05 : k1.catalog.isRice ? -0.15 : -0.05), 0.1, 0.95) : base;
+    const k1Bangla = k1
+      ? ` আমনের আগে ${k1.catalog.cropBangla}: ${k1.catalog.isLegume ? 'ডাল ফসল, মাটিতে নাইট্রোজেন যোগ করে' : 'বছরে তিন ফসলে মাটির পুষ্টি বেশি লাগে'}।`
+      : '';
+    const k1English = k1
+      ? ` ${k1.catalog.crop} before Aman ${k1.catalog.isLegume ? 'is a legume and adds nitrogen' : 'makes three crops a year, drawing more nutrients'}.`
+      : '';
     const why = rabiName.isLegume
       ? 'ডাল ফসল বাতাসের নাইট্রোজেন মাটিতে যোগ করে, তাই ইউরিয়া কম লাগে।'
       : rabiName.isRice
@@ -27,8 +37,8 @@ export class SoilDimensionPlugin implements IEvidenceDimensionPlugin {
       dimensionId: this.id,
       score: soilScore,
       confidence: 'medium',
-      summaryBangla: `${why} SRDI তালন্দ কার্ডে (${LOC.srdi.soilTypeBangla}) ${rabiName.cropInBangla} ইউরিয়া ${bnDecimal(dose.ureaKgHa)} কেজি/হেক্টর; আমনসহ পুরো চক্রে ${bnDigits(rotationUrea)} কেজি।`,
-      summaryEnglish: `SRDI Talanda card (Kharia soil): ${rabiName.crop} urea ${dose.ureaKgHa} kg/ha; ${rotationUrea} kg/ha for the whole rotation with Aman.`,
+      summaryBangla: `${why} ${handbookDose ? 'BARI হাতবইয়ে' : `SRDI তালন্দ কার্ডে (${LOC.srdi.soilTypeBangla})`} ${rabiName.cropInBangla} ইউরিয়া ${bnDecimal(dose.ureaKgHa)} কেজি/হেক্টর; আমনসহ পুরো চক্রে ${bnDigits(rotationUrea)} কেজি।${k1Bangla}`,
+      summaryEnglish: `${handbookDose ? 'BARI handbook' : 'SRDI Talanda card (Kharia soil)'}: ${rabiName.crop} urea ${dose.ureaKgHa} kg/ha; ${rotationUrea} kg/ha for the whole rotation with Aman.${k1English}`,
       metrics: {
         srdiSoilType: LOC.srdi.soilTypeBangla,
         rabiUreaKgHa: dose.ureaKgHa,
