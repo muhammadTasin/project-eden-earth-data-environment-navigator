@@ -11,9 +11,11 @@ export interface ILocalLLMClient {
 export class DualGateNarrationValidator {
   private templateNarrator = new TemplateNarrator();
   private llmClient?: ILocalLLMClient;
+  private timeoutMs: number;
 
-  constructor(llmClient?: ILocalLLMClient) {
+  constructor(llmClient?: ILocalLLMClient, opts: { timeoutMs?: number } = {}) {
     this.llmClient = llmClient;
+    this.timeoutMs = opts.timeoutMs ?? 1500;
   }
 
   // Convert English number to Bengali digits and vice-versa
@@ -154,10 +156,10 @@ CRITICAL CONSTRAINT: Do NOT mention or invent ANY number, dosage, or price not i
     }
 
     try {
-      // Execute Local LLM with strict 1500ms timeout
+      // Execute the LLM with a strict timeout (default 1500 ms; raise it for remote endpoints)
       const llmPromise = this.llmClient.generate(prompt, 120);
       const timeoutPromise = new Promise<string>((_, reject) =>
-        setTimeout(() => reject(new Error('LLM inference timeout (>1500ms)')), 1500)
+        setTimeout(() => reject(new Error(`LLM inference timeout (>${this.timeoutMs}ms)`)), this.timeoutMs)
       );
 
       const rawLLMOutput = await Promise.race([llmPromise, timeoutPromise]);

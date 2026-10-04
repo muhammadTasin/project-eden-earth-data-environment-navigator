@@ -1,21 +1,24 @@
 /**
- * Grounded Bengali AI Agricultural Assistant.
- * Synthesizes advice strictly from verified research, NASA Earth observations,
- * SRDI fertilizer cards, BRRI/BARI variety guides, and BWDB hydrology.
- *
- * Hallucination Guard:
- * When evidence is insufficient or question is out of scope (loans, stock markets,
- * unverified pesticide brands, unrelated medical queries), it explicitly refuses to invent facts
- * and directs the farmer to their local SAAO officer.
+ * Rule-based Bengali agricultural assistant (NOT an LLM and not machine learning).
+ * It answers only from data this server really has: NASA POWER delayed observations for the requested
+ * coordinates, and the SRDI union card for the Talanda pilot. Everything else is refused with a pointer to the
+ * local SAAO officer. Evidence labels:
+ *   provider_data         - computed from a provider response for the requested coordinates
+ *   reference_card        - read from a static reference record (SRDI union card), valid for its own union only
+ *   insufficient_evidence - nothing supportable to say
+ * Conversational LLM narration, when configured, is a separate step (providers/llm.ts).
  */
 
 import { FORBIDDEN_TERMS } from '../../../packages/narration-core/src/dual_gate_validator.ts';
-import { getNasaWeather } from './weather.ts';
+import { getNasaWeather, type WeatherResponse } from './weather.ts';
 import { getRiverErosion } from './erosion.ts';
-import { LOC } from '../../../packages/rotation-engine/src/data/location.ts';
+import { TALANDA_SRDI } from '../../../packages/rotation-engine/src/data/tanore_replay_data.ts';
 
 export interface AiAskRequest {
   query: string;
+  /** Coordinates of the farmer's selected location. Without them no weather-based answer is given. */
+  lat?: number;
+  lon?: number;
   farmProfile?: {
     farmName?: string;
     region?: string;
@@ -29,172 +32,121 @@ export interface AiAskRequest {
 export interface AiAskResponse {
   answer: string;
   sources: string[];
-  evidenceLevel: 'verified_high' | 'verified_moderate' | 'insufficient_evidence';
+  evidenceLevel: 'provider_data' | 'reference_card' | 'insufficient_evidence';
   followUpSuggestions: string[];
   timestamp: string;
 }
+
+// The SRDI card is for Talanda union, Tanore (24.62N, 88.56E). Only answer from it near that point.
+const TALANDA = { lat: 24.62, lon: 88.56, radiusKm: 15 };
+function kmBetween(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+const isNear = (r: AiAskRequest) => Number.isFinite(r.lat) && Number.isFinite(r.lon)
+  && kmBetween(r.lat as number, r.lon as number, TALANDA.lat, TALANDA.lon) <= TALANDA.radiusKm;
+
+const SAAO_REFERRAL = 'আপনার ব্লকের উপসহকারী কৃষি কর্মকর্তা (SAAO) বা উপজেলা কৃষি অফিসের পরামর্শ নিন।';
+const now = () => new Date().toISOString();
+const n = (v: number | null, unit = '') => (v === null ? 'উপাত্ত নেই' : `${v}${unit}`);
 
 export async function askAiAssistant(req: AiAskRequest): Promise<AiAskResponse> {
   const query = (req.query || '').trim();
   const qLower = query.toLowerCase();
 
-  // 1. Check forbidden commercial/financial terms
   for (const forbidden of FORBIDDEN_TERMS) {
     if (query.includes(forbidden)) {
       return {
-        answer: `দুঃখিত, কৃষকদের আর্থিক বা বাণিজ্যিক প্রলোভন যেমন "${forbidden}" সংক্রান্ত পরামর্শ দেওয়া আমাদের নীতিমালায় সম্পূর্ণ নিষিদ্ধ। বৈজ্ঞানিক ফসল আবর্তন ও সেচ সংক্রান্ত প্রশ্ন থাকলে জিজ্ঞাসা করুন।`,
-        sources: ['প্রজেক্ট ইডেন সততা ও নিরাপত্তা নীতিমালা'],
+        answer: `দুঃখিত, "${forbidden}" সংক্রান্ত পরামর্শ দেওয়া হয় না। ফসল ও আবহাওয়া সংক্রান্ত প্রশ্ন জিজ্ঞাসা করুন।`,
+        sources: [],
         evidenceLevel: 'insufficient_evidence',
-        followUpSuggestions: [
-          'আমার জমির উপযোগী ফসল চক্র কি?',
-          'আজকের আবহাওয়া ও মাটির অবস্থা কেমন?',
-        ],
-        timestamp: new Date().toISOString(),
+        followUpSuggestions: ['সাম্প্রতিক আবহাওয়া কেমন?'],
+        timestamp: now(),
       };
     }
   }
 
-  // 2. Fetch grounded facts
-  const weather = await getNasaWeather();
-  const erosion = getRiverErosion();
-  const landType = req.farmProfile?.landType || 'মাঝারি উঁচু জমি';
-  const soilTexture = req.farmProfile?.soilTexture || LOC.srdi.soilTypeBangla;
+  const hasCoords = Number.isFinite(req.lat) && Number.isFinite(req.lon);
+  const wantsWeather = ['সেচ', 'পানি', 'আবহাওয়া', 'বৃষ্টি', 'তাপমাত্রা', 'irrigation', 'weather', 'rain'].some(k => qLower.includes(k));
 
-  // 3. Question routing & Evidence-based answering
-
-  // Topic: Irrigation / Water / সেচ
-  if (qLower.includes('সেচ') || qLower.includes('পানি') || qLower.includes('পানিতে') || qLower.includes('irrigation')) {
-    const smapStatus = weather.latest.rootZoneMoistureStatusBangla;
-    const smapVal = Math.round(weather.latest.rootZoneMoistureM3M3 * 100);
-
+  if (wantsWeather) {
+    if (!hasCoords) {
+      return {
+        answer: 'আবহাওয়ার তথ্য দেখাতে আপনার অবস্থান (জেলা/উপজেলা বা জিপিএস) প্রয়োজন। অনুগ্রহ করে অবস্থান নির্বাচন করে আবার জিজ্ঞাসা করুন।',
+        sources: [],
+        evidenceLevel: 'insufficient_evidence',
+        followUpSuggestions: ['অবস্থান নির্বাচন করার পর আবহাওয়া জানতে চাই'],
+        timestamp: now(),
+      };
+    }
+    let weather: WeatherResponse;
+    try {
+      weather = await getNasaWeather(req.lat as number, req.lon as number);
+    } catch {
+      return {
+        answer: `এই অবস্থানের নাসা পর্যবেক্ষণ উপাত্ত এখন পাওয়া যাচ্ছে না, তাই আবহাওয়া নিয়ে কোনো তথ্য দেওয়া যাচ্ছে না। কিছুক্ষণ পর আবার চেষ্টা করুন। ${SAAO_REFERRAL}`,
+        sources: [],
+        evidenceLevel: 'insufficient_evidence',
+        followUpSuggestions: [],
+        timestamp: now(),
+      };
+    }
+    const l = weather.latest;
     return {
-      answer: `তালন্দ ও বরেন্দ্র অঞ্চলের ${landType}র জন্য সেচ পরামর্শ:\n\n` +
-        `• **মাটির বর্তমান আর্দ্রতা**: নাসা SMAP উপগ্রহ অনুযায়ী মূল অঞ্চলে মাটির রস প্রায় ${smapVal}% (${smapStatus})।\n` +
-        `• **আমন ধান (ব্রি ধান৭১)**: গত ২৫ মৌসুমের সিমুলেশন অনুযায়ী ফুল আসার সময় গড়ে ৭ বার সম্পূরক সেচ লেগেছে। ফুল আসার সময় জমিতে ছিপছিপে পানি নিশ্চিত রাখুন।\n` +
-        `• **রবি মৌসুম (মসুর/সরিষা)**: আমন কাটার পর রবিতে মসুরে কোনো ভারী সেচ লাগে না (প্রয়োজনে কেবল ১টি সম্পূরক সেচ)। বোরো ধানের তুলনায় এটি প্রায় ৬০০ মিলিমিটার ভূগর্ভস্থ পানি সাশ্রয় করে।\n\n` +
-        `অনুগ্রহ করে সেচ দেওয়ার আগে জমির ৩-৪ ইঞ্চি মাটির ভেজা ভাব হাত দিয়ে পরীক্ষা করুন।`,
-      sources: [
-        'NASA SMAP L4 (৯ কিমি গ্রিড রুটজোন আর্দ্রতা)',
-        'বাংলাদেশ ধান গবেষণা ইনস্টিটিউট (BRRI) সেচ নির্দেশিকা',
-        'প্রজেক্ট ইডেন ২৫-মৌসুম বরেন্দ্র পানি-ভারসাম্য মডেল',
-      ],
-      evidenceLevel: 'verified_high',
-      followUpSuggestions: [
-        'মসুর চাষে কি সার দেওয়া প্রয়োজন?',
-        '১০ নভেম্বরের মধ্যে ধান কাটার সুবিধা কি?',
-      ],
-      timestamp: new Date().toISOString(),
+      answer: `নাসা পাওয়ার-এর বিলম্বিত পর্যবেক্ষণ উপাত্ত (সরাসরি নয়, পূর্বাভাসও নয়) — আপনার নির্বাচিত অবস্থানের জন্য:\n\n` +
+        `• **সর্বশেষ পর্যবেক্ষণের তারিখ**: ${weather.latestObservationDate}\n` +
+        `• **তাপমাত্রা**: গড় ${n(l.t2m, '°C')}, সর্বোচ্চ ${n(l.t2mMax, '°C')}, সর্বনিম্ন ${n(l.t2mMin, '°C')}\n` +
+        `• **আপেক্ষিক আর্দ্রতা**: ${n(l.rh2m, '%')}\n` +
+        `• **বৃষ্টিপাত (সর্বশেষ দিন)**: ${n(l.rainMm, ' মিমি')}\n` +
+        `• **${weather.windowStart} থেকে ${weather.windowEnd}**: মোট বৃষ্টিপাত ${n(weather.rainWindowMm, ' মিমি')} (${weather.rainDaysWithData} দিনের উপাত্ত)\n\n` +
+        `সেচ দেওয়ার আগে জমির মাটির ভেজা ভাব হাতে পরীক্ষা করুন। সেচের সুনির্দিষ্ট সময় ও পরিমাণের জন্য ${SAAO_REFERRAL}`,
+      sources: [`${weather.source.provider} (${weather.source.kind}, তথ্য ${weather.latestObservationDate} পর্যন্ত)`],
+      evidenceLevel: 'provider_data',
+      followUpSuggestions: ['এই অঞ্চলের সারের সুপারিশ কী?'],
+      timestamp: now(),
     };
   }
 
-  // Topic: Weather / Rain / আবহাওয়া / বৃষ্টি
-  if (qLower.includes('আবহাওয়া') || qLower.includes('বৃষ্টি') || qLower.includes('তাপমাত্রা') || qLower.includes('weather') || qLower.includes('rain')) {
-    const w = weather.latest;
+  if (['সার', 'ইউরিয়া', 'টিএসপি', 'পটাশ', 'fertilizer'].some(k => qLower.includes(k))) {
+    if (!isNear(req)) {
+      return {
+        answer: `সারের সুপারিশ ইউনিয়নভিত্তিক মাটি পরীক্ষার ওপর নির্ভর করে। আমাদের কাছে শুধু তালন্দ ইউনিয়নের (তানোর, রাজশাহী) এসআরডিআই কার্ড আছে; আপনার নির্বাচিত অবস্থানের জন্য কোনো সুপারিশ নেই। ${SAAO_REFERRAL}`,
+        sources: [],
+        evidenceLevel: 'insufficient_evidence',
+        followUpSuggestions: [],
+        timestamp: now(),
+      };
+    }
+    const a = TALANDA_SRDI.aman;
     return {
-      answer: `নাসার সর্বশেষ উপগ্রহ ও বায়ুমণ্ডলীয় পর্যবেক্ষণ অনুযায়ী তথ্য:\n\n` +
-        `• **পর্যবেক্ষণ তারিখ**: ${weather.latestObservationDate} (নাসা পাওয়ার সাধারণত ২-৩ দিন বিলম্বে আসে; এটি পূর্বাভাস নয়, পরীক্ষিত উপাত্ত)।\n` +
-        `• **তাপমাত্রা**: সর্বোচ্চ প্রায় ${w.t2mMax}°C, সর্বনিম্ন প্রায় ${w.t2mMin}°C (গড় ${w.t2m}°C)।\n` +
-        `• **বাতাসের আর্দ্রতা**: ${w.rh2m}%, বাতাস গতিবেগ প্রায় ${w.windSpeedMs} মি/সে।\n` +
-        `• **সাম্প্রতিক বৃষ্টিপাত**: বিগত ৩০ দিনে মোট বৃষ্টিপাত প্রায় ${Math.round(w.rainLast30DaysMm)} মিমি (${w.rainVerdictBangla})।\n` +
-        `• **মাটির রস**: নাসা SMAP মান ${w.rootZoneMoistureM3M3} m³/m³। জমি রবি ফসল বপনের উপযুক্ত জো অবস্থায় রয়েছে।`,
-      sources: [
-        'NASA POWER Daily Agroclimatology (GEOS-IT / MERRA-2)',
-        'NASA GPM IMERG Late (দৈনিক বৃষ্টিপাত)',
-        'NASA SMAP L4 (মাটির আর্দ্রতা)',
-      ],
-      evidenceLevel: 'verified_high',
-      followUpSuggestions: [
-        'এই আবহাওয়ায় কি রবি ফসল বোনা যাবে?',
-        'সেচ কখন দেওয়া উচিত?',
-      ],
-      timestamp: new Date().toISOString(),
+      answer: `তালন্দ ইউনিয়নের এসআরডিআই সার সুপারিশ কার্ড (${TALANDA_SRDI.soilTypeBangla}, ${TALANDA_SRDI.landTypeBangla}) অনুযায়ী ${a.cropGroupBangla}-র জন্য, হেক্টর প্রতি:\n\n` +
+        `• ইউরিয়া: ${a.ureaKgHa} কেজি\n• টিএসপি: ${a.tspKgHa} কেজি\n• এমওপি: ${a.mopKgHa} কেজি\n• জিপসাম: ${a.gypsumKgHa} কেজি\n• জিংক সালফেট: ${a.zincSulphateKgHa} কেজি\n\n` +
+        `এটি ইউনিয়ন-পর্যায়ের কার্ড; আপনার নিজের জমির মাটি পরীক্ষা ছাড়া এটি চূড়ান্ত নয়। অন্যান্য ফসলের জন্য ${SAAO_REFERRAL}`,
+      sources: [TALANDA_SRDI.source],
+      evidenceLevel: 'reference_card',
+      followUpSuggestions: [],
+      timestamp: now(),
     };
   }
 
-  // Topic: Crop Rotation / ফসল চক্র / মসুর / সরিষা / ধান
-  if (qLower.includes('ফসল') || qLower.includes('মসুর') || qLower.includes('সরিষা') || qLower.includes('ধান') || qLower.includes('crop') || qLower.includes('rotation')) {
+  if (['ভাঙন', 'নদী', 'বন্যা', 'erosion', 'river'].some(k => qLower.includes(k))) {
+    const e = getRiverErosion().corridor;
     return {
-      answer: `তালন্দ ও সমমানের বরেন্দ্র জমির জন্য সর্বোত্তম প্রস্তাবিত ফসল চক্র:\n\n` +
-        `• **প্রস্তাবিত ক্রম**: ব্রি ধান৭১ → বারি মসুর-৮ (বা বারি সরিষা-১৪)।\n` +
-        `• **কেন ব্রি ধান৭১?**: এটি ব্রি ধান৪৯-এর চেয়ে প্রায় ১২–১৫ দিন আগে (১০ নভেম্বরের মধ্যে) পাকে। ফলে রবি ফসল সময়মতো বোনা যায়।\n` +
-        `• **রবি ফসলের সুবিধা**: মসুর ডাল বাতাসে নাইট্রোজেন সংবন্ধন করে মাটির উর্বরতা বৃদ্ধি করে এবং বোরো ধানের মতো অতিরিক্ত সেচ ও বিদ্যুৎ খরচ লাগে না।\n` +
-        `• **সতর্কতা**: ধান কাটার পর ১৫ নভেম্বরের মধ্যে মসুর বপন শেষ করতে হবে। বিলম্ব হলে ফলন কমে যাওয়ার ঝুঁকি থাকে।`,
-      sources: [
-        'বাংলাদেশ ধান গবেষণা ইনস্টিটিউট (BRRI) জাত পরিচিতি',
-        'বাংলাদেশ কৃষি গবেষণা ইনস্টিটিউট (BARI) ডাল শস্য উইং',
-        'এসআরডিআই (SRDI) বরেন্দ্র ভূমি সার সুপারিশ নির্দেশিকা',
-      ],
-      evidenceLevel: 'verified_high',
-      followUpSuggestions: [
-        'মসুর চাষে কি পরিমাণ সার লাগবে?',
-        'জমির মাটির রস কেমন আছে?',
-      ],
-      timestamp: new Date().toISOString(),
+      answer: `নদীভাঙন সংক্রান্ত রেফারেন্স তথ্য (${e.riverNameBangla}, ${e.basinNameBangla}) আলাদা "নদীভাঙন" পর্দায় তাদের নিজস্ব উৎসসহ দেখানো হয়। এই সহকারী নির্দিষ্ট জমির ভাঙনের ঝুঁকি বা হার অনুমান করে না। ${SAAO_REFERRAL}`,
+      sources: [],
+      evidenceLevel: 'insufficient_evidence',
+      followUpSuggestions: [],
+      timestamp: now(),
     };
   }
 
-  // Topic: Fertilizer / সার / মাটি
-  if (qLower.includes('সার') || qLower.includes('ইউরিয়া') || qLower.includes('টিএসপি') || qLower.includes('পটাশ') || qLower.includes('fertilizer') || qLower.includes('soil')) {
-    return {
-      answer: `তালন্দ ইউনিয়ন মৃত্তিকা সম্পদ উন্নয়ন ইনস্টিটিউট (SRDI) সার সুপারিশ কার্ড:\n\n` +
-        `• **মাটির শ্রেণি**: ${soilTexture} (${landType})।\n` +
-        `• **আমন ধান (ব্রি ধান৭১)**:\n` +
-        `   - ইউরিয়া: ${LOC.srdi.aman.split(';')[0] || '১৬ কেজি/বিঘা (৩ কিস্তিতে)'}\n` +
-        `   - টিএসপি ও এমওপি: শেষ চাষের সময় জমি তৈরির সাথে প্রয়োগ করুন।\n` +
-        `• **বারি মসুর-৮**:\n` +
-        `   - ডাল জাতীয় ফসলে নাইট্রোজেন কম লাগে। বিঘা প্রতি ইউরিয়া মাত্র ৫-৬ কেজি, টিএসপি ১০-১২ কেজি, এমওপি ৫-৬ কেজি এবং জিপসাম যথেষ্ট।\n` +
-        `• **জৈব সার**: শেষ চাষে পর্যাপ্ত গোবর বা কম্পোস্ট মেশালে মাটির রস ধরে রাখার ক্ষমতা বাড়ে।`,
-      sources: [
-        'মৃত্তিকা সম্পদ উন্নয়ন ইনস্টিটিউট (SRDI) ইউনিয়ন সার নির্দেশিকা',
-        'জাতীয় কৃষি প্রযুক্তি প্রকল্প (NATP-2) বরেন্দ্র ক্লাস্টার',
-      ],
-      evidenceLevel: 'verified_high',
-      followUpSuggestions: [
-        'সেচ দেওয়ার পর কি সার প্রয়োগ করব?',
-        'মাটির বর্তমান আর্দ্রতা কত?',
-      ],
-      timestamp: new Date().toISOString(),
-    };
-  }
-
-  // Topic: River Erosion / নদী ভাঙন / বন্যা
-  if (qLower.includes('ভাঙন') || qLower.includes('নদী') || qLower.includes('বন্যা') || qLower.includes('erosion') || qLower.includes('river')) {
-    const jamuna = erosion.corridor;
-    return {
-      answer: `বাংলাদেশে নদীভাঙন ও হাইড্রোলজিক্যাল পর্যবেক্ষণ তথ্য:\n\n` +
-        `• **প্রধান ঝুঁকিপূর্ণ নদী**: ${jamuna.riverNameBangla} (${jamuna.basinNameBangla})।\n` +
-        `• **ঝুঁকির কারণ**: ${jamuna.primaryCauseBangla}\n` +
-        `• **সর্বোচ্চ ঝুঁকিপূর্ণ অঞ্চল**: সিরাজগঞ্জ সদর, কাজীপুর এবং সারিয়াকান্দি। বার্ষিক তীর সরার হার প্রায় ৭০–১৫০ মিটার/বছর।\n` +
-        `• **উজান অববাহিকা বৃষ্টিপাত**: বিগত ৩০ দিনে নাসা IMERG উপাত্তে বৃষ্টিপাত প্রায় ${Math.round(jamuna.basin30dRainMm)} মিমি।\n` +
-        `• **সতর্কতা**: বর্ষা শেষে পানি দ্রুত নামার সময় পাড় ধসের ঝুঁকি সর্বাধিক হয়। চরের ঝুঁকিপূর্ণ জমিতে স্বল্পমেয়াদি ডাল ফসল চাষ নিরাপদ।`,
-      sources: [
-        'বাংলাদেশ পানি উন্নয়ন বোর্ড (BWDB / FFWC) বার্ষিক প্রতিবেদন',
-        'সিইজিআইএস (CEGIS) নদীভাঙন ঝুঁকি সমীক্ষা',
-        'NASA GPM IMERG স্যাটেলাইট বৃষ্টিপাত উপাত্ত',
-      ],
-      evidenceLevel: 'verified_high',
-      followUpSuggestions: [
-        'ভাঙনপ্রবণ জমিতে কি ফসল ফলানো নিরাপদ?',
-        'সিরাজগঞ্জ স্টেশনের বিপদসীমা কত?',
-      ],
-      timestamp: new Date().toISOString(),
-    };
-  }
-
-  // Fallback for Out-of-Evidence / Unsupported Queries
   return {
-    answer: `আপনার প্রশ্নটির সরাসরি বৈজ্ঞানিক উত্তর দেওয়ার মতো পর্যাপ্ত নির্ভরযোগ্য উপাত্ত বা মাঠ সমীক্ষা এই মুহূর্তে আমাদের প্রাতিষ্ঠানিক ডেটাবেজে নেই।\n\n` +
-      `প্রজেক্ট ইডেন কৃত্রিম বুদ্ধিমত্তা কোনো মনগড়া বা আনুমানিক তথ্য প্রদান করে না। আপনার ফসলের যেকোনো নতুন লক্ষণ, পোকা বা স্থানীয় সমস্যার সুনির্দিষ্ট সমাধানের জন্য অনুগ্রহ করে আপনার ব্লকের দায়িত্বপ্রাপ্ত **উপসহকারী কৃষি কর্মকর্তা (SAAO)** অথবা নিকটস্থ উপজেলা কৃষি অফিসে সরাসরি পরামর্শ নিন।`,
-    sources: [
-      'প্রজেক্ট ইডেন বৈজ্ঞানিক প্রামাণ্যতা ফ্রেমওয়ার্ক',
-      'কৃষি সম্প্রসারণ অধিদপ্তর (DAE) মাঠ পরামর্শ নির্দেশিকা',
-    ],
+    answer: `এই প্রশ্নের নির্ভরযোগ্য উত্তর দেওয়ার মতো উপাত্ত আমাদের কাছে নেই, তাই অনুমান করে কিছু বলা হচ্ছে না। ফসল আবর্তনের পরামর্শের জন্য "পরিকল্পনা" পর্দা (শুধু তালন্দ পাইলট) দেখুন। ${SAAO_REFERRAL}`,
+    sources: [],
     evidenceLevel: 'insufficient_evidence',
-    followUpSuggestions: [
-      'আমার জমিতে সেচ কখন দেওয়া উচিত?',
-      'আজকের উপগ্রহ আবহাওয়া পরিস্থিতি কি?',
-      'ব্রি ধান৭১ ও মসুরের সুবিধা কি?',
-    ],
-    timestamp: new Date().toISOString(),
+    followUpSuggestions: ['সাম্প্রতিক আবহাওয়া কেমন?', 'আমার এলাকার সারের সুপারিশ কী?'],
+    timestamp: now(),
   };
 }

@@ -3,14 +3,18 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const BASE = 'http://localhost:4000';
+const PORT = process.env.TEST_PORT || '4317';
+const BASE = `http://localhost:${PORT}`;
 // The officer desk writes to a throwaway store so tests never touch the demo data
 const STORE = path.join(os.tmpdir(), `eden-officer-test-${process.pid}.json`);
+const CATTLE_STORE = path.join(os.tmpdir(), `eden-cattle-test-${process.pid}.json`);
 const OFFICER_CODE = process.env.EDEN_OFFICER_CODE || 'talanda-demo';
 const serverProc = spawn('node', ['--experimental-strip-types', 'services/api/src/server.ts'], {
   stdio: ['inherit', 'pipe', 'pipe'],
-  // tests never place a real call, and read a fixed day of NASA conditions (the daily update rewrites the live file)
-  env: { ...process.env, EDEN_OFFICER_STORE: STORE, AWAJ_LIVE: '0', EDEN_LIVE_FILE: path.resolve('tests/fixtures/live_conditions_2026-10-01.json') },
+  // tests never place a real call, never reach an LLM or TTS service, and read a fixed day of NASA conditions
+  // (the daily update rewrites the live file)
+  env: { ...process.env, PORT, EDEN_OFFICER_STORE: STORE, CATTLE_STORE_PATH: CATTLE_STORE, SEED_DEMO_DATA: 'false', LLM_BASE_URL: '', TTS_BASE_URL: '',
+    API_WRITE_TOKEN: '', AWAJ_LIVE: '0', EDEN_LIVE_FILE: path.resolve('tests/fixtures/live_conditions_2026-10-01.json') },
 });
 
 serverProc.stdout.on('data', (d) => process.stdout.write(d));
@@ -204,14 +208,61 @@ async function run() {
   console.log(`✓ All ${keys.size} dashboard texts have an English translation`);
 
   // 13. GET /
-  // 14. Real NASA Weather Observations (GET /api/v1/weather)
-  console.log('Testing GET /api/v1/weather ...');
-  const resWeather = await fetch(`${BASE}/api/v1/weather?lat=24.62&lon=88.56`);
-  const dataWeather = await resWeather.json();
-  check(resWeather.status === 200, 'weather status');
-  check(dataWeather.latestObservationDate && dataWeather.dataSource.includes('NASA POWER'), 'weather data source & observation date');
-  check(dataWeather.latest?.t2m && dataWeather.latest?.rootZoneMoistureM3M3, 'weather carries real temperature and SMAP moisture');
-  console.log('✓ NASA Weather status: 200, Latest date:', dataWeather.latestObservationDate, 'Temp:', dataWeather.latest.t2m, '°C, Live:', dataWeather.isLive);
+  // 14. Weather: contract, validation and per-location isolation (live providers; an outage must be reported honestly)
+  console.log('Testing weather endpoints ...');
+  const getJson = async (url) => { const r = await fetch(`${BASE}${url}`); return { status: r.status, body: await r.json() }; };
+  const badLat = await getJson('/api/v1/weather/forecast?lat=abc&lon=90');
+  check(badLat.status === 400 && badLat.body.error.code === 'invalid_input', 'invalid latitude is rejected with the error envelope');
+  const outside = await getJson('/api/v1/weather/forecast?lat=51.5&lon=-0.12');
+  check(outside.status === 400 && outside.body.error.code === 'invalid_input', 'coordinates outside Bangladesh are rejected');
+  const missing = await getJson('/api/v1/weather?lat=24.6');
+  check(missing.status === 400, 'missing lon is rejected (no silent Talanda default)');
+
+  const dhaka = await getJson('/api/v1/weather/forecast?lat=23.81&lon=90.41');
+  const sylhetForecast = await getJson('/api/v1/weather/forecast?lat=24.89&lon=91.87');
+  if (dhaka.status === 200 && sylhetForecast.status === 200) {
+    check(dhaka.body.location.lat === 23.81 && sylhetForecast.body.location.lat === 24.89, 'forecast echoes the requested coordinates');
+    check(dhaka.body.forecast.source.kind === 'model_estimate' && dhaka.body.forecast.source.live === true, 'forecast is labelled a model estimate');
+    const h = dhaka.body.forecast.hourly;
+    check(h.length >= 24 && h.some(x => x.relativeHumidityPct !== null), 'hourly forecast carries relative humidity');
+    check(new Set(h.slice(0, 24).map(x => x.relativeHumidityPct)).size > 1, 'hourly humidity varies by hour (not one repeated value)');
+    check(dhaka.body.forecast.current.temperatureC !== sylhetForecast.body.forecast.current.temperatureC
+      || dhaka.body.forecast.current.relativeHumidityPct !== sylhetForecast.body.forecast.current.relativeHumidityPct, 'two locations do not share one cached forecast');
+    console.log('✓ Open-Meteo: per-location forecast with hourly humidity, labelled as a model estimate');
+  } else {
+    check(dhaka.body.error?.code === 'provider_unavailable', `forecast failure must be provider_unavailable, got ${JSON.stringify(dhaka.body)}`);
+    console.log('! Open-Meteo unreachable from this machine: verified the honest provider_unavailable response instead');
+  }
+
+  const nasaA = await getJson('/api/v1/weather?lat=23.81&lon=90.41');
+  const nasaB = await getJson('/api/v1/weather?lat=22.35&lon=91.83');
+  if (nasaA.status === 200 && nasaB.status === 200) {
+    check(nasaA.body.isLive === false && nasaA.body.source.kind === 'satellite_delayed' && nasaA.body.source.live === false, 'NASA POWER is never labelled live');
+    check(nasaA.body.location.lat === 23.81 && nasaB.body.location.lat === 22.35, 'NASA response carries the requested coordinates');
+    check(nasaA.body.soilMoisture.status === 'unavailable', 'NASA POWER reports soil moisture as unavailable instead of a constant');
+    check(!('rootZoneMoistureM3M3' in nasaA.body.latest), 'no invented SMAP value in the NASA payload');
+    check(JSON.stringify(nasaA.body.recentDays) !== JSON.stringify(nasaB.body.recentDays), 'NASA cache is per location');
+    check(!JSON.stringify(nasaA.body).includes('তালন্দ'), 'NASA payload has no hardcoded Talanda labels');
+    console.log('✓ NASA POWER: per-location, delayed, soil moisture unavailable, latest', nasaA.body.latestObservationDate);
+  } else {
+    check(nasaA.body.error?.code === 'provider_unavailable' || nasaA.body.error?.code === 'no_data', 'NASA failure must be an explicit error, never baseline data');
+    console.log('! NASA POWER unreachable from this machine: verified the explicit error response instead');
+  }
+
+  const cfg = await getJson('/api/v1/config');
+  check(cfg.status === 200 && cfg.body.llm.status === 'unavailable' && cfg.body.tts.status === 'unavailable', 'config reports unconfigured LLM/TTS as unavailable');
+  check(cfg.body.earthEngine.status !== 'ready' || cfg.body.earthEngine.reason === 'ready', 'earth engine status comes from a real probe');
+  check(cfg.body.jobs.productionDurable === false, 'config states the job store is not production durable');
+  const locs = await getJson('/api/v1/locations');
+  check(locs.body.districtCount === 64 && locs.body.upazilaCount >= 495, `locations cover all 64 districts and 495+ upazilas (got ${locs.body.districtCount}/${locs.body.upazilaCount})`);
+  check(locs.body.districts.every(d => d.upazilas.length > 0 && d.upazilas.every(u => Number.isFinite(u.lat) && Number.isFinite(u.lon))), 'every upazila has coordinates');
+  const tts = await fetch(`${BASE}/api/v1/tts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'পরীক্ষা' }) });
+  check(tts.status === 503 && (await tts.json()).error.code === 'configuration_required', 'TTS without a provider returns configuration_required');
+  const unknown = await getJson('/api/v1/does-not-exist');
+  check(unknown.status === 404 && unknown.body.error.code === 'not_found', 'unknown API path is a JSON 404, not the HTML page');
+  const badJson = await fetch(`${BASE}/api/v1/advice`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{nope' });
+  check(badJson.status === 400, 'malformed JSON is a 400');
+  console.log('✓ Config, locations, TTS fallback status and error envelope verified');
 
   // 15. River Erosion Information (GET /api/v1/erosion)
   console.log('Testing GET /api/v1/erosion ...');
@@ -247,14 +298,24 @@ async function run() {
 
   // 17. Grounded Bengali AI Agricultural Assistant (POST /api/v1/ai/ask)
   console.log('Testing AI Assistant ...');
-  const aiWater = await (await fetch(`${BASE}/api/v1/ai/ask`, {
+  const aiNoLoc = await (await fetch(`${BASE}/api/v1/ai/ask`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query: 'আমার জমিতে সেচ কখন দেওয়া উচিত?' }),
   })).json();
-  check(aiWater.evidenceLevel === 'verified_high' && aiWater.sources.length >= 2, 'AI answers irrigation query with verified sources');
-  check(aiWater.answer.includes('SMAP') || aiWater.answer.includes('সেচ'), 'AI answer references SMAP/irrigation evidence');
-
+  check(aiNoLoc.evidenceLevel === 'insufficient_evidence', 'AI asks for a location instead of using a default one');
+  const aiFert = await (await fetch(`${BASE}/api/v1/ai/ask`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: 'কত সার দেব?', lat: 23.81, lon: 90.41 }),
+  })).json();
+  check(aiFert.evidenceLevel === 'insufficient_evidence', 'AI does not apply the Talanda SRDI card elsewhere');
+  const aiFertTalanda = await (await fetch(`${BASE}/api/v1/ai/ask`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: 'কত সার দেব?', lat: 24.62, lon: 88.56 }),
+  })).json();
+  check(aiFertTalanda.evidenceLevel === 'reference_card' && aiFertTalanda.answer.includes('229'), 'AI reads the real SRDI card values near Talanda');
   const aiRefusal = await (await fetch(`${BASE}/api/v1/ai/ask`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -262,6 +323,107 @@ async function run() {
   })).json();
   check(aiRefusal.evidenceLevel === 'insufficient_evidence', 'AI refuses unsupported query without fabricating');
   console.log('✓ Grounded AI Assistant verified: evidence-based answer and safe refusal');
+
+  // 18. Cattle AOI & Advisory Pipeline Endpoints
+  console.log('Testing Cattle AOI & Advisory Endpoints ...');
+  const resReadiness = await (await fetch(`${BASE}/api/v1/cattle/readiness`)).json();
+  check(resReadiness.weatherForecast?.provider === 'Open-Meteo' && resReadiness.weatherForecast.status !== 'operational', 'readiness never hardcodes operational');
+  check(resReadiness.mlModels?.supervisedHeatStress === 'training_data_unavailable', 'cattle ml readiness reports data unavailable');
+
+  const resAois = await (await fetch(`${BASE}/api/v1/cattle/aois`)).json();
+  check(Array.isArray(resAois.aois), 'list AOIs returns array');
+
+  // Test invalid AOI geometry rejection (400)
+  const badAoiRes = await fetch(`${BASE}/api/v1/cattle/aois`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      farmLabel: 'Invalid AOI',
+      geometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] },
+    }),
+  });
+  check(badAoiRes.status === 400, 'out-of-bounds geometry must be rejected with 400');
+
+  // Create valid farm AOI in Tanore
+  const newAoiRes = await fetch(`${BASE}/api/v1/cattle/aois`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      farmLabel: 'তানোর টেস্ট ডেইরি (Tanore Test Dairy)',
+      ownerName: 'মো. রফিকুল ইসলাম',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [88.5810, 24.5150],
+            [88.5845, 24.5150],
+            [88.5845, 24.5185],
+            [88.5810, 24.5185],
+            [88.5810, 24.5150],
+          ],
+        ],
+      },
+    }),
+  });
+  check(newAoiRes.status === 201, `create AOI status 201, got ${newAoiRes.status}`);
+  const newAoiData = await newAoiRes.json();
+  check(newAoiData.aoi.aoiId && newAoiData.job.jobId, 'create AOI returns AOI and enqueued background job');
+
+  check(newAoiData.job.status === 'queued' && newAoiData.job.startedAt === undefined, 'a queued job has not started');
+
+  // Wait for the job to reach a terminal status; the advisory exists only after real processing
+  let job = newAoiData.job;
+  for (let i = 0; i < 120 && ['queued', 'running'].includes(job.status); i++) {
+    await new Promise((r) => setTimeout(r, 500));
+    job = (await (await fetch(`${BASE}/api/v1/cattle/jobs/${job.jobId}`)).json()).job;
+  }
+  check(!['queued', 'running'].includes(job.status), `job reached a terminal state, got ${job.status}`);
+  const advRes = await fetch(`${BASE}/api/v1/cattle/aois/${encodeURIComponent(newAoiData.aoi.aoiId)}/advisory`);
+  if (job.status === 'failed') {
+    check(job.errorCode === 'provider_unavailable' && advRes.status === 404, 'a failed job leaves no advisory and says why');
+    console.log('! weather providers unreachable: verified failed-job semantics instead');
+  } else {
+    check(job.status !== 'succeeded' || job.missing.length === 0, 'succeeded implies nothing is missing');
+    check(job.status === 'partial' ? job.missing.length > 0 : true, 'partial lists what is missing');
+    check(advRes.status === 200, 'advisory is available after the job completes');
+    const advData = await advRes.json();
+    const t = advData.advisory.derived.thi;
+    check(t.current > 0 && t.hourly.length > 0 && t.hourly.length <= 24, 'advisory carries derived THI and an hourly curve');
+    check(advData.advisory.measured.forecast.source.kind === 'model_estimate', 'measured forecast is labelled a model estimate');
+    check(advData.advisory.heuristic.kind === 'heuristic' && !JSON.stringify(advData.advisory).includes('estimatedIncreasePct'), 'heuristic guidance carries no unsupported percentages');
+    check(advData.advisory.modelStatus?.modelRegistryStatus === 'training_data_unavailable', 'advisory carries unavailable status for ungrounded models');
+    if (!cfg.body.earthEngine || cfg.body.earthEngine.status !== 'ready') {
+      check(job.status === 'partial' && advData.advisory.measured.satellite.status === 'unavailable' && advData.advisory.forageStatus.ndviProxy === null, 'without Earth Engine, satellite data is unavailable (no null-as-success)');
+    }
+  }
+
+  const sat = await (await fetch(`${BASE}/api/v1/cattle/jobs`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aoiId: newAoiData.aoi.aoiId, jobType: 'satellite_extract' }) })).json();
+  let satJob = sat.job;
+  for (let i = 0; i < 60 && ['queued', 'running'].includes(satJob.status); i++) {
+    await new Promise((r) => setTimeout(r, 250));
+    satJob = (await (await fetch(`${BASE}/api/v1/cattle/jobs/${satJob.jobId}`)).json()).job;
+  }
+  if (cfg.body.earthEngine.status !== 'ready') {
+    check(satJob.status === 'blocked' && satJob.errorCode === 'configuration_required', 'satellite job without Earth Engine is blocked/configuration_required, not complete');
+  }
+  const trainJob = await (await fetch(`${BASE}/api/v1/cattle/jobs`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aoiId: newAoiData.aoi.aoiId, jobType: 'train_model' }) })).json();
+  let tJob = trainJob.job;
+  for (let i = 0; i < 40 && ['queued', 'running'].includes(tJob.status); i++) {
+    await new Promise((r) => setTimeout(r, 250));
+    tJob = (await (await fetch(`${BASE}/api/v1/cattle/jobs/${tJob.jobId}`)).json()).job;
+  }
+  check(tJob.status === 'blocked' && tJob.errorCode === 'training_data_unavailable', 'training without labelled data is blocked, never succeeded');
+  const badType = await fetch(`${BASE}/api/v1/cattle/jobs`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aoiId: newAoiData.aoi.aoiId, jobType: 'mine_bitcoin' }) });
+  check(badType.status === 400, 'unknown job types are rejected');
+  const retryOk = await fetch(`${BASE}/api/v1/cattle/jobs/${tJob.jobId}/retry`, { method: 'POST' });
+  check(retryOk.status === 202, 'a blocked job can be retried');
+
+  // Clean up created test AOI
+  const delRes = await fetch(`${BASE}/api/v1/cattle/aois/${encodeURIComponent(newAoiData.aoi.aoiId)}`, {
+    method: 'DELETE',
+  });
+  check(delRes.status === 200, 'delete AOI status');
+  console.log('✓ Cattle AOI & Advisory Pipeline verified: create -> job enqueue -> advisory -> delete');
 
   console.log('\n===========================================');
   console.log('  ALL ENDPOINTS TESTED & VERIFIED!          ');
@@ -271,6 +433,7 @@ async function run() {
 function finish(code) {
   serverProc.kill();
   fs.rmSync(STORE, { force: true });
+  fs.rmSync(CATTLE_STORE, { force: true });
   process.exit(code);
 }
 

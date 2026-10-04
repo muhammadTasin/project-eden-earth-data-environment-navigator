@@ -15,7 +15,12 @@ import { bnDate, bnDateOf, bnDigits, bnOf, enDate } from '../../../packages/rota
 import * as desk from './officer_desk.ts';
 import { DualGateNarrationValidator } from '../../../packages/narration-core/src/dual_gate_validator.ts';
 import { TemplateNarrator } from '../../../packages/narration-core/src/template_narrator.ts';
-import { getNasaWeather } from './weather.ts';
+import { getNasaWeather, lastNasaSuccessAt } from './weather.ts';
+import { getOpenMeteoForecast, lastOpenMeteoSuccessAt } from './open_meteo_weather.ts';
+import { ApiError, errorBody, parseCoordinates } from './errors.ts';
+import { getLocationsPayload } from './locations.ts';
+import { createLlmClient, llmStatus } from './providers/llm.ts';
+import { synthesizeSpeech, ttsStatus } from './providers/tts.ts';
 import { getRiverErosion } from './erosion.ts';
 import { liveHaor, liveStatus, liveUpazila, liveUpazilas } from './live.ts';
 import { mapLayers } from './map_layers.ts';
@@ -23,6 +28,11 @@ import { askAiAssistant } from './ai_assistant.ts';
 import { cropMenu } from '../../../packages/rotation-engine/src/data/crop_choice.ts';
 import { cropsFromKeys, keypadMenu, replyFor, requestFromWords, understand } from './voice.ts';
 import { awajConfig, bdMobile, sendKeypadSurvey, sendTemplateSurvey, sendTtsCall } from './awaj.ts';
+import { createFarmAoi } from './cattle/aoi.ts';
+import { cattleRepository } from './cattle/repository.ts';
+import { backgroundJobManager } from './cattle/jobs.ts';
+import { getEarthEngineReadiness, detectEarthEngineCredentialFiles } from './cattle/adapters/earth_engine.ts';
+import { triggerModelTraining } from './cattle/ml_pipeline.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const gzipCache = new Map<string, { mtime: number; body: Buffer }>();
@@ -32,7 +42,8 @@ const PUBLIC_DIR = path.resolve(__dirname, '../../../apps/saao-dashboard/public'
 const featureRegistry = new FeatureRegistry();
 const rotationEngine = new RotationEngine(featureRegistry);
 const templateNarrator = new TemplateNarrator();
-const dualGateValidator = new DualGateNarrationValidator();
+// Optional server-side LLM (OpenAI-compatible endpoint). Undefined when not configured: the deterministic template narrator is used.
+const dualGateValidator = new DualGateNarrationValidator(createLlmClient() ?? undefined, { timeoutMs: Number(process.env.LLM_TIMEOUT_MS) || 15000 });
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 4000;
 
@@ -56,25 +67,45 @@ const RAIN_VERDICT_BANGLA: Record<string, string> = {
   normal: 'স্বাভাবিক',
 };
 
+const CORS_ORIGINS = (process.env.CORS_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
+const WRITE_TOKEN = process.env.API_WRITE_TOKEN?.trim() || '';
+
+/** CORS is off unless CORS_ORIGINS is set ('*' or a comma-separated list), so the default is same-origin only. */
+function applyCors(req: http.IncomingMessage, res: http.ServerResponse) {
+  const origin = req.headers.origin;
+  if (CORS_ORIGINS.includes('*')) res.setHeader('Access-Control-Allow-Origin', '*');
+  else if (origin && CORS_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+}
+
 function sendJSON(res: http.ServerResponse, statusCode: number, data: any) {
-  res.writeHead(statusCode, {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  });
+  res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(data));
 }
 
+function sendError(res: http.ServerResponse, err: ApiError) {
+  sendJSON(res, err.status, errorBody(err));
+}
+
+const MAX_BODY_BYTES = 1_000_000;
 function parseBody(req: http.IncomingMessage): Promise<any> {
   return new Promise((resolve, reject) => {
     let body = '';
-    req.on('data', chunk => { body += chunk; });
+    req.on('data', chunk => {
+      body += chunk;
+      if (body.length > MAX_BODY_BYTES) { reject(new ApiError('invalid_input', 'Request body too large')); req.destroy(); }
+    });
     req.on('end', () => {
       try {
-        resolve(body ? JSON.parse(body) : {});
-      } catch (err) {
-        reject(err);
+        const parsed = body ? JSON.parse(body) : {};
+        if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not an object');
+        resolve(parsed);
+      } catch {
+        reject(new ApiError('invalid_input', 'Request body must be a valid JSON object'));
       }
     });
     req.on('error', reject);
@@ -86,6 +117,13 @@ function cropList(value: unknown): string[] | undefined {
   const list = Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : [];
   const ids = list.map(v => String(v).trim().toLowerCase()).filter(Boolean);
   return ids.length ? ids : undefined;
+}
+
+/** Optional minimum protection for mutating cattle routes. When API_WRITE_TOKEN is set, a matching bearer token is required. */
+function requireWriteToken(req: http.IncomingMessage) {
+  if (!WRITE_TOKEN) return;
+  const given = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  if (given !== WRITE_TOKEN) throw new ApiError('unauthorized', 'A valid write token is required for this operation');
 }
 
 function planRequest(body: any): PlanOptionsRequest {
@@ -468,23 +506,87 @@ function dataRelease() {
   };
 }
 
-const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url || '/', `http://${req.headers.host}`);
-  const pathname = url.pathname;
+/** Real capability/status report. Nothing here is hardcoded "operational": each entry reflects configuration or the last real call. */
+async function capabilities() {
+  const ee = await getEarthEngineReadiness();
+  return {
+    api: { version: 'v1', time: new Date().toISOString() },
+    weatherForecast: {
+      provider: 'Open-Meteo',
+      kind: 'model_estimate',
+      apiKeyConfigured: Boolean(process.env.OPEN_METEO_API_KEY?.trim()),
+      lastSuccessAt: lastOpenMeteoSuccessAt,
+      status: lastOpenMeteoSuccessAt ? 'last_request_succeeded' : 'not_yet_requested',
+    },
+    nasaPower: {
+      provider: 'NASA POWER (community AG)',
+      kind: 'satellite_delayed',
+      live: false,
+      latency: '2-3 days',
+      lastSuccessAt: lastNasaSuccessAt,
+      status: lastNasaSuccessAt ? 'last_request_succeeded' : 'not_yet_requested',
+    },
+    earthEngine: {
+      status: ee.status,
+      reason: ee.reason,
+      details: ee.details,
+      setupInstructions: ee.status === 'ready' ? undefined : ee.setupInstructions,
+      credentialFilesDetected: detectEarthEngineCredentialFiles(),
+      checkedAt: ee.checkedAt,
+    },
+    llm: llmStatus(),
+    tts: ttsStatus(),
+    mlModels: {
+      supervisedHeatStress: 'training_data_unavailable',
+      supervisedForageBiomass: 'training_data_unavailable',
+      milkLossPredictor: 'training_data_unavailable',
+      diseaseRiskPredictor: 'training_data_unavailable',
+      ruleBasedBaseline: 'rule_based_thi (not a trained model)',
+    },
+    jobs: {
+      persistence: 'local_file',
+      productionDurable: false,
+      note: 'Jobs run in-process and are stored in a local JSON file. A restart interrupts running jobs; they are marked failed and can be retried.',
+      storeLoadError: cattleRepository.loadError,
+      lastWriteError: cattleRepository.lastPersistError,
+    },
+    writeProtection: { cattleWriteTokenRequired: Boolean(WRITE_TOKEN) },
+  };
+}
 
-  // Handle CORS preflight
+const MIME_TYPES: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.geojson': 'application/geo+json; charset=utf-8',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+};
+
+const server = http.createServer(async (req, res) => {
+  const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+  const pathname = url.pathname;
+  applyCors(req, res);
+
   if (req.method === 'OPTIONS') {
-    res.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    });
+    res.writeHead(204);
     res.end();
     return;
   }
 
   try {
-    // API: SAAO Overview
+    // ---- Capability / status ------------------------------------------------------------------
+    if (pathname === '/api/v1/config' && req.method === 'GET') {
+      return sendJSON(res, 200, await capabilities());
+    }
+
+    // ---- Bangladesh districts and upazilas (shared by website and Android) -----------------------
+    if (pathname === '/api/v1/locations' && req.method === 'GET') {
+      return sendJSON(res, 200, getLocationsPayload());
+    }
+
+    // ---- Pilot-site (Talanda, Tanore) rotation planning ----------------------------------------
     if (pathname === '/api/v1/overview' && req.method === 'GET') {
       const ov = overview(url.searchParams.get('place'));
       return ov ? sendJSON(res, 200, ov) : sendJSON(res, 422, { error: 'No research data for this place yet' });
@@ -585,53 +687,34 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { pilot: { id: 'talanda_tanore', name: 'Talanda union', upazila: 'Tanore', district: 'Rajshahi' }, upazilas: listPlaces() });
     }
 
-    // API: Generate Rotation Advice
     if (pathname === '/api/v1/advice' && req.method === 'POST') {
       const body = await parseBody(req);
       return sendJSON(res, 200, adviseWithNarration(planRequest(body), body.farmerId));
     }
 
-    // API: Narrate Advice
+    // Narration: numeric advice is computed by the rotation engine; an LLM (if configured) only words approved facts,
+    // and the dual-gate validator falls back to the deterministic template if the wording fails the audit.
     if (pathname === '/api/v1/narrate' && req.method === 'POST') {
       const body = await parseBody(req);
       const advice = body.advice;
-      const selectedOptionId = body.selectedOptionId;
-      const option = advice?.options?.find((o: any) => o.id === selectedOptionId) || advice?.options?.[0];
-
-      if (!advice || !option) {
-        return sendJSON(res, 400, { error: 'Advice object and option are required' });
-      }
-
-      // Check if user requested mock local LLM or template
-      if (body.simulateLLM) {
-        const mockLLM = {
-          async generate() {
-            const water = option.dimensionDetails.water.metrics;
-            return `${bnOf(advice.scope.union_name_bangla)} জন্য ${option.nameBangla} উপযোগী। ${bnDigits(water.totalSeasonsSimulated)} মৌসুমে ${bnDigits(water.amanRescueIrrigationSeasons)} বার সম্পূরক সেচ লেগেছে এবং ${bnDateOf(option.fieldFreeDateBangla)} মধ্যে জমি খালি হবে।`;
-          },
-        };
-        const customValidator = new DualGateNarrationValidator(mockLLM);
-        const result = await customValidator.narrate(advice, option);
-        return sendJSON(res, 200, result);
-      }
-
+      const option = advice?.options?.find((o: any) => o.id === body.selectedOptionId) || advice?.options?.[0];
+      if (!advice || !option) throw new ApiError('invalid_input', 'Advice object and option are required');
       const result = await dualGateValidator.narrate(advice, option);
-      return sendJSON(res, 200, result);
+      return sendJSON(res, 200, { ...result, llm: llmStatus() });
     }
 
-    // API: Channel Events (simulated IVR keypad): re-ranks the rotations for the chosen priority
+    // Simulated IVR keypad: no call is placed. Clearly labelled so clients never show it as a delivered call.
     if (pathname === '/api/v1/channel-events' && req.method === 'POST') {
       const body = await parseBody(req);
       const keypad = String(body.keypad || '1');
       const choice = KEYPAD_PRIORITIES[keypad];
       const top = choice ? rotationEngine.generateAdvice(planRequest({ farmerPriorities: choice.priorities })).options[0] : null;
-      // Keypad 9: the farmer asks for their Krishi officer; the request tops the officer desk queue.
       const callback = keypad === '9' ? desk.requestCallback(String(body.farmerId || 'F01'), 'ivr_keypad_9') : null;
 
       return sendJSON(res, 200, {
-        callId: `call_${Date.now()}`,
-        farmerPhone: body.phone || '017XXXXXXXX',
-        status: 'delivered',
+        simulated: true,
+        callId: `sim_${Date.now()}`,
+        status: 'simulated',
         keypadInput: keypad,
         acknowledgementBangla: top
           ? `আপনার পছন্দ "${choice.label}" নথিভুক্ত হয়েছে। এই অগ্রাধিকারে শীর্ষে: ${top.nameBangla}।`
@@ -671,77 +754,167 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { ...HAOR_FLASH_FLOOD, status: haorStatus(), live: liveHaor() });
     }
 
-    // API: Location-aware Weather (Open-Meteo model forecast + NASA POWER agroclimatology & SMAP soil moisture)
+    // ---- Weather ---------------------------------------------------------------------------------
+    // Open-Meteo numerical model estimate (current + hourly incl. humidity + daily) for the requested coordinates.
+    if (pathname === '/api/v1/weather/forecast' && req.method === 'GET') {
+      const { lat, lon } = parseCoordinates(url.searchParams.get('lat'), url.searchParams.get('lon'));
+      const forecast = await getOpenMeteoForecast(lat, lon);
+      return sendJSON(res, 200, { location: { lat, lon }, source: forecast.source, forecast });
+    }
+
+    // NASA POWER delayed observations for the requested coordinates. Never live, never a forecast.
     if (pathname === '/api/v1/weather' && req.method === 'GET') {
-      const latParam = url.searchParams.get('lat');
-      const lonParam = url.searchParams.get('lon');
-      const lat = latParam !== null ? parseFloat(latParam) : 24.62;
-      const lon = lonParam !== null ? parseFloat(lonParam) : 88.56;
-
-      if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-        return sendJSON(res, 400, { error: 'Invalid coordinates; latitude must be between -90 and 90, and longitude between -180 and 180.' });
-      }
-
-      const weather = await getNasaWeather(lat, lon);
-      return sendJSON(res, 200, weather);
+      const { lat, lon } = parseCoordinates(url.searchParams.get('lat'), url.searchParams.get('lon'));
+      return sendJSON(res, 200, await getNasaWeather(lat, lon));
     }
 
-    // API: River Erosion Information (BWDB station records, CEGIS vulnerability & IMERG basin rain)
     if (pathname === '/api/v1/erosion' && req.method === 'GET') {
-      const river = url.searchParams.get('river') || 'jamuna';
-      const erosion = getRiverErosion(river);
-      return sendJSON(res, 200, erosion);
+      return sendJSON(res, 200, getRiverErosion(url.searchParams.get('river') || 'jamuna'));
     }
 
-    // API: Grounded Bengali AI Agricultural Assistant
+    // Rule-based assistant (not an LLM): answers only from provider data and reference cards.
     if (pathname === '/api/v1/ai/ask' && req.method === 'POST') {
       const body = await parseBody(req);
-      const answer = await askAiAssistant(body);
-      return sendJSON(res, 200, answer);
+      if (typeof body.query !== 'string' || !body.query.trim()) throw new ApiError('invalid_input', 'query is required');
+      return sendJSON(res, 200, await askAiAssistant(body));
     }
 
-    // API: Unified Authentication (Farmer and SAAO Officer)
+    // ---- Text to speech (separate from text generation) -----------------------------------------
+    if (pathname === '/api/v1/tts' && req.method === 'POST') {
+      const body = await parseBody(req);
+      const text = typeof body.text === 'string' ? body.text.trim() : '';
+      if (!text || text.length > 2000) throw new ApiError('invalid_input', 'text is required (max 2000 characters)');
+      const audio = await synthesizeSpeech(text, typeof body.language === 'string' ? body.language : 'bn');
+      res.writeHead(200, { 'Content-Type': audio.contentType, 'Content-Length': audio.audio.length });
+      return res.end(audio.audio);
+    }
+
+    // ---- Cattle AOI data and advisory pipeline ---------------------------------------------------
+    if (pathname === '/api/v1/cattle/readiness' && req.method === 'GET') {
+      const c = await capabilities();
+      return sendJSON(res, 200, {
+        earthEngine: c.earthEngine,
+        weatherForecast: c.weatherForecast,
+        nasaPower: c.nasaPower,
+        mlModels: c.mlModels,
+        jobs: c.jobs,
+      });
+    }
+
+    if (pathname === '/api/v1/cattle/aois' && req.method === 'GET') {
+      return sendJSON(res, 200, { aois: await cattleRepository.listAois() });
+    }
+
+    if (pathname === '/api/v1/cattle/aois' && req.method === 'POST') {
+      requireWriteToken(req);
+      const body = await parseBody(req);
+      const aoi = createFarmAoi(body); // throws invalid_input
+      await cattleRepository.saveAoi(aoi);
+      const initialJob = await backgroundJobManager.enqueueJob(aoi.aoiId, 'pipeline_refresh');
+      return sendJSON(res, 201, { aoi, job: initialJob });
+    }
+
+    const cattleAdvMatch = /^\/api\/v1\/cattle\/aois\/([^/]+)\/advisory$/.exec(pathname);
+    if (cattleAdvMatch && req.method === 'GET') {
+      const aoiId = decodeURIComponent(cattleAdvMatch[1]);
+      if (!(await cattleRepository.getAoi(aoiId))) throw new ApiError('not_found', `AOI "${aoiId}" not found`);
+      // Advisories are produced only by completed jobs. Reading never computes one from partial inputs.
+      const advisory = await cattleRepository.getLatestAdvisory(aoiId);
+      if (!advisory) throw new ApiError('no_data', 'No advisory has been produced for this AOI yet. Check its jobs.', { jobsUrl: `/api/v1/cattle/jobs?aoiId=${encodeURIComponent(aoiId)}` });
+      return sendJSON(res, 200, { advisory });
+    }
+
+    const cattleAoiMatch = /^\/api\/v1\/cattle\/aois\/([^/]+)$/.exec(pathname);
+    if (cattleAoiMatch && req.method === 'GET') {
+      const aoiId = decodeURIComponent(cattleAoiMatch[1]);
+      const aoi = await cattleRepository.getAoi(aoiId);
+      if (!aoi) throw new ApiError('not_found', `AOI "${aoiId}" not found`);
+      return sendJSON(res, 200, { aoi, latestAdvisory: await cattleRepository.getLatestAdvisory(aoiId) });
+    }
+
+    if (cattleAoiMatch && req.method === 'DELETE') {
+      requireWriteToken(req);
+      const aoiId = decodeURIComponent(cattleAoiMatch[1]);
+      if (!(await cattleRepository.deleteAoi(aoiId))) throw new ApiError('not_found', `AOI "${aoiId}" not found`);
+      return sendJSON(res, 200, { deleted: true, aoiId });
+    }
+
+    if (pathname === '/api/v1/cattle/jobs' && req.method === 'GET') {
+      return sendJSON(res, 200, { jobs: await cattleRepository.listJobs(url.searchParams.get('aoiId') || undefined) });
+    }
+
+    if (pathname === '/api/v1/cattle/jobs' && req.method === 'POST') {
+      requireWriteToken(req);
+      const body = await parseBody(req);
+      if (typeof body.aoiId !== 'string' || !body.aoiId) throw new ApiError('invalid_input', 'aoiId is required');
+      const job = await backgroundJobManager.enqueueJob(body.aoiId, body.jobType || 'pipeline_refresh');
+      return sendJSON(res, 202, { job });
+    }
+
+    const cattleJobRetry = /^\/api\/v1\/cattle\/jobs\/([^/]+)\/retry$/.exec(pathname);
+    if (cattleJobRetry && req.method === 'POST') {
+      requireWriteToken(req);
+      return sendJSON(res, 202, { job: await backgroundJobManager.retryJob(decodeURIComponent(cattleJobRetry[1])) });
+    }
+
+    const cattleJobMatch = /^\/api\/v1\/cattle\/jobs\/([^/]+)$/.exec(pathname);
+    if (cattleJobMatch && req.method === 'GET') {
+      const job = await cattleRepository.getJob(decodeURIComponent(cattleJobMatch[1]));
+      if (!job) throw new ApiError('not_found', `Job "${decodeURIComponent(cattleJobMatch[1])}" not found`);
+      return sendJSON(res, 200, { job });
+    }
+
+    if (pathname === '/api/v1/cattle/models/train' && req.method === 'POST') {
+      requireWriteToken(req);
+      const body = await parseBody(req);
+      const aoi = body.aoiId ? await cattleRepository.getAoi(body.aoiId) : undefined;
+      const result = await triggerModelTraining(body.target || 'heat_stress_panting', aoi || undefined);
+      return sendJSON(res, 200, result);
+    }
+
+    // ---- Authentication (demo accounts) ----------------------------------------------------------
     if (pathname === '/api/v1/auth/login' && req.method === 'POST') {
       const body = await parseBody(req);
       const session = desk.loginUser(body);
-      return session ? sendJSON(res, 200, session) : sendJSON(res, 401, { error: 'Invalid login credentials' });
+      if (!session) throw new ApiError('unauthorized', 'Invalid login credentials');
+      return sendJSON(res, 200, session);
     }
     if (pathname === '/api/v1/auth/session' && req.method === 'GET') {
       const user = desk.userForToken(req.headers.authorization);
-      return user ? sendJSON(res, 200, { user }) : sendJSON(res, 401, { error: 'No active session' });
+      if (!user) throw new ApiError('unauthorized', 'No active session');
+      return sendJSON(res, 200, { user });
     }
     if (pathname === '/api/v1/auth/logout' && req.method === 'POST') {
-      const ok = desk.logout(req.headers.authorization);
-      return sendJSON(res, 200, { ok });
+      return sendJSON(res, 200, { ok: desk.logout(req.headers.authorization) });
     }
 
-    // API: Krishi officer desk (sign-in required for everything except the officer list and login)
+    // ---- Krishi officer desk -----------------------------------------------------------------------
     if (pathname === '/api/v1/officers' && req.method === 'GET') {
       return sendJSON(res, 200, desk.OFFICERS);
     }
     if (pathname === '/api/v1/officer/login' && req.method === 'POST') {
       const body = await parseBody(req);
       const session = desk.login(String(body.officerId ?? ''), String(body.accessCode ?? ''));
-      return session ? sendJSON(res, 200, session) : sendJSON(res, 401, { error: 'Wrong officer ID or access code' });
+      if (!session) throw new ApiError('unauthorized', 'Wrong officer ID or access code');
+      return sendJSON(res, 200, session);
     }
     if (pathname.startsWith('/api/v1/officer/')) {
       const officer = desk.officerForToken(req.headers.authorization);
-      if (!officer) {
-        return sendJSON(res, 401, { error: 'Officer sign-in required' });
-      }
+      if (!officer) throw new ApiError('unauthorized', 'Officer sign-in required');
       if (pathname === '/api/v1/officer/desk' && req.method === 'GET') {
         return sendJSON(res, 200, deskView(officer));
       }
       if (pathname === '/api/v1/officer/observations' && req.method === 'POST') {
         const body = await parseBody(req);
         const result = desk.addObservation(officer.id, body);
-        if (result.error) return sendJSON(res, 400, { error: result.error });
+        if (result.error) throw new ApiError('invalid_input', result.error);
         return sendJSON(res, 200, { observation: result.observation, advice: adviseWithNarration(planRequest({}), body.farmerId) });
       }
       const resolve = /^\/api\/v1\/officer\/callbacks\/([^/]+)\/resolve$/.exec(pathname);
       if (resolve && req.method === 'POST') {
         const request = desk.resolveCallback(decodeURIComponent(resolve[1]));
-        return request ? sendJSON(res, 200, request) : sendJSON(res, 404, { error: 'Unknown call-back request' });
+        if (!request) throw new ApiError('not_found', 'Unknown call-back request');
+        return sendJSON(res, 200, request);
       }
       if (pathname === '/api/v1/officer/calls' && req.method === 'GET') {
         return sendJSON(res, 200, { calls: CALL_LOG, provider: awajConfig() });
@@ -753,32 +926,26 @@ const server = http.createServer(async (req, res) => {
         desk.resetDesk();
         return sendJSON(res, 200, { ok: true });
       }
-      return sendJSON(res, 404, { error: 'Unknown officer endpoint' });
+      throw new ApiError('not_found', 'Unknown officer endpoint');
     }
 
-    // API: Data Quality & Provenance
     if (pathname === '/api/v1/data-release' && req.method === 'GET') {
       return sendJSON(res, 200, dataRelease());
     }
 
-    // Serve static files from apps/saao-dashboard/public
-    let filePath = path.join(PUBLIC_DIR, pathname === '/' ? 'index.html' : pathname);
+    // Unknown API paths are JSON 404s, never the HTML page.
+    if (pathname.startsWith('/api/')) {
+      throw new ApiError('not_found', `No such endpoint: ${req.method} ${pathname}`);
+    }
+
+    // ---- Static website ---------------------------------------------------------------------------
+    const requested = path.resolve(PUBLIC_DIR, '.' + (pathname === '/' ? '/index.html' : pathname));
+    const inside = requested === PUBLIC_DIR || requested.startsWith(PUBLIC_DIR + path.sep);
+    let filePath = inside ? requested : path.join(PUBLIC_DIR, 'index.html');
     if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
       filePath = path.join(PUBLIC_DIR, 'index.html');
     }
-
-    const ext = path.extname(filePath).toLowerCase();
-    const mimeTypes: Record<string, string> = {
-      '.html': 'text/html; charset=utf-8',
-      '.css': 'text/css; charset=utf-8',
-      '.js': 'application/javascript; charset=utf-8',
-      '.json': 'application/json; charset=utf-8',
-      '.geojson': 'application/geo+json; charset=utf-8',
-      '.png': 'image/png',
-      '.svg': 'image/svg+xml',
-    };
-
-    const contentType = mimeTypes[ext] || 'text/plain';
+    const contentType = MIME_TYPES[path.extname(filePath).toLowerCase()] || 'text/plain';
     const content = fs.readFileSync(filePath);
     // text files go out gzipped when the browser accepts it (the map's outlines are ~0.9 MB, ~0.25 MB gzipped)
     if (content.length > 2048 && !contentType.startsWith('image/png') && /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''))) {
@@ -791,13 +958,18 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': contentType });
     res.end(content);
   } catch (err: any) {
+    if (err instanceof ApiError) return sendError(res, err);
     if (err instanceof UnsupportedUnionError) {
-      return sendJSON(res, 422, { error: err.message, supportedUnions: SUPPORTED_UNIONS });
+      return sendError(res, new ApiError('invalid_input', err.message, { supportedUnions: SUPPORTED_UNIONS }, 422));
     }
     console.error('Server error:', err);
-    sendJSON(res, 500, { error: err.message || 'Internal Server Error' });
+    sendError(res, new ApiError('internal', 'Internal server error'));
   }
 });
+
+backgroundJobManager.recoverInterruptedJobs()
+  .then(n => { if (n) console.warn(`Marked ${n} job(s) interrupted by a previous restart as failed (retry them via POST /api/v1/cattle/jobs/:id/retry)`); })
+  .catch(err => console.error('Job recovery failed:', err));
 
 server.listen(PORT, () => {
   console.log(`✓ EDEN API & SAAO Dashboard server listening on http://localhost:${PORT} (data release ${RELEASE.id})`);
