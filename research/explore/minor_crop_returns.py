@@ -8,7 +8,8 @@ farmer can ask for, this estimates:
                 x BBS 2024-25 national yield (research/bbs/crop_district.csv, all 64 districts)
   cost        = 65% of the crop value: the census crops spend 51-66% of their crop value (maize 51%, HYV Aman and Boro
                 ~60%, wheat 66%), and farm surveys of lentil (Sultana et al. 2025, Food and Energy Security: benefit-cost
-                ratio 1.43, cost 70% of value) and mungbean (cost 62% of value) sit in the same band
+                ratio 1.43, cost 70% of value) and mungbean (a 2008 BARI field survey, "Profitability of some BARI released crop
+                varieties in some locations of Bangladesh": Tk 20,983 cost against Tk 33,940 return, 62%) sit in the same band
   net return  = crop value - cost
 
 Soybean, sunflower and barley have no harvest price in the yearbook, so they stay without an income estimate.
