@@ -46,7 +46,7 @@ export function liveUpazilas(district?: string) {
   const rows = district ? d.upazilas.filter(u => u.district.toLowerCase() === district.toLowerCase()) : d.upazilas;
   return rows.map(u => ({
     id: u.id, name: u.name, district: u.district,
-    soilStatus: u.power.soilStatus, rainStatus: u.power.rainStatus,
+    soilStatus: u.power.soilStatus, rainStatus: u.power.rainStatus, rain30PctOfNormal: u.power.rain30PctOfNormal,
     rain7: u.imerg?.rain7 ?? u.power.rain7, tmax: u.power.tmax, hotDays7: u.power.hotDays7,
   }));
 }

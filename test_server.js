@@ -9,7 +9,8 @@ const STORE = path.join(os.tmpdir(), `eden-officer-test-${process.pid}.json`);
 const OFFICER_CODE = process.env.EDEN_OFFICER_CODE || 'talanda-demo';
 const serverProc = spawn('node', ['--experimental-strip-types', 'services/api/src/server.ts'], {
   stdio: ['inherit', 'pipe', 'pipe'],
-  env: { ...process.env, EDEN_OFFICER_STORE: STORE, AWAJ_LIVE: '0' }, // tests never place a real call
+  // tests never place a real call, and read a fixed day of NASA conditions (the daily update rewrites the live file)
+  env: { ...process.env, EDEN_OFFICER_STORE: STORE, AWAJ_LIVE: '0', EDEN_LIVE_FILE: path.resolve('tests/fixtures/live_conditions_2026-10-01.json') },
 });
 
 serverProc.stdout.on('data', (d) => process.stdout.write(d));
@@ -94,6 +95,19 @@ async function run() {
   const gpl = await (await fetch(`${BASE}/api/v1/overview?place=ADM3_Godagari`)).json();
   check(gpl.context.winterGreenness?.recent?.cyclesPerYear !== undefined, 'every upazila has its MODIS winter greenness and crops a year');
   console.log('✓ Main crop without rice:', wheat.options[0].nameEnglish, '; Godagari crops a year', gpl.context.winterGreenness.early.cyclesPerYear, '->', gpl.context.winterGreenness.recent.cyclesPerYear);
+
+  // The overview's map of Bangladesh: outlines for all 544 upazilas (sent gzipped) and one row of NASA values each
+  const mapRows = await (await fetch(`${BASE}/api/v1/map/upazilas`)).json();
+  const god = mapRows.upazilas.ADM3_Godagari;
+  check(Object.keys(mapRows.upazilas).length === 544 && god.cropsNow !== undefined && god.boroIrrigationMm > 0 && god.pesticideRice?.length === 2 && god.organicMatter,
+    'the map has 544 upazilas with MODIS, NASA replay, PEST-CHEMGRIDS and SRDI values');
+  check(Object.values(mapRows.upazilas).filter(r => r.rainStatus).length > 500, "the map carries the daily NASA update's rain and soil status");
+  const outlines = await fetch(`${BASE}/data/bd_upazilas.geojson`, { headers: { 'Accept-Encoding': 'gzip' } });
+  const encoding = outlines.headers.get('content-encoding');
+  const shapes = await outlines.json();
+  check(outlines.headers.get('content-type')?.includes('geo+json') && encoding === 'gzip' && shapes.features.length === 544
+    && shapes.features.every(f => mapRows.upazilas[f.properties.id]), 'the map outlines are gzipped and match the 544 upazila ids');
+  console.log('✓ Map:', Object.keys(mapRows.upazilas).length, 'upazilas; Godagari crops a year', god.cropsNow, ', rice pesticide', god.pesticideRice.join('-'), 'kg/ha');
 
   // 2. POST /api/v1/advice
   console.log('Testing POST /api/v1/advice ...');

@@ -7,7 +7,7 @@ export class IncomeDimensionPlugin implements IEvidenceDimensionPlugin {
   readonly id = 'income';
   readonly displayNameBangla = 'নিট লাভ (নমুনা হিসাব)';
   readonly displayNameEnglish = 'Net Farm Income (illustrative)';
-  readonly version = '2.0.0';
+  readonly version = '2.1.0';
   readonly isEnabled = true;
 
   evaluate(context: EvaluationContext): DimensionScoreResult {
@@ -40,7 +40,10 @@ export class IncomeDimensionPlugin implements IEvidenceDimensionPlugin {
     }
 
     // Team placeholders until DAM farm-gate prices and farmer cost interviews are in (see crop_catalog.ts); potato,
-    // maize and Aus use the research net returns in crops/crop_parameters.csv (data/crop_choice.ts).
+    // maize, Aus and jute use the research net returns in crops/crop_parameters.csv, and chickpea, grass pea, sweet
+    // potato, mungbean and sesame the BBS price x yield estimate in crops/minor_crop_returns.csv (data/crop_choice.ts).
+    const sources = [...new Set([hasAman ? { incomeSource: 'team estimate (crop_catalog.ts) for Aman' } : null, rabiName, k1?.catalog, k2?.catalog].filter(Boolean)
+      .map(c => (c as { incomeSource?: string }).incomeSource ?? 'team estimate (crop_catalog.ts)'))];
     const total = (hasAman ? ILLUSTRATIVE_AMAN_GROSS_MARGIN_TK_PER_HA : 0) + (k2Margin ?? 0) + rabiMargin + (k1Margin ?? 0);
     const incomeScore = clampScore((total - 40000) / 80000, 0.35, 0.96);
     const counted = [hasAman, Boolean(k2 && k2Margin !== null), true, Boolean(k1 && k1Margin !== null)].filter(Boolean).length;
@@ -55,8 +58,8 @@ export class IncomeDimensionPlugin implements IEvidenceDimensionPlugin {
       score: incomeScore,
       confidence: 'low',
       staleOrMissing: true,
-      summaryBangla: `নমুনা হিসাব: ${seasonsBangla} প্রায় ${bnNumber(total)} টাকা/হেক্টর নিট লাভ ধরা হয়েছে (দলের অনুমান; বাজারদর ও খরচ যাচাই বাকি)।${k1Bangla}`,
-      summaryEnglish: `Illustrative: about ${total.toLocaleString('en-US')} BDT/ha over ${seasonsEnglish} (team estimate; prices and costs not yet verified).${k1English}`,
+      summaryBangla: `নমুনা হিসাব: ${seasonsBangla} প্রায় ${bnNumber(total)} টাকা/হেক্টর নিট লাভ ধরা হয়েছে (দলের অনুমান ও BBS দর-ফলনের হিসাব; কৃষকের খরচ যাচাই বাকি)।${k1Bangla}`,
+      summaryEnglish: `Illustrative: about ${total.toLocaleString('en-US')} BDT/ha over ${seasonsEnglish} (team estimates and BBS price-and-yield estimates; farmer costs not yet verified).${k1English}`,
       metrics: {
         illustrativeTotalBdtPerHa: total,
         illustrativeRabiBdtPerHa: rabiMargin,
@@ -65,7 +68,7 @@ export class IncomeDimensionPlugin implements IEvidenceDimensionPlugin {
         districtYieldTPerHa: rabi.districtYieldTPerHa ?? 'n/a',
       },
       provenance: {
-        source: 'Team placeholder estimate. Pending: DAM farm-gate prices and farmer cost interviews. District yield for context: BBS Rajshahi 2024-25',
+        source: `Net return per hectare: ${sources.join('; ')}. Pending: farmer cost interviews. District yield for context: BBS Rajshahi 2024-25`,
         timePeriod: 'demo placeholder',
         spatialResolution: 'Tanore',
         measuredOrModeled: 'assumed',

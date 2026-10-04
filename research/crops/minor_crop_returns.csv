@@ -1,0 +1,9 @@
+crop,bbs_crop,year,area_ha,yield_t_ha,price_tk_kg,crop_value_tk_ha,cost_tk_ha,net_return_tk_ha,note
+chickpea,Gram,2024-25,3524,1.26,99.04,125201.0,81380.0,43820.0,estimate: cost at 65% of crop value
+grasspea,Kheshari,2024-25,108276,1.2,77.04,92803.0,60322.0,32481.0,estimate: cost at 65% of crop value
+mungbean,Green gram (Mug),2024-25,125870,1.1,111.35,122216.0,79440.0,42776.0,estimate: cost at 65% of crop value
+sesame,Sesame Till (Rabi & Kharif),2024-25,30229,0.98,119.98,117827.0,76588.0,41239.0,estimate: cost at 65% of crop value
+sweetpotato,Sweet Potato,2024-25,27394,11.41,25.75,293857.0,191007.0,102850.0,estimate: cost at 65% of crop value
+soybean,Soyabean,2024-25,57781,1.88,,,,,no BBS harvest price
+sunflower,Sunflower (Surjamukhi),2024-25,4663,1.67,,,,,no BBS harvest price
+barley,Jab,2024-25,116,1.27,,,,,no BBS harvest price

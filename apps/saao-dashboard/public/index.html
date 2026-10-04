@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wdth,wght@75..125,300..800&family=Hind+Siliguri:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous" referrerpolicy="no-referrer">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="theme.css">
 </head>
@@ -198,13 +199,17 @@
               <span class="badge badge-info" id="dataDateBadge">…</span>
             </div>
             <div class="tanore-map-panel">
-              <div class="map-placeholder">
-                <div class="map-grid"></div>
-                <div class="map-pin">
-                  <div class="pin-pulse"></div>
-                  <span id="mapPinLabel">তানোর পাইলট পয়েন্ট</span>
+              <div class="bd-map-wrap">
+                <div class="map-toolbar">
+                  <label for="mapLayer" data-i18n="map.layerLabel">মানচিত্রে রং:</label>
+                  <select id="mapLayer"></select>
                 </div>
+                <div id="bdMap" class="bd-map" role="region" aria-label="Map of Bangladesh, 544 upazilas / বাংলাদেশের মানচিত্র, ৫৪৪ উপজেলা"></div>
+                <div id="mapFacts" class="map-facts" aria-live="polite"></div>
+                <div id="mapLegend" class="map-legend"></div>
+                <details id="mapTable" class="map-table"></details>
               </div>
+              <p class="map-pin-label"><span class="status-dot"></span> <span id="mapPinLabel">তানোর পাইলট পয়েন্ট</span></p>
               <div class="map-specs">
                 <div class="spec-item">
                   <span class="label" data-i18n="overview.spec.grid">নাসা গ্রিড:</span>
@@ -1101,6 +1106,7 @@
 
   </main>
 
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

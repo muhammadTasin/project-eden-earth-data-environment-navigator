@@ -1,5 +1,7 @@
 package org.projecteden.farmermobile.ui.screens.erosion
 
+import org.projecteden.farmermobile.theme.EdenShape
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -139,7 +141,8 @@ fun RiverErosionScreen(
                         Text(text = state.message, color = MaterialTheme.colorScheme.error)
                         Button(
                             onClick = { viewModel.loadRiverData(selectedRiver) },
-                            colors = ButtonDefaults.buttonColors(containerColor = Primary, contentColor = OnPrimary)
+                            colors = ButtonDefaults.buttonColors(containerColor = Primary, contentColor = OnPrimary),
+                            shape = EdenShape
                         ) {
                             Icon(Icons.Default.Refresh, contentDescription = null)
                             Spacer(modifier = Modifier.width(6.dp))

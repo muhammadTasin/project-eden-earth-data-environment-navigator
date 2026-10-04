@@ -15,11 +15,13 @@ field is actually free. For each sowing date, over the seasons 2001-2025:
                 the field dries, plus 150 mm to puddle it;
   heat:         days above the crop's limit in its sensitive stage. Rice 35 C and wheat 30 C come from
                 crops/crop_parameters.csv; the other limits are literature values and are marked as assumed;
-  heavy rain:   days with 50 mm of rain or more while the crop is in the field (IMERG), the waterlogging risk for
-                upland crops in the monsoon.
+  heavy rain:   days with 50 mm of rain or more while the crop is in the field (IMERG);
+  waterlogged:  days when NASA POWER's topsoil wetness (MERRA-2 GWETTOP, top 5 cm, 0 dry to 1 saturated) is 0.9 or
+                more while the crop is in the field; with heavy rain, the waterlogging risk for upland crops in the
+                monsoon (sesame, mungbean and soybean rot in saturated soil).
 Fertilizer: the SRDI Talanda card, the engine's stand-in everywhere until each upazila's card is added; barley and
 soybean, which the card does not list, use the BARI handbook doses. Jute has no FAO-56 crop coefficient; it uses
-fibre-crop values marked as assumed.
+the values measured for tossa jute at CRIJAF, Barrackpore (Barman et al. 2014).
 
 Output: packages/rotation-engine/src/data/crop_choice_replay.json
 Usage : python research/explore/crop_choice_replay.py   (needs the POWER cache from research/acquire)
@@ -101,8 +103,10 @@ CROPS: dict[str, dict] = {
                    srdi=("Kharif-1", "তিল")),
     "jute": dict(season="Kharif-1", label="Jute (BJRI Tossa Pat-4)", window="15 Apr-5 May",
                  window_source="BBS crop calendar (crops/crop_parameters.csv): mid-April to early May", days=120,
-                 days_source="BBS crop calendar: harvested in August", kc=("assumed", (0.5, 1.1, 0.8)),
-                 kc_source="no FAO-56 value for jute; fibre-crop values, assumed", heat=None,
+                 days_source="BBS crop calendar: harvested in August", kc=("study", (0.72, 1.26, 0.46)),
+                 kc_source=("Barman, Kundu, Ghorai & Mitra (2014), Journal of Agricultural Physics 14:67-72: tossa jute "
+                            "ET measured at ICAR-CRIJAF Barrackpore, Lower Gangetic plain (initial, mid-season, late; "
+                            "FAO-56 has no jute value)"), heat=None,
                  srdi=("Kharif-1", "পাট")),
     "soybean_k2": dict(season="Kharif-2", label="Soybean, monsoon (BARI Soybean-6)", handbook="soybean",
                        handbook_window=1, days=105, days_source="BARI handbook: 90-120 days", kc=("fao", "Soybeans"),
@@ -153,7 +157,7 @@ def dose(spec: dict, card: pd.DataFrame, tech: pd.DataFrame) -> dict:
 
 def kc_of(spec: dict, cp: pd.DataFrame, fao: pd.DataFrame) -> tuple[tuple[float, float, float], str]:
     table, name = spec["kc"]
-    if table == "assumed":
+    if table in ("assumed", "study"):  # a value of our own, or one measured in a published field study
         return tuple(name), spec["kc_source"]
     if table == "cp":
         return tuple(float(x) for x in cp.loc[name, ["kc_ini", "kc_mid", "kc_end"]]), "crops/crop_parameters.csv (FAO-56 Table 12)"
@@ -191,13 +195,13 @@ def plan(crop_id: str, spec: dict, tech: pd.DataFrame, brri: pd.DataFrame) -> di
 
 def replay_crop(p: pd.DataFrame, spec: dict, kc: tuple, cal: dict) -> list[list]:
     """[sowing, harvest, net irrigation median, p10, p90, crop water use median, hot days median, days with 50 mm+
-    of rain median] per sowing date."""
+    of rain median, waterlogged topsoil days median] per sowing date."""
     rows = []
     n = cal["days"]
     paddy = "brri" in spec
     residual = 0.0 if spec["season"] == "Kharif-1" else 50.0  # wet soil after Aman or in the monsoon
     for ref in cal["sow"]:
-        net, use, hot, wet = [], [], [], []
+        net, use, hot, wet, soak = [], [], [], [], []
         for y in SEASONS:
             sow = pd.Timestamp(y if ref.month >= 7 else y + 1, ref.month, ref.day)
             days = pd.date_range(sow, periods=n)
@@ -208,6 +212,10 @@ def replay_crop(p: pd.DataFrame, spec: dict, kc: tuple, cal: dict) -> list[list]
             if np.isnan(et0).any() or np.isnan(rain).any():
                 continue  # missing days stay missing: the season is left out, never filled
             wet.append(int((rain >= 50).sum()))
+            if "GWETTOP" in p:
+                topsoil = p.loc[days, "GWETTOP"]
+                if topsoil.notna().all():
+                    soak.append(int((topsoil >= 0.9).sum()))
             if paddy:
                 etc = cc.kc_curve(n, kc) * et0
                 s, irrigation = cc.START_WATER, 150.0  # puddling, then keep standing water
@@ -232,7 +240,8 @@ def replay_crop(p: pd.DataFrame, spec: dict, kc: tuple, cal: dict) -> list[list]
         harvest = (ref + pd.Timedelta(days=n - 1)).strftime("%m-%d")
         rows.append([ref.strftime("%m-%d"), harvest, int(round(net_s.median())), int(round(net_s.quantile(0.1))),
                      int(round(net_s.quantile(0.9))), int(round(float(np.median(use)))),
-                     int(round(float(np.median(hot)))) if hot else None, int(round(float(np.median(wet))))])
+                     int(round(float(np.median(hot)))) if hot else None, int(round(float(np.median(wet)))),
+                     int(round(float(np.median(soak)))) if soak else None])
     return rows
 
 
@@ -283,13 +292,13 @@ def main() -> None:
         print(f"{key:<16} sunflower {pick('sunflower')[0]} {pick('sunflower')[2]:>3} mm; potato {pick('potato')[2]:>3} mm; "
               f"maize {pick('maize')[2]:>3} mm, {pick('maize')[6]} hot; mungbean {pick('mungbean')[2]:>3} mm; "
               f"Aus {pick('aus')[2]:>4} mm; jute {pick('jute')[2]:>3} mm; soybean (monsoon) {pick('soybean_k2')[2]:>3} mm, "
-              f"{pick('soybean_k2')[7]} heavy-rain days; station {station['name'] if station else '-'}")
+              f"{pick('soybean_k2')[7]} heavy-rain days, {pick('soybean_k2')[8]} waterlogged; station {station['name'] if station else '-'}")
 
     OUT.write_text(json.dumps({"generatedOn": f"{date.today()}",
                                "seasons": "monsoon 2001-2024; Rabi 2001-02 to 2024-25; Kharif-1 2002 to 2025",
                                "seasonCount": len(SEASONS),
                                "method": __doc__.split("\n\n")[1].strip(),
-                               "columns": ["sowing", "harvest", "netIrrigationMm", "p10", "p90", "cropWaterUseMm", "hotDays", "heavyRainDays"],
+                               "columns": ["sowing", "harvest", "netIrrigationMm", "p10", "p90", "cropWaterUseMm", "hotDays", "heavyRainDays", "waterloggedDays"],
                                "crops": crops, "places": out}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print(f"wrote {OUT.relative_to(ROOT)}: {len(crops)} crops x {len(out)} places")
 

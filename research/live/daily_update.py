@@ -50,6 +50,7 @@ UPSTREAM = [
      "districts": ["Sylhet", "Maulvibazar", "Habiganj"]},
 ]
 WATCH_MM, WARNING_MM = 200, 250
+CARRY_DAYS = 7  # a run without IMERG keeps the last IMERG reading this long, with its own date
 SOHRA = (UPSTREAM[0]["lat"], UPSTREAM[0]["lon"])
 
 
@@ -256,6 +257,21 @@ def main() -> None:
                                      "level": level, "series": series})
     haor["modisFlood"] = modis_flood(today)
 
+    # No IMERG on this run (no Earthdata Login, or GES DISC down): keep the last reading for up to a week, marked
+    # with its own date, so the haor check and the upazila rain do not go blank for a day.
+    imerg_date, carried = (imerg["last"] if imerg else None), False
+    if not imerg and OUT.exists():
+        prev = json.loads(OUT.read_text(encoding="utf-8"))
+        ph = prev["summary"].get("haor") or {}
+        if ph.get("available") and ph.get("date") and (today - date.fromisoformat(ph["date"])).days <= CARRY_DAYS:
+            imerg_date, carried = date.fromisoformat(ph["date"]), True
+            haor = {**ph, "modisFlood": haor["modisFlood"], "carriedForward": True, "ageDays": (today - imerg_date).days}
+            before = {r["id"]: r.get("imerg") for r in prev["upazilas"]}
+            for r in records:
+                if (old := before.get(r["id"])) and (today - date.fromisoformat(old["date"])).days <= CARRY_DAYS:
+                    r["imerg"] = {**old, "carriedForward": True}
+            print(f"GPM IMERG not refreshed; kept the reading of {imerg_date} ({(today - imerg_date).days} days old)")
+
     summary = {
         "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "upazilas": len(records),
@@ -265,8 +281,8 @@ def main() -> None:
             {"id": "power", "name": "NASA POWER daily (MERRA-2 / GEOS-IT, precipitation from GPM IMERG)", "latestDate": f"{latest_d}",
              "lagDays": (today - latest_d).days, "grid": "0.5 degree", "login": False},
             {"id": "imerg", "name": "NASA GPM IMERG daily (Early run for the newest day, then Late)",
-             "latestDate": f"{imerg['last']}" if imerg else None, "lagDays": (today - imerg["last"]).days if imerg else None,
-             "grid": "0.1 degree", "login": True},
+             "latestDate": f"{imerg_date}" if imerg_date else None, "lagDays": (today - imerg_date).days if imerg_date else None,
+             "grid": "0.1 degree", "login": True, "carriedForward": carried},
         ],
         "haor": haor,
         "method": {

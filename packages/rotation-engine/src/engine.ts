@@ -669,7 +669,9 @@ export class RotationEngine {
       ipmActions,
       ledger,
     };
-    option.stewardship = stewardshipTips(option, tspKgHa, riceCrops);
+    const cropIds = [aman ? 'aman' : spec.kharif2 ? choiceIdOf(spec.kharif2) : '', choiceIdOf(spec.rabi), spec.kharif1 ? choiceIdOf(spec.kharif1) : '']
+      .filter(Boolean);
+    option.stewardship = stewardshipTips(option, tspKgHa, riceCrops, cropIds);
     return option;
   }
 

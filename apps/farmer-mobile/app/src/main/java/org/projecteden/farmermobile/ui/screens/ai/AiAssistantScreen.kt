@@ -292,7 +292,7 @@ private fun ChatBubble(message: ChatMessage) {
         ) {
             Surface(
                 color = Primary,
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 4.dp, bottomStart = 16.dp, bottomEnd = 16.dp),
+                shape = RoundedCornerShape(2.dp),
                 modifier = Modifier.fillMaxWidth(0.82f)
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
@@ -321,7 +321,7 @@ private fun ChatBubble(message: ChatMessage) {
         ) {
             Surface(
                 color = SurfaceContainerLow,
-                shape = RoundedCornerShape(topStart = 4.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 16.dp),
+                shape = RoundedCornerShape(2.dp),
                 border = if (message.isInsufficientEvidence) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBA1A1A).copy(alpha = 0.4f)) else null,
                 modifier = Modifier.fillMaxWidth(0.92f)
             ) {

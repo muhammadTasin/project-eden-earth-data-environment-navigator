@@ -1,7 +1,8 @@
 /**
  * Soil-and-water tips beside a rotation: what the plan saves against the usual Aman-Boro rotation at the same place,
  * and what to watch for. Numbers come from the plan's own records (SRDI fertilizer cards, the NASA POWER + IMERG water
- * replay, NASA GLDAS groundwater) and the SRDI soil fertility atlas for the upazila. Satellites cannot measure lead,
+ * replay, NASA GLDAS groundwater, NASA SEDAC's PEST-CHEMGRIDS pesticide estimate) and the SRDI soil fertility atlas for
+ * the upazila. Satellites cannot measure lead,
  * mercury or arsenic in soil, so the metal tips are sourced safe-practice guidance tied to the plan's irrigation and
  * phosphate use, not a measurement.
  */
@@ -28,6 +29,41 @@ function soilAtlas() {
   return atlas!;
 }
 
+interface PesticideLoad {
+  source: { name: string; citation: string; year: number; units: string; caution: string };
+  classes: Record<string, { national: { low: number; high: number } }>;
+  upazilas: Record<string, Record<string, [number, number]>>;
+}
+let pesticide: PesticideLoad | null = null;
+function pesticideLoad() {
+  if (!pesticide) pesticide = JSON.parse(fs.readFileSync(new URL('./data/pesticide_load.json', import.meta.url), 'utf8'));
+  return pesticide!;
+}
+
+/** PEST-CHEMGRIDS crop class of each crop the engine plans; pulses, oilseeds, jute and barley are its "other crops". */
+const PEST_CLASS: Record<string, string> = {
+  aman: 'rice', boro: 'rice', aus: 'rice', wheat: 'wheat', maize: 'maize', soybean: 'soybean', soybean_k2: 'soybean',
+  potato: 'vegfruit', sweetpotato: 'vegfruit',
+};
+
+/**
+ * Pesticide active ingredient a year (kg/ha, the dataset's low and high estimates) on a list of crops at this upazila:
+ * each crop adds its class's 2020 rate (NASA SEDAC PEST-CHEMGRIDS v1.01, research/explore/pesticide_load.py).
+ */
+export function pesticideEstimate(cropIds: string[]): { low: number; high: number } {
+  const data = pesticideLoad();
+  const here = data.upazilas[upazilaId()] ?? {};
+  let low = 0;
+  let high = 0;
+  for (const id of cropIds) {
+    const cls = PEST_CLASS[id] ?? 'other';
+    const [l, h] = here[cls] ?? [data.classes[cls].national.low, data.classes[cls].national.high];
+    low += l;
+    high += h;
+  }
+  return { low, high };
+}
+
 /** The upazila the advice is for: the pilot is Tanore. */
 function upazilaId(): string {
   return LOC.kind === 'pilot' ? 'ADM3_Tanore' : LOC.id;
@@ -49,9 +85,10 @@ function baseline() {
 const perBigha = (kgHa: number) => kgHa * BIGHA_HA;
 
 /**
- * Tips for one option. `tspKgHa` is the plan's phosphate per hectare; `riceCrops` how many rice crops the year holds.
+ * Tips for one option. `tspKgHa` is the plan's phosphate per hectare; `riceCrops` how many rice crops the year holds;
+ * `cropIds` the year's crops (engine ids such as 'aman', 'wheat', 'jute').
  */
-export function stewardshipTips(option: CandidateRotation, tspKgHa: number, riceCrops: number): StewardshipTip[] {
+export function stewardshipTips(option: CandidateRotation, tspKgHa: number, riceCrops: number, cropIds: string[]): StewardshipTip[] {
   const base = baseline();
   const ledger = option.ledger!;
   const tips: StewardshipTip[] = [];
@@ -101,26 +138,44 @@ export function stewardshipTips(option: CandidateRotation, tspKgHa: number, rice
     source: 'SRDI Fertilizer Recommendation cards (Talanda stand-in); FAO fertilizer guidance',
   });
 
-  // Pesticide: the rice-pest cycle, and safe use
+  // Pesticide: NASA SEDAC's estimate for the year's crops against Aman-Boro, the rice-pest cycle, and safe use
+  const plan = pesticideEstimate(cropIds);
+  const usual = pesticideEstimate(['aman', 'boro']);
+  const grams = (kgHa: number) => kgHa * BIGHA_HA * 1000;
+  const lessPct = Math.round(100 * (1 - (plan.low + plan.high) / (usual.low + usual.high)));
+  const vegetable = cropIds.some(id => PEST_CLASS[id] === 'vegfruit');
+  const sameAsUsual = isBaseline || Math.abs(lessPct) < 3;
+  const pestNumbersBn = sameAsUsual
+    ? `নাসার PEST-CHEMGRIDS অনুমানে এই এলাকায় আমন–বোরো চক্রে বছরে বিঘাপ্রতি প্রায় ${bnNumber(grams(usual.low))}–${bnNumber(grams(usual.high))} গ্রাম কীটনাশকের সক্রিয় উপাদান পড়ে।`
+    : `নাসার PEST-CHEMGRIDS অনুমানে এই চক্রের ফসলে বছরে বিঘাপ্রতি প্রায় ${bnNumber(grams(plan.low))}–${bnNumber(grams(plan.high))} গ্রাম কীটনাশকের সক্রিয় উপাদান পড়ে, প্রচলিত আমন–বোরো চক্রে ${bnNumber(grams(usual.low))}–${bnNumber(grams(usual.high))} গ্রাম${lessPct > 0 ? ` (প্রায় ${bnDigits(lessPct)}% কম)` : ` (প্রায় ${bnDigits(-lessPct)}% বেশি)`}।`;
+  const pestNumbersEn = sameAsUsual
+    ? `NASA SEDAC's PEST-CHEMGRIDS estimates about ${Math.round(grams(usual.low))}-${Math.round(grams(usual.high))} g of pesticide active ingredient per bigha a year on the Aman-Boro rotation here.`
+    : `NASA SEDAC's PEST-CHEMGRIDS estimates about ${Math.round(grams(plan.low))}-${Math.round(grams(plan.high))} g of pesticide active ingredient per bigha a year on this rotation's crops here, against ${Math.round(grams(usual.low))}-${Math.round(grams(usual.high))} g on the usual Aman-Boro rotation (${lessPct > 0 ? `about ${lessPct}% less` : `about ${-lessPct}% more`}).`;
   tips.push({
     kind: 'pesticide',
     bn: [
+      pestNumbersBn,
+      vegetable ? 'আলু ও সবজিতে সবচেয়ে বেশি কীটনাশক লাগে: রোগ দেখা দিলে তবেই স্প্রে, পরপর একই ওষুধ নয়।' : '',
       riceCrops === 0
         ? 'সারা বছর ধান নেই: মাজরা পোকা ও বাদামি গাছফড়িং খাবার পায় না, ধানের কীটনাশক লাগে না।'
         : riceCrops === 1
           ? 'ধানের পর ধান নেই: ধানের পোকার চক্র ভাঙে, বোরো চক্রের চেয়ে কীটনাশক স্প্রে কম লাগে।'
           : 'ধানের পর ধান: পোকা সারা বছর খাবার পায়; আলোক ফাঁদ ও পার্চিং দিন, মাঠ ঘুরে পোকা গুনে তবেই স্প্রে।',
       'স্প্রের পর ফসল তোলার নির্ধারিত অপেক্ষার সময় মানুন; খালি বোতল পুকুর বা খালে ফেলবেন না।',
-    ].join(' '),
+      '(কীটনাশকের হিসাব মডেলের অনুমান, মাটি শোধনের ফিউমিগ্যান্ট বাদে; মাঠের মাপ নয়।)',
+    ].filter(Boolean).join(' '),
     en: [
+      pestNumbersEn,
+      vegetable ? 'Potato and vegetables take the most pesticide: spray only when disease shows, and rotate products.' : '',
       riceCrops === 0
         ? 'No rice all year: stem borers and planthoppers find no host, so no rice pesticide.'
         : riceCrops === 1
           ? 'No rice after rice: the rice-pest cycle breaks and fewer sprays are needed than in the Boro rotation.'
           : 'Rice after rice keeps pests fed all year: use light traps and perches, and spray only after counting pests.',
       'Keep the waiting time between spraying and harvest, and never throw empty bottles into ponds or canals.',
-    ].join(' '),
-    source: 'BRRI rice IPM guidance; FAO/WHO International Code of Conduct on Pesticide Management (2014)',
+      '(The pesticide figures are a model estimate without soil fumigants, not a farm measurement.)',
+    ].filter(Boolean).join(' '),
+    source: 'NASA SEDAC PEST-CHEMGRIDS v1.01 (2020, Maggi et al. 2019); BRRI rice IPM guidance; FAO/WHO International Code of Conduct on Pesticide Management (2014)',
   });
 
   // Soil: the SRDI atlas classes for this upazila

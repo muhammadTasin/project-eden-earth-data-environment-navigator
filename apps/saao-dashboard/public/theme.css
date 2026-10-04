@@ -347,3 +347,51 @@ input[type="range"], input[type="checkbox"], input[type="radio"] { accent-color:
   box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .3), inset -1px -1px 0 rgba(0, 0, 0, .3);
 }
 .banner-card .form-control { color: var(--ink); }
+
+/* ---------- Map of Bangladesh (Leaflet), in the same material ---------- */
+.bd-map-wrap { display: flex; flex-direction: column; gap: 10px; background: var(--face); }
+.bd-map-wrap:fullscreen { padding: 14px; overflow: auto; }
+.bd-map-wrap:fullscreen .bd-map { height: calc(100vh - 220px); }
+.map-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); }
+.map-toolbar select {
+  flex: 1 1 180px; min-width: 0; padding: 7px 10px; font: inherit; color: var(--ink);
+  background: var(--sunk); border: 0; box-shadow: var(--sunken);
+}
+.bd-map {
+  height: 520px; width: 100%; background: #DCE6EC; box-shadow: var(--sunken);
+  outline: 1px solid var(--edge);
+}
+.map-fallback { padding: 24px; color: var(--muted-ink); }
+.bd-map .leaflet-control-layers, .bd-map .leaflet-bar, .bd-map .leaflet-control-attribution {
+  background: var(--face); box-shadow: var(--raised); border: 0; font-family: var(--font-body);
+}
+.bd-map .leaflet-bar a { background: var(--face-hi); color: var(--ink); border-bottom: 1px solid var(--edge); }
+.bd-map .leaflet-bar a:hover { background: var(--face-lo); }
+.bd-map .leaflet-control-layers-expanded { padding: 8px 10px; font-size: 12px; color: var(--ink-2); max-height: 380px; overflow: auto; }
+.bd-map .leaflet-control-layers-separator { border-top-color: var(--edge); }
+.bd-map .map-full { display: block; width: 30px; height: 30px; line-height: 30px; text-align: center; font-size: 17px; text-decoration: none; }
+.map-facts { padding: 10px 12px; background: var(--face-hi); box-shadow: var(--raised); font-size: 12.5px; }
+.map-hint { margin: 0; color: var(--muted-ink); font-size: 12px; }
+.map-popup strong { font-family: var(--font-display); font-size: 15px; color: var(--ink); }
+.map-popup > span { color: var(--muted-ink); }
+.map-popup table { width: 100%; margin: 8px 0 10px; border-collapse: collapse; }
+.map-popup th { text-align: left; font-weight: 500; color: var(--muted-ink); padding: 3px 8px 3px 0; vertical-align: top; }
+.map-popup td { color: var(--ink); padding: 3px 0; font-variant-numeric: tabular-nums; }
+.map-popup tr + tr { border-top: 1px dashed var(--border); }
+.map-tip { font-family: var(--font-body); font-size: 12px; background: var(--face-hi); color: var(--ink); border: 0; box-shadow: var(--raised); }
+.map-legend { padding: 10px 12px; background: var(--face-hi); box-shadow: var(--raised); font-size: 12px; color: var(--text); }
+.map-legend-title strong { font-family: var(--font-display); color: var(--ink); font-size: 13.5px; }
+.map-legend-title span { display: block; color: var(--muted-ink); font-size: 11.5px; }
+.map-legend-list { list-style: none; margin: 8px 0 4px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 4px 10px; }
+.map-legend-list li { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.map-legend-list small { color: var(--muted-ink); }
+.map-swatch { flex: 0 0 auto; width: 16px; height: 12px; outline: 1px solid rgba(74, 70, 63, .35); }
+.map-swatch-none { background: repeating-linear-gradient(135deg, #D8D2C8 0 3px, #F5F2ED 3px 6px); }
+.map-caveat, .map-source { margin: 6px 0 0; font-size: 11.5px; color: var(--muted-ink); line-height: 1.45; }
+.map-source { font-style: italic; }
+.map-table summary { cursor: pointer; font-size: 12.5px; color: var(--ink-2); padding: 4px 0; }
+.map-table .map-table-grid { font-size: 12px; margin-top: 6px; }
+.map-table tr.is-here td { font-weight: 600; color: var(--paddy-deep); }
+.map-pin-label { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; color: var(--ink-2); }
+.map-pin-label .status-dot { width: 9px; height: 9px; background: var(--danger); display: inline-block; }
+@media (max-width: 900px) { .bd-map { height: 420px; } }

@@ -280,8 +280,36 @@ async function runTests() {
   console.log(`Lentil water tip: ${tips.find(t => t.kind === 'water')!.en}`);
   console.log('✓ TEST 15 PASSED: Soil-and-water tips carry numbers and sources.\n');
 
+  // TEST 16: NASA data behind the old limits: PEST-CHEMGRIDS pesticide, MERRA-2 waterlogging, measured jute Kc, prices
+  console.log('[TEST 16] Testing pesticide estimates, waterlogging, jute and the new crop incomes...');
+  const pestTip = (o: { stewardship?: Array<{ kind: string; en: string; source: string }> }) => o.stewardship!.find(t => t.kind === 'pesticide')!;
+  if (!pestTip(lentil).en.includes('PEST-CHEMGRIDS') || !/about \d+% less/.test(pestTip(lentil).en) || !pestTip(lentil).source.includes('PEST-CHEMGRIDS')) {
+    throw new Error('Aman then lentil must show less pesticide than Aman-Boro, from NASA SEDAC PEST-CHEMGRIDS');
+  }
+  const potato = engine.generateAdvice({ ...TALANDA, farmerPriorities: { water: 0.5, income: 0.3, soil: 0.2 }, preferredCrops: ['potato'] }).options[0];
+  if (!/% more/.test(pestTip(potato).en)) throw new Error('A potato plan must show more pesticide than Aman-Boro');
+  const soaked = (place: string) => {
+    const opts = engine.generateAdvice({ ...TALANDA, unionId: place, farmerPriorities: { water: 0.5, income: 0.3, soil: 0.2 }, heroCrop: 'wheat', avoidCrops: ['rice'] }).options;
+    const mung = opts.find(o => o.cropSequence.some(c => c.seasonType === 'Kharif-2' && c.crop === 'Mungbean'))!;
+    return { days: mung.dimensionDetails.flood.metrics.kharif2WaterloggedDays as number, score: mung.scores.flood };
+  };
+  const dry = soaked('ADM3_Godagari');
+  const wet = soaked('ADM3_SylhetSadar');
+  if (!(wet.days > dry.days && wet.score < dry.score)) {
+    throw new Error(`Monsoon mungbean must be wetter and riskier in Sylhet than in Godagari (${JSON.stringify({ dry, wet })})`);
+  }
+  const replay = JSON.parse(fs.readFileSync('packages/rotation-engine/src/data/crop_choice_replay.json', 'utf8'));
+  if (replay.crops.jute.kcAssumed || !replay.crops.jute.kcSource.includes('Barman')) throw new Error('Jute must use the measured crop coefficients');
+  const chickpea = engine.generateAdvice({ ...TALANDA, farmerPriorities: { water: 0.5, income: 0.3, soil: 0.2 }, preferredCrops: ['chickpea'] }).options[0];
+  if (!chickpea.dimensionDetails.income.provenance.source.includes('BBS 2024-25 harvest price')) {
+    throw new Error('Chickpea must get an income estimate from BBS prices and yields');
+  }
+  console.log(`Pesticide, lentil: ${pestTip(lentil).en.split('. ')[0]}`);
+  console.log(`Monsoon mungbean waterlogged days: Godagari ${dry.days} (flood ${dry.score}), Sylhet Sadar ${wet.days} (flood ${wet.score})`);
+  console.log('✓ TEST 16 PASSED: Pesticide, waterlogging, jute and crop incomes come from NASA and BBS data.\n');
+
   console.log('========================================================');
-  console.log('  ALL 15 CORE TESTS PASSED SUCCESSFULLY!                ');
+  console.log('  ALL 16 CORE TESTS PASSED SUCCESSFULLY!                ');
   console.log('========================================================');
 }
 

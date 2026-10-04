@@ -1,5 +1,7 @@
 package org.projecteden.farmermobile.ui.screens.myfarm
 
+import org.projecteden.farmermobile.theme.EdenShape
+
 import org.projecteden.farmermobile.theme.bevel
 
 import androidx.compose.animation.AnimatedVisibility
@@ -172,7 +174,8 @@ fun MyFarmScreen(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
                         contentColor = OnPrimary
-                    )
+                    ),
+                    shape = EdenShape
                 ) {
                     Icon(imageVector = Icons.Default.Logout, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
@@ -180,7 +183,7 @@ fun MyFarmScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showAccountDialog = false }) {
+                TextButton(onClick = { showAccountDialog = false }, shape = EdenShape) {
                     Text("বন্ধ করুন")
                 }
             },

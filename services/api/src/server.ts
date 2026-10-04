@@ -1,6 +1,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import type { AdviceJSON, CandidateRotation } from '@project-eden/contracts';
 import type { PlanOptionsRequest } from '../../../packages/rotation-engine/src/engine.ts';
@@ -17,12 +18,14 @@ import { TemplateNarrator } from '../../../packages/narration-core/src/template_
 import { getNasaWeather } from './weather.ts';
 import { getRiverErosion } from './erosion.ts';
 import { liveHaor, liveStatus, liveUpazila, liveUpazilas } from './live.ts';
+import { mapLayers } from './map_layers.ts';
 import { askAiAssistant } from './ai_assistant.ts';
 import { cropMenu } from '../../../packages/rotation-engine/src/data/crop_choice.ts';
 import { cropsFromKeys, keypadMenu, replyFor, requestFromWords, understand } from './voice.ts';
 import { awajConfig, bdMobile, sendKeypadSurvey, sendTemplateSurvey, sendTtsCall } from './awaj.ts';
 
 const __filename = fileURLToPath(import.meta.url);
+const gzipCache = new Map<string, { mtime: number; body: Buffer }>();
 const __dirname = path.dirname(__filename);
 const PUBLIC_DIR = path.resolve(__dirname, '../../../apps/saao-dashboard/public');
 
@@ -659,6 +662,11 @@ const server = http.createServer(async (req, res) => {
       return one ? sendJSON(res, 200, one) : sendJSON(res, 404, { error: 'Upazila not found; pass id, name, or lat and lon' });
     }
 
+    // API: one row per upazila for the dashboard's map (MODIS, NASA replay, GLDAS, PEST-CHEMGRIDS, SRDI, today's NASA update)
+    if (pathname === '/api/v1/map/upazilas' && req.method === 'GET') {
+      return sendJSON(res, 200, mapLayers());
+    }
+
     if (pathname === '/api/v1/haor/flash-flood' && req.method === 'GET') {
       return sendJSON(res, 200, { ...HAOR_FLASH_FLOOD, status: haorStatus(), live: liveHaor() });
     }
@@ -765,12 +773,21 @@ const server = http.createServer(async (req, res) => {
       '.css': 'text/css; charset=utf-8',
       '.js': 'application/javascript; charset=utf-8',
       '.json': 'application/json; charset=utf-8',
+      '.geojson': 'application/geo+json; charset=utf-8',
       '.png': 'image/png',
       '.svg': 'image/svg+xml',
     };
 
     const contentType = mimeTypes[ext] || 'text/plain';
     const content = fs.readFileSync(filePath);
+    // text files go out gzipped when the browser accepts it (the map's outlines are ~0.9 MB, ~0.25 MB gzipped)
+    if (content.length > 2048 && !contentType.startsWith('image/png') && /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''))) {
+      const mtime = fs.statSync(filePath).mtimeMs;
+      let hit = gzipCache.get(filePath);
+      if (!hit || hit.mtime !== mtime) gzipCache.set(filePath, hit = { mtime, body: zlib.gzipSync(content) });
+      res.writeHead(200, { 'Content-Type': contentType, 'Content-Encoding': 'gzip', Vary: 'Accept-Encoding' });
+      return res.end(hit.body);
+    }
     res.writeHead(200, { 'Content-Type': contentType });
     res.end(content);
   } catch (err: any) {

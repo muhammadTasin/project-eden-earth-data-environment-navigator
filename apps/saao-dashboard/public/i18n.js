@@ -58,6 +58,7 @@ export const EN = {
   'overview.col.status': 'Status',
   'overview.col.action': 'Action',
   'overview.satTitle': 'Satellite watch (Tanore pilot point)',
+  'map.layerLabel': 'Colour the map by:',
   'overview.spec.grid': 'NASA grids:',
   'overview.spec.gridValue': 'IMERG 0.1° (~10 km), SMAP L4 9 km',
   'overview.spec.soil': 'Soil and land (SRDI):',

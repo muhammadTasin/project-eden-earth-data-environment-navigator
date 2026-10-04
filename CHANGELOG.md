@@ -2,6 +2,17 @@
 
 What changed in Project EDEN, newest first, with who made each change and the branch it came from. Every branch below was merged into `main` on 1 October 2026.
 
+## 4 October 2026 · A map of Bangladesh; NASA pesticide and waterlogging data; fewer gaps (Tasrif, `feature/map-and-pesticide-data`)
+
+- Dashboard: the overview's satellite card is a real map (Leaflet, NASA GIBS). 544 upazilas coloured by one of ten layers (MODIS crops a year, change and winter greenness; NASA replay Boro irrigation; GLDAS groundwater; IMERG 7-day rain; POWER 30-day rain and soil wetness; PEST-CHEMGRIDS rice pesticide; SRDI organic matter), NASA MODIS/VIIRS true colour and Blue Marble underneath, MODIS flood, IMERG, SMAP and NDVI on top; hover, click for facts and to plan, a district table. `research/export/map_export.py` thins the geoBoundaries outlines; `GET /api/v1/map/upazilas` serves the values; static text files go out gzipped.
+- Pesticide: `research/acquire/pest_chemgrids.py` downloads NASA SEDAC PEST-CHEMGRIDS v1.01 (2.27 GB, Earthdata; CMR's link is dead, the files are under `sedac-root`) and `research/explore/pesticide_load.py` turns it into crop-class rates per upazila (soil fumigants left out). The pesticide tip now gives grams of active ingredient per bigha a year against Aman-Boro.
+- Waterlogging: `crop_choice_replay.py` counts days with NASA POWER topsoil wetness (MERRA-2) of 0.9 or more for every crop; the flood score for monsoon upland crops falls with that share (Godagari mungbean 7 of 60 days, Sylhet 40 of 60). MODIS flood maps were tested and are ~98% cloud in the monsoon.
+- Jute uses the crop coefficients measured at ICAR-CRIJAF (Barman et al. 2014) instead of assumed values.
+- Income: chickpea, grass pea, sweet potato, mungbean and sesame get estimates from BBS 2024-25 harvest prices and yields (`research/explore/minor_crop_returns.py`); the income score lists its sources.
+- Android: Anek Bangla (headings) and Hind Siliguri (text) are bundled under the SIL Open Font License (texts in `assets/licenses`).
+- Daily update: a run without IMERG keeps the last reading for up to 7 days (`carriedForward`); IMERG for 3 October refreshed locally. API tests read a fixed day (`tests/fixtures/`).
+- Tests: TEST 16 and map API checks.
+
 ## 4 October 2026 · Any main crop, rice optional; soil-and-water tips; keypad calls; one look (Tasrif, `feature/crop-choice-and-calls`)
 
 - Engine: `heroCrop` (every plan holds it, the rest of the year is filled from every crop) and `avoidCrops` (`rice` leaves out Aman, Boro and Aus). The monsoon slot holds Aman, a non-rice crop (soybean, mungbean or sesame in the monsoon) or nothing; jute is modelled. Plugins count only the crops grown; a main crop's own season ranks first; summer crops that run into August show at the start of the timeline.

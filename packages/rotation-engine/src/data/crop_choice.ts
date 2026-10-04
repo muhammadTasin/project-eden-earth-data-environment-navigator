@@ -33,6 +33,8 @@ export interface ChoiceCrop extends RabiCatalogEntry {
 const TEAM = 'team estimate (crop_catalog.ts)';
 const RESEARCH_RETURN = 'research net return: BBS 2024-25 prices and yields, Agriculture Census 2019 costs';
 const NO_PRICE = 'no price and cost data yet';
+// research/explore/minor_crop_returns.py -> research/crops/minor_crop_returns.csv
+const ESTIMATE = 'estimate: BBS 2024-25 harvest price x BBS 2024-25 yield, costs at 65% of crop value (census crops 51-66%, pulse surveys 62-70%)';
 
 function release(id: string, key: string, aliases: string[], extra: Partial<ChoiceCrop> = {}): ChoiceCrop {
   return { ...RABI_CATALOG[key], id, season: 'Rabi', releaseKeys: [key], aliases, incomeSource: TEAM, ...extra };
@@ -62,17 +64,17 @@ export const CHOICE_CROPS: ChoiceCrop[] = [
   {
     id: 'chickpea', season: 'Rabi', crop: 'Chickpea', cropBangla: 'ছোলা', cropInBangla: 'ছোলায়', varietyBangla: 'বারি ছোলা-১০',
     isLegume: true, isRice: false, hostGroup: 'legume', fodderValue: 'medium', fodderNoteBangla: 'ছোলার গাছ ও ভুসি গরুর আমিষসমৃদ্ধ খাবার।',
-    illustrativeGrossMarginTkPerHa: null, incomeSource: NO_PRICE, aliases: ['ছোলা', 'chola', 'chhola', 'chickpea'],
+    illustrativeGrossMarginTkPerHa: 43820, incomeSource: ESTIMATE, aliases: ['ছোলা', 'chola', 'chhola', 'chickpea'],
   },
   {
     id: 'grasspea', season: 'Rabi', crop: 'Grass pea', cropBangla: 'খেসারি', cropInBangla: 'খেসারিতে', varietyBangla: 'বারি খেসারি-৩',
     isLegume: true, isRice: false, hostGroup: 'legume', fodderValue: 'high', fodderNoteBangla: 'খেসারির গাছ ভালো সবুজ গোখাদ্য।',
-    illustrativeGrossMarginTkPerHa: null, incomeSource: NO_PRICE, aliases: ['খেসারি', 'খেসারী', 'খেশারি', 'kheshari', 'khesari', 'grasspea', 'grass pea'],
+    illustrativeGrossMarginTkPerHa: 32481, incomeSource: ESTIMATE, aliases: ['খেসারি', 'খেসারী', 'খেশারি', 'kheshari', 'khesari', 'grasspea', 'grass pea'],
   },
   {
     id: 'sweetpotato', season: 'Rabi', crop: 'Sweet potato', cropBangla: 'মিষ্টি আলু', cropInBangla: 'মিষ্টি আলুতে', varietyBangla: 'বারি মিষ্টি আলু-১২',
     isLegume: false, isRice: false, hostGroup: 'tuber', fodderValue: 'medium', fodderNoteBangla: 'মিষ্টি আলুর লতা গরু-ছাগলের খাবার।',
-    illustrativeGrossMarginTkPerHa: null, incomeSource: NO_PRICE, aliases: ['মিষ্টি আলু', 'মিষ্টিআলু', 'misti alu', 'mishti alu', 'sweet potato', 'sweetpotato'],
+    illustrativeGrossMarginTkPerHa: 102850, incomeSource: ESTIMATE, aliases: ['মিষ্টি আলু', 'মিষ্টিআলু', 'misti alu', 'mishti alu', 'sweet potato', 'sweetpotato'],
   },
   {
     id: 'barley', season: 'Rabi', crop: 'Barley', cropBangla: 'যব', cropInBangla: 'যবে', varietyBangla: 'বারি বার্লি-৭',
@@ -88,12 +90,12 @@ export const CHOICE_CROPS: ChoiceCrop[] = [
     id: 'mungbean', season: 'Kharif-1', crop: 'Mungbean', cropBangla: 'মুগ', cropInBangla: 'মুগে', varietyBangla: 'বারি মুগ-৬',
     isLegume: true, isRice: false, hostGroup: 'legume', fodderValue: 'medium',
     fodderNoteBangla: 'ফল তোলার পর মুগের গাছ মাটিতে মিশালে সবুজ সার হয়, বা গরুকে খাওয়ানো যায়।',
-    illustrativeGrossMarginTkPerHa: null, incomeSource: NO_PRICE, alsoCovers: ['mungbean_k2'], aliases: ['মুগ', 'মুগডাল', 'mug', 'mung', 'moong', 'mungbean'],
+    illustrativeGrossMarginTkPerHa: 42776, incomeSource: ESTIMATE, alsoCovers: ['mungbean_k2'], aliases: ['মুগ', 'মুগডাল', 'mug', 'mung', 'moong', 'mungbean'],
   },
   {
     id: 'sesame', season: 'Kharif-1', crop: 'Sesame', cropBangla: 'তিল', cropInBangla: 'তিলে', varietyBangla: 'বারি তিল-৪',
     isLegume: false, isRice: false, hostGroup: 'oilseed', fodderValue: 'low', fodderNoteBangla: 'তিলের গাছ গোখাদ্য নয়; তিলের খৈল গরুর খাবার।',
-    illustrativeGrossMarginTkPerHa: null, incomeSource: NO_PRICE, alsoCovers: ['sesame_k2'], aliases: ['তিল', 'til', 'sesame'],
+    illustrativeGrossMarginTkPerHa: 41239, incomeSource: ESTIMATE, alsoCovers: ['sesame_k2'], aliases: ['তিল', 'til', 'sesame'],
   },
   {
     id: 'aus', season: 'Kharif-1', crop: 'Aus rice', cropBangla: 'আউশ ধান', cropInBangla: 'আউশ ধানে', varietyBangla: 'ব্রি ধান৪৮',
@@ -114,12 +116,12 @@ export const CHOICE_CROPS: ChoiceCrop[] = [
     id: 'mungbean_k2', season: 'Kharif-2', crop: 'Mungbean', cropBangla: 'মুগ', cropInBangla: 'মুগে', varietyBangla: 'বারি মুগ-৬ (বর্ষা)',
     isLegume: true, isRice: false, hostGroup: 'legume', fodderValue: 'medium',
     fodderNoteBangla: 'ফল তোলার পর মুগের গাছ মাটিতে মিশালে সবুজ সার হয়, বা গরুকে খাওয়ানো যায়।',
-    illustrativeGrossMarginTkPerHa: null, incomeSource: NO_PRICE, aliases: [],
+    illustrativeGrossMarginTkPerHa: 42776, incomeSource: ESTIMATE, aliases: [],
   },
   {
     id: 'sesame_k2', season: 'Kharif-2', crop: 'Sesame', cropBangla: 'তিল', cropInBangla: 'তিলে', varietyBangla: 'বারি তিল-৪ (বর্ষা)',
     isLegume: false, isRice: false, hostGroup: 'oilseed', fodderValue: 'low', fodderNoteBangla: 'তিলের গাছ গোখাদ্য নয়; তিলের খৈল গরুর খাবার।',
-    illustrativeGrossMarginTkPerHa: null, incomeSource: NO_PRICE, aliases: [],
+    illustrativeGrossMarginTkPerHa: 41239, incomeSource: ESTIMATE, aliases: [],
   },
   {
     id: 'sunflower_kharif', season: 'Kharif-1', crop: 'Sunflower', cropBangla: 'সূর্যমুখী', cropInBangla: 'সূর্যমুখীতে',
@@ -320,6 +322,17 @@ export function heavyRainDays(key: string): number | null {
   if (at < 0) return null;
   const row = placeRows(key.slice(0, at)).find(r => r[0] === key.slice(at + 1));
   return row && row.length > 7 ? (row[7] as number) : null;
+}
+
+/**
+ * Days with the topsoil near saturation (NASA POWER GWETTOP, MERRA-2 top 5 cm, 0.9 or more) while the crop is in the
+ * field, median of the replayed seasons; null when the replay has no soil wetness for this place.
+ */
+export function waterloggedDays(key: string): number | null {
+  const at = key.indexOf('@');
+  if (at < 0) return null;
+  const row = placeRows(key.slice(0, at)).find(r => r[0] === key.slice(at + 1));
+  return row && row.length > 8 && row[8] !== null ? (row[8] as number) : null;
 }
 
 export function isFit(fit: Fit): fit is { key: string } {

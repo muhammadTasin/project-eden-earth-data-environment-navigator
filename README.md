@@ -6,15 +6,15 @@ EDEN is a Bangla-first crop-rotation decision-support system for Bangladesh. Its
 
 ## Project status (4 October 2026)
 
-Branch `sync/all-latest` holds all of the team's work up to 2 October, including Rayyanul's Android fixes (PR #3), ready to merge into `main`. Branch `feature/crop-choice-and-calls` adds, on top of it, the farmer's own crops (any main crop, with or without rice), soil-and-water tips, the phone channel with Awaj Digital, MODIS greenness for every upazila and the story site's look for the dashboard and the app (see [Branches](#branches)):
+`main` holds all of the team's work up to 4 October: the research, the apps, Rayyanul's Android fixes (PR #3), the farmer's own crops with the Awaj phone channel, and muhammadTasin's weather and cattle advisories; a GitHub Action adds the daily NASA update. Branch `feature/map-and-pesticide-data` adds a real map of Bangladesh to the dashboard and works on the known limits: NASA SEDAC pesticide estimates in the tips, waterlogging from NASA soil wetness, jute's measured crop coefficient, price-based incomes for five more crops, and the story site's fonts in the app (see [Branches](#branches)):
 
 | Part | Folder | What works |
 |---|---|---|
 | Research and data | `research/` | NASA and local datasets with their checks, the 25-season replay for the Tanore pilot, signals for five pilots, and the generator for the app's data release |
 | Rotation engine | `packages/rotation-engine/` | 5 rotations replayed through 25 seasons, 7 scores. The Talanda pilot uses data release `tanore-2026.09.30` (research commit `0469020`); every other upazila uses its district's replay (`national_replay.json`). With the farmer's crops named, it plans the whole year around them from 16 crops (`crop_choice_replay.json`) |
 | API | `services/api/` | Research/demo backend with crop choice, Bangla request reading, soil-and-water tips and Awaj calls. The Android weather/cattle screens use the separately configured Edith API described in `apps/farmer-mobile/README.md` |
-| SAAO dashboard | `apps/saao-dashboard/` | Any of the 544 upazilas, Bangla and English, the farmer's crops and main crop (with a no-rice switch), officer desk, soil-and-water tips, early warnings, environment ledger, daily NASA conditions and voice-to-plan flow |
-| Android app | `apps/farmer-mobile/` | Farmer card, weather and cattle advisories through the configured Edith API, river erosion, Bangla voice assistant and crop planning when the configured API supports `/api/v1/voice/answer`, sign-in, farm profile editing |
+| SAAO dashboard | `apps/saao-dashboard/` | Any of the 544 upazilas, picked from a list or on a map of Bangladesh coloured by NASA layers; Bangla and English, the farmer's crops and main crop (with a no-rice switch), officer desk, soil-and-water tips, early warnings, environment ledger, daily NASA conditions and voice-to-plan flow |
+| Android app | `apps/farmer-mobile/` | Farmer card, weather and cattle advisories through the configured Edith API, river erosion, Bangla voice assistant and crop planning when the configured API supports `/api/v1/voice/answer`, sign-in, farm profile editing; the story site's colours, sharp corners and fonts (Anek Bangla and Hind Siliguri, bundled for offline use) |
 | Screen designs | `design/` | Six SAAO desktop screens and the portrait mobile companion |
 | Daily NASA update | `research/live/` | NASA POWER every day for all 544 upazilas (64 districts), GPM IMERG rain at 10 km with an Earthdata Login, and the live haor flash-flood check with the MODIS flood map |
 
@@ -24,7 +24,7 @@ The dashboard advises any of the 544 upazilas (pick the district and upazila at 
 
 ```bash
 npm install
-npm test          # 15 engine tests and every API check
+npm test          # 16 engine tests and every API check
 npm start         # API and SAAO dashboard on http://localhost:4000
 npm run call:test -- --to 01XXXXXXXXX --crops sunflower,lentil   # the Bangla call script; a dry run until Awaj is set up
 ```
@@ -53,21 +53,23 @@ The five fixed rotations always end with lentil on top, because lentil needs the
 - **Ranking.** Plans holding more of the named crops come first, then the farmer's weighted score; the response says when growing both crops in one year costs score (for example, summer sunflower meets June heat). If two named crops are both winter crops, the advice says so and suggests splitting the field or alternating years. It also lists the summer crops that fit the gap after the winter harvest.
 - **Where.** `POST /api/v1/advice` with `preferredCrops: ["sunflower", "lentil"]`; `GET /api/v1/crops?place=<id>` lists every crop with the Aman varieties it fits after and its irrigation need there. In the dashboard planner, tick the crops under "কৃষক কোন ফসল করতে চান?". Without named crops the five fixed rotations are unchanged.
 
-Scores stay honest about gaps: crops without price and cost data keep a neutral income score (potato, maize and Aus use the research net returns in `research/crops/crop_parameters.csv`), and heat limits not in that table (potato 30 °C, maize and chickpea 35 °C, mungbean and sesame 40 °C, sunflower and soybean 35 °C, barley 30 °C) are literature values marked as assumed.
+Scores stay honest about gaps: potato, maize, Aus and jute use the research net returns in `research/crops/crop_parameters.csv`; chickpea, grass pea, sweet potato, mungbean and sesame use an estimate from BBS 2024-25 harvest prices and national yields with costs at 65% of the crop's value (`research/explore/minor_crop_returns.py`: the census crops spend 51-66%, lentil and mungbean surveys 62-70%); soybean, sunflower and barley, with no BBS harvest price, keep a neutral income score. Heat limits not in that table (potato 30 °C, maize and chickpea 35 °C, mungbean and sesame 40 °C, sunflower and soybean 35 °C, barley 30 °C) are literature values marked as assumed.
 
 ### Any main crop, with or without rice
 
 `heroCrop` names the farmer's main crop: wheat, sunflower, potato, jute, anything in the menu. Every plan holds it, and the engine fills the rest of the year from every crop it knows. `avoidCrops: ["rice"]` leaves out Aman, Boro and Aus (or name single crops). Without Aman the monsoon slot holds a non-rice crop or stands empty:
 
-- **Monsoon crops without rice** come from the BARI handbook's second windows: soybean (sown 15 Jul-15 Aug), mungbean (8 Aug-7 Sep) and sesame (15 Aug-15 Sep), replayed like the others, plus the days with 50 mm or more of IMERG rain while they stand. They drown where water stands, so the flood score drops them on medium-high and low land.
-- **Jute** (sown 15 Apr-5 May, harvested in August, SRDI dose, research net return) is now modelled; its crop coefficient is a fibre-crop value marked as assumed, since FAO-56 lists none.
+- **Monsoon crops without rice** come from the BARI handbook's second windows: soybean (sown 15 Jul-15 Aug), mungbean (8 Aug-7 Sep) and sesame (15 Aug-15 Sep), replayed like the others, with two counts while they stand: days with 50 mm or more of IMERG rain, and days when NASA POWER's topsoil wetness (MERRA-2, 0 dry to 1 saturated) is 0.9 or more. Their flood score starts from the land type and falls with the share of waterlogged days: monsoon mungbean on medium-high land scores 0.52 at Godagari (7 of its 60 days) and 0.37 in Sylhet Sadar (40 of 60).
+- **Jute** (sown 15 Apr-5 May, harvested in August, SRDI dose, research net return) is modelled. FAO-56 lists no crop coefficient for it, so it uses the values measured for tossa jute at ICAR-CRIJAF, Barrackpore, on the same Gangetic plain (Barman, Kundu, Ghorai and Mitra 2014, Journal of Agricultural Physics 14:67-72): 0.72 at the start, 1.26 mid-season, 0.46 at the end.
 - **Scores follow the crops grown**: no Aman means no rescue irrigation, no rice straw, no Aman urea; a year without rice leaves rice pests no host and keeps the soil unpuddled.
 - **A main crop in its own season comes first** (winter sunflower before summer sunflower), and a summer crop that runs into August (jute) shows its harvest at the start of the year's timeline.
 - The Bangla reader marks a main crop ("প্রধান ফসল গম", "শুধু গম", or the only crop named) and refusals ("ধান করব না" leaves out all rice; "বোরো ধান করব না" only Boro). The dashboard planner has a main-crop list and a "ধান ছাড়া" switch.
 
 ### Soil and water tips
 
-Every option carries tips (`stewardship`) with numbers from its own records, against the usual Aman-Boro rotation at the same place: groundwater pumped per bigha (the NASA replay) with NASA GRACE-GLDAS groundwater's change; urea and TSP per bigha (SRDI cards) and what legumes add; the rice-pest cycle and safe pesticide use; the upazila's soil gaps from the SRDI Soil Fertility Atlas (low organic matter, strong acidity, low zinc or boron; `research/export/soil_atlas_export.py`); and metals: arsenic rides on irrigation water (so the tip scales with the plan's pumping), cadmium on phosphate fertilizer, lead, chromium and mercury on factory and tannery waste water. No satellite measures metals in soil, so those tips are sourced guidance (BGS/DPHE, Meharg and Rahman 2003, EU 2019/1009, WHO 2006), and the farmer is pointed to a well test and an SRDI soil test. NASA's SEDAC PEST-CHEMGRIDS (pesticide application by crop, 5 arc-minutes) could put numbers on pesticide loads; it is a 2.1 GB download, not fetched yet.
+Every option carries tips (`stewardship`) with numbers from its own records, against the usual Aman-Boro rotation at the same place: groundwater pumped per bigha (the NASA replay) with NASA GRACE-GLDAS groundwater's change; urea and TSP per bigha (SRDI cards) and what legumes add; the rice-pest cycle and safe pesticide use; the upazila's soil gaps from the SRDI Soil Fertility Atlas (low organic matter, strong acidity, low zinc or boron; `research/export/soil_atlas_export.py`); and metals: arsenic rides on irrigation water (so the tip scales with the plan's pumping), cadmium on phosphate fertilizer, lead, chromium and mercury on factory and tannery waste water. No satellite measures metals in soil, so those tips are sourced guidance (BGS/DPHE, Meharg and Rahman 2003, EU 2019/1009, WHO 2006), and the farmer is pointed to a well test and an SRDI soil test.
+
+The pesticide tip carries numbers from NASA SEDAC's Global Pesticide Grids, PEST-CHEMGRIDS v1.01 (Maggi et al. 2019, Scientific Data 6:170). `python research/acquire/pest_chemgrids.py` downloads the 2.27 GB netCDF archive with an Earthdata Login (NASA's catalogue points at a dead `sedac-beta` address; the files are under `sedac-root`), and `python research/explore/pesticide_load.py` reads only Bangladesh out of it: the 2020 rate of each crop class's top 20 active ingredients, averaged over each upazila's 5-arc-minute cells and weighted by that crop's area (`pesticide_load.json`). Each crop in a plan adds its class's rate, so Aman then lentil comes out about 35% below Aman-Boro, jute then wheat without rice about 71% below, and a potato plan about 58% above. For Bangladesh the dataset re-analyses US surveys and FAOSTAT totals, so it is an estimate for comparing crops, and soil fumigants (metam, 1,3-dichloropropene, chloropicrin: 87% of its vegetable estimate at Tanore, a US practice) are left out.
 
 ### Phone calls and the farmer's voice (Awaj Digital)
 
@@ -85,6 +87,10 @@ The keypad call, step by step: record the menu text (`npm run call:test -- --upl
 
 `python research/explore/national_greenness.py` reads the AppEEARS request `fieldshift_ndvi_national_20260927` (MODIS MOD13Q1 250 m NDVI at the 544 upazila centres, February 2000 to September 2026, plus VIIRS 500 m) and counts crops a year and the winter peak with the pilots' method (`field_cycles.py`). 530 upazilas have enough clear composites: Tanore went from 1.8 to 2.6 crops a year and its winter peak from 0.50 to 0.80 (the pilot's 9-pixel study read 0.81-0.83); parts of Bogura grow about 3. The overview shows it for any upazila (`greenness_upazila.json`). One pixel mixes fields, so it is context beside the replay, not a score input.
 
+### A map of Bangladesh
+
+The overview's satellite card is a real map (Leaflet with NASA GIBS imagery). All 544 upazilas (geoBoundaries outlines, thinned to 0.74 MB by `python research/export/map_export.py`, sent gzipped) are coloured by one of ten layers: crops a year, its change since 2001-06 and winter greenness (MODIS); Boro irrigation need (NASA replay) and groundwater decline (GLDAS), both per district; rain in the last 7 days (IMERG), 30-day rain against normal and root-zone soil wetness (the daily NASA update); pesticide on rice (PEST-CHEMGRIDS) and soil organic matter (SRDI). Underneath: OpenStreetMap, NASA MODIS or VIIRS true colour from yesterday, or the Blue Marble; on top: NASA's 3-day MODIS flood map, IMERG rain, SMAP root-zone moisture and MODIS 8-day NDVI. Hover shows the value, a click shows the upazila's facts with a button that plans for it, choosing a place in the list flies the map there, and a table lists the district's upazilas. `GET /api/v1/map/upazilas` serves the values.
+
 ### Daily NASA update (all 544 upazilas)
 
 ```bash
@@ -97,6 +103,8 @@ The script writes `services/api/data/live/upazila_conditions.json`: for each upa
 The same run reads the **live haor flash-flood check**: the last 3 days of IMERG rain at Sohra, scaled up because IMERG's quick runs read about 9% below the final run there, against the levels tested on 25 springs (200 mm watch, 250 mm warning, 15 March to 15 May); the Jaintia Hills, Garo Hills and Barak valley, which feed the other haor districts, shown without tested levels yet; and NASA's MODIS flood map (3-day composite on GIBS, no login) for the haor basin: unusual flood water, seasonal flood water and cloud. `/api/v1/haor/flash-flood` and the overview's early warnings carry it as `live`, and the dashboard's flash-flood card shows it. River gauges must still confirm before any call goes out.
 
 The dry and wet labels are provisional: POWER's newest weeks come from near-real-time inputs that read drier than the reprocessed archive, so they wait for the SMAP check (next step).
+
+IMERG needs the `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD` repository secrets in GitHub; the run of 4 October had none, so it wrote no IMERG rain and no haor reading. A run without IMERG now keeps the last IMERG reading for up to 7 days, marked with its own date and `carriedForward`, and the API tests read a fixed day (`tests/fixtures/live_conditions_2026-10-01.json`) instead of the file the Action rewrites.
 
 `.github/workflows/daily-nasa-update.yml` runs this every morning at 09:30 Bangladesh time and commits the file when it changes. GitHub runs scheduled workflows only from `main`. For IMERG, add the repository secrets `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD` (Settings → Secrets and variables → Actions); without them only POWER updates.
 
@@ -202,6 +210,7 @@ Do not commit secrets, local environment files, dependency folders, generated AP
 | POST | `/api/v1/officer/callbacks/:id/resolve` | Marks a call-back done |
 | GET | `/api/v1/officer/knowledge` | Officer reference pack |
 | POST | `/api/v1/officer/reset` | Restores the sample farmers (demo) |
+| GET | `/api/v1/map/upazilas` | One row per upazila for the map: MODIS crops a year and winter greenness, the district's Boro irrigation and GLDAS groundwater trend, PEST-CHEMGRIDS pesticide on rice and on pulses and oilseeds, SRDI organic matter and pH, and today's rain and soil status |
 
 ## Tests
 
@@ -216,7 +225,8 @@ Do not commit secrets, local environment files, dependency folders, generated AP
 - that every dashboard text has an English translation;
 - NASA POWER weather, river erosion, the farmer sign-in lifecycle and the assistant's grounded answers and refusals;
 - plans built around named crops (every option holds them, the calendar fits, a summer crop alone follows the best winter crop, the default five rotations are unchanged), the Bangla request reader, the crop menu, a spoken request answered, and Awaj calls and keypad answers as dry runs (the test server forces `AWAJ_LIVE=0`);
-- a main crop without rice (wheat, sunflower, jute), the tips' numbers and sources, a spoken "only wheat, no rice", the keypad call and MODIS greenness for an upazila.
+- a main crop without rice (wheat, sunflower, jute), the tips' numbers and sources, a spoken "only wheat, no rice", the keypad call and MODIS greenness for an upazila;
+- the PEST-CHEMGRIDS pesticide numbers (lentil below Aman-Boro, potato above), monsoon waterlogging (wetter and riskier in Sylhet than in Godagari), jute's measured crop coefficient and the BBS-based income estimates (TEST 16), and the map's 544 upazila rows and gzipped outlines.
 
 Online, the weather check reads NASA POWER live; offline, the API serves a fixed baseline marked `isLive: false`, so the tests also pass without internet.
 
@@ -264,10 +274,11 @@ The latest SMAP soil-moisture values come from the downloaded cache (`research/d
 ## Known limits
 
 - Upazilas outside the Talanda pilot use their district's NASA point (about 50 km grid), the SRDI Talanda fertilizer card as a stand-in, and no SMAP, MODIS greenness or land-use context yet. Unknown places get HTTP 422.
-- Income is a team estimate until DAM farm-gate prices and farmer cost interviews are in; crops without either keep a neutral income score.
-- Kharif-1 irrigation assumes no soil water left by the winter crop, so it is an upper estimate; heat limits for crops outside `crop_parameters.csv` are literature values marked as assumed. Onion, garlic, jute, groundnut and vegetables are not replayed yet.
+- Income is a team estimate or a BBS price-and-yield estimate until farmer cost interviews are in; soybean, sunflower and barley (no BBS harvest price) keep a neutral income score.
+- Kharif-1 irrigation assumes no soil water left by the winter crop, so it is an upper estimate; heat limits for crops outside `crop_parameters.csv` are literature values marked as assumed. Onion, garlic, groundnut and vegetables are not replayed yet.
 - Speech-to-text runs in the browser (Chrome) and on Android phones with Google's recogniser; phone-call speech needs a recording first (see the phone section).
-- Monsoon upland crops are judged by land type and heavy-rain days, not a flood model; the Android app keeps system fonts (the story site's Anek Bangla is not bundled).
+- Monsoon upland crops are judged by land type, NASA soil-wetness waterlogging and heavy-rain days; river floods are not modelled. NASA's MODIS flood map cannot fill that gap here (about 98% cloud over Bangladesh on 15 August 2021, and the 20 June 2022 Sylhet flood hidden), so the next step is NASA OPERA's radar water maps (DSWx-S1), which see through cloud.
+- The pesticide numbers are PEST-CHEMGRIDS model estimates for 2020, not farm measurements.
 - The pest score is rule-based until officers log pest counts.
 - Floods are not modelled for Barind land. The haor warning shows the 25-season hindcast and the season status; a live trigger needs a daily IMERG Early feed and river-gauge confirmation. Rotation advice is not modelled for the haor.
 - Flooded-rice days stand in for methane; they are not a methane measurement.
@@ -279,12 +290,13 @@ The latest SMAP soil-moisture values come from the downloaded cache (`research/d
 
 | Branch | What it holds |
 |---|---|
-| `feature/crop-choice-and-calls` | `sync/all-latest` plus the farmer's own crops and main crop (rice optional), soil-and-water tips, the Bangla request reader, the voice answer, Awaj calls and keypad menu, MODIS greenness for every upazila, and the story site's look for the dashboard and the app |
+| `feature/map-and-pesticide-data` | `main` (4 October) plus the map of Bangladesh, PEST-CHEMGRIDS pesticide numbers, waterlogging from NASA soil wetness, jute's measured crop coefficient, BBS-based incomes for five more crops, the app's bundled fonts, and a daily update that keeps the last IMERG reading |
+| `feature/crop-choice-and-calls` | Merged into `main` on 4 October: `sync/all-latest` plus the farmer's own crops and main crop (rice optional), soil-and-water tips, the Bangla request reader, the voice answer, Awaj calls and keypad menu, MODIS greenness for every upazila, and the story site's look for the dashboard and the app |
 | `sync/all-latest` | Everything: `research/data-access` (`0469020`) and `codex/android-app-latest` (`8e633aa`, which already carried `codex/android-apk`, `feature/eden-screen-recreation` and `demo/research-data`), plus the daily NASA update, the live haor check, advice for every upazila and Rayyanul's Android fixes (`f5a1b11`, PR #3). Merge it into `main` with a pull request ("Create a merge commit"). |
 | `feature/daily-nasa-update` | The daily NASA update, the live haor check and every-upazila advice; the same commits as `sync/all-latest` |
-| `main` | Research up to 27 September and the README; it catches up when `sync/all-latest` is merged |
+| `main` | Everything up to 4 October (the two branches above, muhammadTasin's weather and cattle advisories and Android launcher icon) and the daily NASA update commits |
 
-Once `main` is merged, start new work from `main`. GitHub runs the daily NASA workflow only from `main`.
+Start new work from `main`. GitHub runs the daily NASA workflow only from `main`.
 
 ## Team
 

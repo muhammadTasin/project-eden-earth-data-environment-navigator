@@ -6,6 +6,7 @@
  * here with tr(bangla, english). Switching language re-renders everything from the cached API responses.
  */
 import { EN } from './i18n.js';
+import { initBdMap } from './bd-map.js';
 
 let lang = 'bn';
 let currentAdvice = null;
@@ -127,6 +128,7 @@ window.switchScreen = function(screenId) {
   $(screenId)?.classList.add('active');
   document.querySelector(`[data-screen="${screenId}"]`)?.classList.add('active');
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (screenId === 'screen-overview') setTimeout(() => bdMap?.invalidate(), 50); // a hidden map has no size
 };
 
 document.querySelectorAll('.nav-tab').forEach(btn => {
@@ -1276,6 +1278,7 @@ let currentPlace = (() => { try { return localStorage.getItem('eden.place') || P
 let currentPlaceLive = null;
 let placeIndex = null;
 let placeTextChanged = false;
+let bdMap = null; // the overview's map of Bangladesh (bd-map.js)
 
 function placeName() {
   const s = currentOverview?.scope;
@@ -1313,6 +1316,7 @@ function fillPlaceUpazilas() {
 async function choosePlace(id) {
   currentPlace = id;
   try { localStorage.setItem('eden.place', id); } catch { /* the choice lasts for this page only */ }
+  bdMap?.setPlace(id);
   await loadOverview();
   await loadCropMenu();
   if (typeof window.runPlannerCalculation === 'function') await window.runPlannerCalculation({ switchScreenAfter: false });
@@ -1342,7 +1346,22 @@ async function loadPlaces() {
 }
 
 const setLanguageBeforePlace = window.setLanguage;
-window.setLanguage = function(next) { setLanguageBeforePlace(next); applyPlaceText(); };
+window.setLanguage = function(next) { setLanguageBeforePlace(next); applyPlaceText(); bdMap?.refreshLanguage(); };
+
+// A click on the map picks an upazila the same way the place list does
+function chooseFromMap(id) {
+  const placeId = id === 'ADM3_Tanore' ? PILOT_PLACE : id;
+  const row = placeIndex?.find(u => u.id === id);
+  if (row && $('placeDistrict')) {
+    $('placeDistrict').value = row.district;
+    fillPlaceUpazilas();
+    $('placeUpazila').value = placeId;
+  }
+  choosePlace(placeId);
+}
+document.addEventListener('DOMContentLoaded', () => {
+  bdMap = initBdMap({ tr, num, escapeHtml, choose: chooseFromMap, currentId: () => currentPlace });
+});
 document.addEventListener('DOMContentLoaded', loadPlaces);
 
 
