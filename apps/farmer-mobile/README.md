@@ -4,7 +4,14 @@ Native Android prototype for farmers, built with Kotlin, Jetpack Compose, Materi
 
 ## Current scope
 
-The prototype has four bottom-navigation tabs and one nested detail screen:
+The prototype has five bottom-navigation tabs (Today, Weather, River erosion, AI assistant, My farm) and nested detail screens. The tabs most relevant to the shared API are described first:
+
+| Screen | What it shows |
+|---|---|
+| **আবহাওয়া — Weather** | Pick any of Bangladesh's 64 districts / 500 upazilas (list served by the API), or use GPS. Shows the Open-Meteo **model estimate** (current, hourly with humidity, 7-day), an hourly **THI** derived from it, the NASA POWER **delayed** observations (never labelled live), and read-only farm advisories created on the website — each labelled measured / derived / heuristic, with job status and what is missing. Loading, offline, permission-denied, provider-unavailable and no-data states are shown, with retry. |
+| **AI সহকারী** | Sends your selected location with each question; the server (rule-based, not an LLM) answers only from provider data and reference cards, or refuses. |
+
+Older prototype screens:
 
 | Screen | What it demonstrates |
 |---|---|
@@ -23,11 +30,13 @@ Compose screens
     ↓ events / StateFlow
 Screen ViewModels
     ↓
-FarmerRepository ───── EdenApiClient ───── services/api (HTTP :4000)
-    ↓                                      GET /api/v1/overview
-Room database                              POST /api/v1/advice
+FarmerRepository ───── EdenApiClient ───── the shared API (Edith_Web_App_Connectivity repository)
+    ↓                       one configured URL  GET /api/v1/locations, /weather/forecast, /weather,
+Room database                                   /cattle/*, /overview, /erosion; POST /advice, /ai/ask
     ↑
 Seeded prototype profile, advice, and history
+
+WeatherController (plain Kotlin, unit-tested) ← LocationProvider (GPS) / LocationStore (device only)
 
 BanglaTtsManager → Android system TextToSpeech
 ```
@@ -49,24 +58,30 @@ Known gaps in this version:
 - Profile and history are local only; there are no `/api/v1/farmer-profile` or `/api/v1/advice-history` endpoints.
 - The API already serves officer-verified advice (`POST /api/v1/advice` with `farmerId`), the IPM steps (`options[].ipmActions`) and English text, but the app does not show them yet; that is the next app step.
 - There is no durable background sync worker, account/authentication flow, or production API configuration yet.
-- The API address is currently `http://10.0.2.2:4000`, which is the Android emulator's route to the development host. A physical-device or deployed build needs an appropriate configurable API URL. Cleartext HTTP is enabled for local development and must be replaced with HTTPS before deployment.
+- The API URL is configured per build (see "API configuration" below); there is no host guessing and no production URL in source. Cleartext HTTP is allowed in debug builds only; release builds require an `https://` URL or the build fails.
+- The auth token is kept in plain `SharedPreferences` (`AuthManager`); move it to encrypted storage before production. Demo credentials are pre-filled in debug builds only.
+- Farms (AOI polygons) are drawn on the website; this app only reads their advisories. Earth Engine satellite values appear only if the server has Earth Engine configured.
 - The debug APK is a build output and is ignored by Git. Share the APK separately if a tester needs to install it.
 - Screen navigation, advice refresh, audio, profile saves, plan confirmations, and history playback emit privacy-safe event tags under `EDEN_APP` in Logcat. They do not log farm field values.
 
 ## Run locally
 
-Start the API and dashboard from the repository root:
+## API configuration
 
-```bash
-npm install
-npm start
+This app is a client of the **Edith_Web_App_Connectivity** repository's API, which is the only backend (the `services/api` folder in *this* repository is an older duplicate and is deprecated: do not extend it; point the app at the Edith API). Start that API (see its `docs/SETUP.md`), then set the URL per build type in `apps/farmer-mobile/local.properties` (git-ignored), `~/.gradle/gradle.properties`, or with `-P` (template: `gradle.properties.example`):
+
+```properties
+eden.baseUrl.debug=http://10.0.2.2:4000        # emulator (default if unset); real phone: http://<computer-LAN-IP>:4000, or `adb reverse tcp:4000 tcp:4000` + http://127.0.0.1:4000
+eden.baseUrl.release=https://api.example.org   # required for release; must be https:// or `assembleRelease` fails
 ```
 
-In a second terminal, build the Android app:
+## Run locally
+
+Start the shared API from the Edith repository (`npm install && npm start`), then build this app:
 
 ```bash
 cd apps/farmer-mobile
-./gradlew assembleDebug
+./gradlew testDebugUnitTest assembleDebug
 ```
 
 The debug APK is written to `apps/farmer-mobile/app/build/outputs/apk/debug/app-debug.apk`. To install it on a connected Android device or emulator with ADB:
@@ -75,7 +90,7 @@ The debug APK is written to `apps/farmer-mobile/app/build/outputs/apk/debug/app-
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Run the existing local unit tests with:
+Run the unit tests (parsers against real API responses, HTTP client against a local fake server, weather/location logic, THI) with:
 
 ```bash
 ./gradlew test

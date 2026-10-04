@@ -1,0 +1,10 @@
+# Copy the lines you need into apps/farmer-mobile/local.properties (git-ignored) or ~/.gradle/gradle.properties.
+# Placeholders only: never commit a real production URL if it should stay private, and never put secrets here.
+
+# Debug builds. Default if unset: the emulator's alias for the computer running the API.
+eden.baseUrl.debug=http://10.0.2.2:4000
+# Physical phone on the same Wi-Fi: http://<your-computer-LAN-IP>:4000
+# Physical phone over USB:           run `adb reverse tcp:4000 tcp:4000`, then http://127.0.0.1:4000
+
+# Release builds. REQUIRED and must be https:// (the release build fails otherwise).
+eden.baseUrl.release=https://api.example.org

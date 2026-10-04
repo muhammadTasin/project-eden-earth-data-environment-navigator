@@ -6,9 +6,17 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import org.projecteden.farmermobile.data.model.CattleAdvisory
+import org.projecteden.farmermobile.data.model.CattleAoi
+import org.projecteden.farmermobile.data.model.CattleJob
+import org.projecteden.farmermobile.data.model.ForecastResponse
+import org.projecteden.farmermobile.data.model.LocationCatalog
+import org.projecteden.farmermobile.data.model.ObservationResponse
+
+/** The rotation engine only models this one pilot union (Talanda, Tanore); the Today screen is pilot-site advice. */
+const val PILOT_UNION_ID = "talanda_tanore"
 
 /** The server's farmer card for the top-ranked rotation (see FarmerCard in packages/contracts). */
 data class RemoteAdviceResponse(
@@ -48,38 +56,6 @@ data class RemoteOverviewResponse(
     val rootzoneMoisture: Double,
     val rootzoneMoistureDate: String,
     val activeAlertBangla: String?
-)
-
-data class RemoteWeatherDay(
-    val date: String,
-    val t2m: Double,
-    val t2mMax: Double,
-    val t2mMin: Double,
-    val rh2m: Double,
-    val rainMm: Double,
-    val windSpeedMs: Double
-)
-
-data class RemoteWeatherResponse(
-    val locationTitle: String,
-    val latitude: Double,
-    val longitude: Double,
-    val dataSource: String,
-    val observationNotice: String,
-    val observationDate: String,
-    val latencyNotice: String,
-    val isLive: Boolean,
-    val currentTempAvgC: Double,
-    val currentTempMaxC: Double,
-    val currentTempMinC: Double,
-    val currentHumidityPct: Double,
-    val currentRainMm: Double,
-    val currentWindSpeedMs: Double,
-    val rootZoneSoilMoisture: Double,
-    val rootZoneStatus: String,
-    val rainLast30DaysMm: Double,
-    val rainVerdict: String,
-    val history: List<RemoteWeatherDay>
 )
 
 data class RemoteRiverStation(
@@ -131,7 +107,7 @@ data class RemoteAiResponse(
     val timestamp: String
 )
 
-/** A farmer's sentence read by the server (crops, main crop, crops to avoid) and the plan's Bangla reply. */
+/** Response from the in-repository crop-planning voice endpoint, when the configured API exposes it. */
 data class RemoteVoiceAnswer(
     val crops: List<String>,
     val heroCrop: String?,
@@ -141,39 +117,28 @@ data class RemoteVoiceAnswer(
     val topOptionBangla: String,
     val tipsBangla: List<String>
 ) {
-    /** True when the sentence named a crop to grow or to avoid, so the plan answers it. */
     val namedCrops: Boolean get() = crops.isNotEmpty() || heroCrop != null || excluded.isNotEmpty()
 }
 
+/** The slice of the shared API the weather and cattle screens use. Fake it in unit tests. */
+interface EdenApi {
+    suspend fun fetchLocations(): Result<LocationCatalog>
+    suspend fun fetchForecast(lat: Double, lon: Double): Result<ForecastResponse>
+    suspend fun fetchObservations(lat: Double, lon: Double): Result<ObservationResponse>
+    suspend fun fetchCattleAois(): Result<List<CattleAoi>>
+    suspend fun fetchCattleAdvisory(aoiId: String): Result<CattleAdvisory>
+    suspend fun fetchCattleJobs(aoiId: String): Result<List<CattleJob>>
+}
+
 /**
- * Lightweight HTTP client with adaptive multi-host connectivity.
- * Supports USB reverse tethering (127.0.0.1:4000 via adb reverse),
- * local LAN Wi-Fi (192.168.0.244:4000), and Android emulator (10.0.2.2:4000).
+ * HTTP client for the shared Project EDEN API (the Edith_Web_App_Connectivity server; contract in docs/api-contract.md).
+ * It talks to exactly one configured base URL (BuildConfig.EDEN_BASE_URL, set per build type): there is no host
+ * guessing and no fallback server. Failures are ApiException with an ApiErrorKind.
  */
 open class EdenApiClient(
-    val baseUrl: String? = null
-) {
-    private val candidateUrls: List<String> = if (!baseUrl.isNullOrBlank()) {
-        listOf(baseUrl)
-    } else {
-        listOf(
-            "http://127.0.0.1:4000",   // Physical phone via adb reverse tcp:4000 tcp:4000
-            "http://192.168.0.244:4000", // Physical phone on host LAN Wi-Fi
-            "http://10.0.2.2:4000"      // Android emulator loopback
-        )
-    }
-
-    @Volatile
-    private var workingBaseUrl: String? = null
-
-    private fun getCandidates(): List<String> {
-        val currentWorking = workingBaseUrl
-        return if (currentWorking != null) {
-            listOf(currentWorking) + candidateUrls.filter { it != currentWorking }
-        } else {
-            candidateUrls
-        }
-    }
+    val baseUrl: String
+) : EdenApi {
+    private val root: String = baseUrl.trim().trimEnd('/')
 
     private fun escapeJson(value: String): String {
         return value.replace("\\", "\\\\")
@@ -183,62 +148,86 @@ open class EdenApiClient(
             .replace("\t", "\\t")
     }
 
+    private fun readBody(stream: java.io.InputStream?): String =
+        stream?.let { BufferedReader(InputStreamReader(it, Charsets.UTF_8)).use { r -> r.readText() } }.orEmpty()
+
+    /** Maps an error response to ApiException using the API's `{error:{code,message}}` envelope when present. */
+    internal fun errorFor(status: Int, body: String): ApiException {
+        val env = try { JSONObject(body).optJSONObject("error") } catch (_: Exception) { null }
+        val kind = ApiErrorKind.fromCode(env?.optString("code")) ?: ApiErrorKind.fromHttpStatus(status)
+        return ApiException(kind, env?.optString("message")?.takeIf { it.isNotBlank() } ?: "HTTP $status", status)
+    }
+
     private suspend fun sendRequest(
         path: String,
         method: String = "GET",
         authToken: String? = null,
         bodyJson: String? = null
     ): Result<String> = withContext(Dispatchers.IO) {
-        var lastException: Exception? = null
-
-        for (host in getCandidates()) {
-            var conn: HttpURLConnection? = null
-            try {
-                val fullUrl = "$host$path"
-                conn = (URL(fullUrl).openConnection() as HttpURLConnection).apply {
-                    requestMethod = method
-                    connectTimeout = 3000
-                    readTimeout = 4500
-                    setRequestProperty("Accept", "application/json")
-                    if (authToken != null) {
-                        setRequestProperty("Authorization", "Bearer $authToken")
-                    }
-                    if (bodyJson != null) {
-                        doOutput = true
-                        setRequestProperty("Content-Type", "application/json")
-                    }
-                }
-
+        var conn: HttpURLConnection? = null
+        try {
+            conn = (URL("$root$path").openConnection() as HttpURLConnection).apply {
+                requestMethod = method
+                connectTimeout = 8000
+                readTimeout = 20000
+                setRequestProperty("Accept", "application/json")
+                if (authToken != null) setRequestProperty("Authorization", "Bearer $authToken")
                 if (bodyJson != null) {
-                    val writer = OutputStreamWriter(conn.outputStream)
-                    writer.write(bodyJson)
-                    writer.flush()
-                    writer.close()
+                    doOutput = true
+                    setRequestProperty("Content-Type", "application/json")
                 }
-
-                val code = conn.responseCode
-                if (code in 200..299) {
-                    val reader = BufferedReader(InputStreamReader(conn.inputStream))
-                    val body = reader.readText()
-                    reader.close()
-                    workingBaseUrl = host
-                    return@withContext Result.success(body)
-                } else {
-                    val errorStream = conn.errorStream
-                    val errorMsg = if (errorStream != null) {
-                        BufferedReader(InputStreamReader(errorStream)).readText()
-                    } else "HTTP error $code"
-                    lastException = Exception("Server returned $code: $errorMsg")
-                }
-            } catch (e: Exception) {
-                lastException = e
-            } finally {
-                conn?.disconnect()
             }
-        }
+            if (bodyJson != null) conn.outputStream.use { it.write(bodyJson.toByteArray(Charsets.UTF_8)) }
 
-        Result.failure(lastException ?: Exception("Network request failed on all hosts"))
+            val code = conn.responseCode
+            if (code in 200..299) {
+                Result.success(readBody(conn.inputStream))
+            } else {
+                Result.failure(errorFor(code, readBody(conn.errorStream)))
+            }
+        } catch (e: java.net.SocketTimeoutException) {
+            Result.failure(ApiException(ApiErrorKind.TIMEOUT, "Timed out calling $path", cause = e))
+        } catch (e: java.io.IOException) {
+            // DNS failure, refused connection, no route, cleartext blocked, TLS failure, dropped connection ...
+            Result.failure(ApiException(ApiErrorKind.OFFLINE, e.message ?: "Network error", cause = e))
+        } catch (e: IllegalArgumentException) {
+            Result.failure(ApiException(ApiErrorKind.MALFORMED, "Invalid API URL: $root", cause = e))
+        } finally {
+            conn?.disconnect()
+        }
     }
+
+    /** Runs [parse] on a successful body; a parse failure means the server did not answer in the contract's shape. */
+    private fun <T> Result<String>.parsed(parse: (String) -> T): Result<T> = fold(
+        onSuccess = { body ->
+            try {
+                Result.success(parse(body))
+            } catch (e: Exception) {
+                Result.failure(ApiException(ApiErrorKind.MALFORMED, "Unexpected response: ${e.message}", cause = e))
+            }
+        },
+        onFailure = { Result.failure(it) },
+    )
+
+    private fun coords(lat: Double, lon: Double) = "lat=${String.format(java.util.Locale.ROOT, "%.5f", lat)}&lon=${String.format(java.util.Locale.ROOT, "%.5f", lon)}"
+
+    override suspend fun fetchLocations(): Result<LocationCatalog> =
+        sendRequest("/api/v1/locations").parsed(ApiParsers::locations)
+
+    override suspend fun fetchForecast(lat: Double, lon: Double): Result<ForecastResponse> =
+        sendRequest("/api/v1/weather/forecast?${coords(lat, lon)}").parsed(ApiParsers::forecast)
+
+    override suspend fun fetchObservations(lat: Double, lon: Double): Result<ObservationResponse> =
+        sendRequest("/api/v1/weather?${coords(lat, lon)}").parsed(ApiParsers::observations)
+
+    override suspend fun fetchCattleAois(): Result<List<CattleAoi>> =
+        sendRequest("/api/v1/cattle/aois").parsed(ApiParsers::cattleAois)
+
+    override suspend fun fetchCattleAdvisory(aoiId: String): Result<CattleAdvisory> =
+        sendRequest("/api/v1/cattle/aois/${java.net.URLEncoder.encode(aoiId, "UTF-8")}/advisory").parsed(ApiParsers::cattleAdvisory)
+
+    override suspend fun fetchCattleJobs(aoiId: String): Result<List<CattleJob>> =
+        sendRequest("/api/v1/cattle/jobs?aoiId=${java.net.URLEncoder.encode(aoiId, "UTF-8")}").parsed(ApiParsers::cattleJobs)
 
     suspend fun fetchOverview(): Result<RemoteOverviewResponse> = withContext(Dispatchers.IO) {
         val res = sendRequest("/api/v1/overview")
@@ -271,7 +260,7 @@ open class EdenApiClient(
         incomeWeight: Double = 0.3,
         soilWeight: Double = 0.2
     ): Result<RemoteAdviceResponse> = withContext(Dispatchers.IO) {
-        val payload = """{"unionId":"talanda_tanore","landType":"${escapeJson(landType)}","farmerPriorities":{"water":$waterWeight,"income":$incomeWeight,"soil":$soilWeight}}"""
+        val payload = """{"unionId":"$PILOT_UNION_ID","landType":"${escapeJson(landType)}","farmerPriorities":{"water":$waterWeight,"income":$incomeWeight,"soil":$soilWeight}}"""
         val res = sendRequest("/api/v1/advice", method = "POST", bodyJson = payload)
         res.mapCatching { body ->
             val json = JSONObject(body)
@@ -307,54 +296,6 @@ open class EdenApiClient(
                 audioScript = card.getString("audioScriptBangla"),
                 audioDurationSeconds = card.optInt("audioDurationSeconds", 30),
                 rawJson = body
-            )
-        }
-    }
-
-    suspend fun fetchWeather(lat: Double = 24.62, lon: Double = 88.56): Result<RemoteWeatherResponse> = withContext(Dispatchers.IO) {
-        val res = sendRequest("/api/v1/weather?lat=$lat&lon=$lon")
-        res.mapCatching { body ->
-            val json = JSONObject(body)
-            val loc = json.getJSONObject("location")
-            val latest = json.getJSONObject("latest")
-            val recentArray = json.optJSONArray("recentDays") ?: JSONArray()
-
-            val history = mutableListOf<RemoteWeatherDay>()
-            for (i in 0 until recentArray.length()) {
-                val d = recentArray.getJSONObject(i)
-                history.add(
-                    RemoteWeatherDay(
-                        date = d.optString("date"),
-                        t2m = d.optDouble("t2m", 0.0),
-                        t2mMax = d.optDouble("t2mMax", 0.0),
-                        t2mMin = d.optDouble("t2mMin", 0.0),
-                        rh2m = d.optDouble("rh2m", 0.0),
-                        rainMm = d.optDouble("rainMm", 0.0),
-                        windSpeedMs = d.optDouble("windSpeedMs", 0.0)
-                    )
-                )
-            }
-
-            RemoteWeatherResponse(
-                locationTitle = "${loc.optString("unionBangla", "তালন্দ")}, ${loc.optString("upazilaBangla", "তানোর")}, ${loc.optString("districtBangla", "রাজশাহী")}",
-                latitude = loc.optDouble("lat", lat),
-                longitude = loc.optDouble("lon", lon),
-                dataSource = json.optString("dataSource", "NASA POWER & SMAP L4"),
-                observationNotice = json.optString("dataTypeNoticeBangla", "উপগ্রহ ও বায়ুমণ্ডলীয় পর্যবেক্ষণ উপাত্ত (পূর্বাভাস নয়)"),
-                observationDate = json.optString("latestObservationDate", ""),
-                latencyNotice = json.optString("latencyNoticeBangla", ""),
-                isLive = json.optBoolean("isLive", false),
-                currentTempAvgC = latest.optDouble("t2m", 26.0),
-                currentTempMaxC = latest.optDouble("t2mMax", 28.0),
-                currentTempMinC = latest.optDouble("t2mMin", 24.0),
-                currentHumidityPct = latest.optDouble("rh2m", 80.0),
-                currentRainMm = latest.optDouble("rainMm", 0.0),
-                currentWindSpeedMs = latest.optDouble("windSpeedMs", 2.0),
-                rootZoneSoilMoisture = latest.optDouble("rootZoneMoistureM3M3", 0.311),
-                rootZoneStatus = latest.optString("rootZoneMoistureStatusBangla", "মাটির আর্দ্রতা স্বাভাবিক"),
-                rainLast30DaysMm = latest.optDouble("rainLast30DaysMm", 0.0),
-                rainVerdict = latest.optString("rainVerdictBangla", "স্বাভাবিক"),
-                history = history
             )
         }
     }
@@ -458,15 +399,16 @@ open class EdenApiClient(
         res.mapCatching { true }
     }
 
-    /** POST /api/v1/voice/answer: the crops in a spoken or typed sentence, the year's plan and its Bangla reply. */
-    suspend fun voiceAnswer(text: String, unionId: String = "talanda_tanore"): Result<RemoteVoiceAnswer> = withContext(Dispatchers.IO) {
-        val payload = """{"text":"${escapeJson(text)}","unionId":"${escapeJson(unionId)}"}"""
+    /** POST /api/v1/voice/answer. If the configured shared API lacks this optional route, callers can fall back to /ai/ask. */
+    suspend fun voiceAnswer(text: String, unionId: String = PILOT_UNION_ID): Result<RemoteVoiceAnswer> = withContext(Dispatchers.IO) {
+        val payload = JSONObject().put("text", text).put("unionId", unionId).toString()
         sendRequest("/api/v1/voice/answer", method = "POST", bodyJson = payload).mapCatching { body ->
             val json = JSONObject(body)
             val understood = json.getJSONObject("understood")
             val reply = json.getJSONObject("reply")
             val top = json.getJSONObject("advice").getJSONArray("options").getJSONObject(0)
-            val strings = { arr: JSONArray? -> (0 until (arr?.length() ?: 0)).map { arr!!.getString(it) } }
+            fun strings(array: JSONArray?): List<String> =
+                (0 until (array?.length() ?: 0)).map { array!!.getString(it) }
             val tips = top.optJSONArray("stewardship")
             RemoteVoiceAnswer(
                 crops = strings(understood.optJSONArray("crops")),
@@ -480,13 +422,12 @@ open class EdenApiClient(
         }
     }
 
-    suspend fun askAi(query: String, farmProfile: JSONObject?): Result<RemoteAiResponse> = withContext(Dispatchers.IO) {
-        val farmProfileStr = farmProfile?.toString()
-        val payload = if (farmProfileStr != null) {
-            """{"query":"${escapeJson(query)}","farmProfile":$farmProfileStr}"""
-        } else {
-            """{"query":"${escapeJson(query)}"}"""
-        }
+    suspend fun askAi(query: String, farmProfile: JSONObject?, lat: Double? = null, lon: Double? = null): Result<RemoteAiResponse> = withContext(Dispatchers.IO) {
+        // lat/lon are the user's selected location; without them the server declines weather questions instead of guessing.
+        val body = JSONObject().put("query", query)
+        if (farmProfile != null) body.put("farmProfile", farmProfile)
+        if (lat != null && lon != null) body.put("lat", lat).put("lon", lon)
+        val payload = body.toString()
 
         val res = sendRequest("/api/v1/ai/ask", method = "POST", bodyJson = payload)
         res.mapCatching { body ->
@@ -506,7 +447,7 @@ open class EdenApiClient(
             RemoteAiResponse(
                 answer = json.getString("answer"),
                 sources = sources,
-                evidenceLevel = json.optString("evidenceLevel", "verified_high"),
+                evidenceLevel = json.optString("evidenceLevel", "insufficient_evidence"),
                 suggestions = suggestions,
                 timestamp = json.optString("timestamp", "")
             )

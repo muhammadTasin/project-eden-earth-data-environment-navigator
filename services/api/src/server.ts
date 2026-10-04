@@ -663,10 +663,17 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { ...HAOR_FLASH_FLOOD, status: haorStatus(), live: liveHaor() });
     }
 
-    // API: Real NASA Weather Observations (NASA POWER daily agroclimatology & SMAP soil moisture)
+    // API: Location-aware Weather (Open-Meteo model forecast + NASA POWER agroclimatology & SMAP soil moisture)
     if (pathname === '/api/v1/weather' && req.method === 'GET') {
-      const lat = parseFloat(url.searchParams.get('lat') || '24.62');
-      const lon = parseFloat(url.searchParams.get('lon') || '88.56');
+      const latParam = url.searchParams.get('lat');
+      const lonParam = url.searchParams.get('lon');
+      const lat = latParam !== null ? parseFloat(latParam) : 24.62;
+      const lon = lonParam !== null ? parseFloat(lonParam) : 88.56;
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+        return sendJSON(res, 400, { error: 'Invalid coordinates; latitude must be between -90 and 90, and longitude between -180 and 180.' });
+      }
+
       const weather = await getNasaWeather(lat, lon);
       return sendJSON(res, 200, weather);
     }

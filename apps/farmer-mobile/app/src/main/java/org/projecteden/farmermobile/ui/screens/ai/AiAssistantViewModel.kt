@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import org.projecteden.farmermobile.EdenFarmerApp
 import org.projecteden.farmermobile.data.remote.RemoteAiResponse
+import org.projecteden.farmermobile.location.PrefsLocationStore
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -113,7 +114,8 @@ class AiAssistantViewModel(application: Application) : AndroidViewModel(applicat
                 return@launch
             }
 
-            val res = apiClient.askAi(trimmed, profileJson)
+            val saved = PrefsLocationStore(getApplication()).load()
+            val res = apiClient.askAi(trimmed, profileJson, saved?.latitude, saved?.longitude)
             res.fold(
                 onSuccess = { aiResp ->
                     val aiMsg = ChatMessage(

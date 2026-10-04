@@ -73,7 +73,7 @@ class FarmerMobileUnitTest {
             override suspend fun markHistoryItemListened(historyId: String) {}
         }
 
-        val repository = FarmerRepository(fakeDao)
+        val repository = FarmerRepository(fakeDao, EdenApiClient("http://127.0.0.1:1"))
 
         val profile = repository.farmProfile.first()
         assertNotNull(profile)
@@ -126,7 +126,7 @@ class FarmerMobileUnitTest {
             override suspend fun markHistoryItemListened(historyId: String) {}
         }
 
-        val repository = FarmerRepository(fakeDao)
+        val repository = FarmerRepository(fakeDao, EdenApiClient("http://127.0.0.1:1"))
         val profile = repository.farmProfile.first()
         assertEquals("আসল খামার", profile.farmName)
 
@@ -171,7 +171,7 @@ class FarmerMobileUnitTest {
         }
 
         // Fake client that returns success
-        val fakeClient = object : EdenApiClient() {
+        val fakeClient = object : EdenApiClient("http://127.0.0.1:1") {
             // Note: will fail network, testing failure path still preserves advice
         }
         val repository = FarmerRepository(fakeDao, fakeClient)

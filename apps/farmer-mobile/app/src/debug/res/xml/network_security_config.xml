@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- DEBUG BUILDS ONLY: allow plain HTTP so the app can reach a local API (emulator 10.0.2.2, USB adb reverse, or a LAN IP).
+     The release build uses src/main/res/xml/network_security_config.xml, which blocks cleartext. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

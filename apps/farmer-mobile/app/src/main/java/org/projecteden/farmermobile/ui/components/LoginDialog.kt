@@ -57,8 +57,9 @@ fun LoginDialog(
     errorMessage: String? = null
 ) {
     var selectedRole by remember { mutableStateOf("farmer") } // "farmer" or "officer"
-    var idInput by remember { mutableStateOf("F01") }
-    var pinOrCodeInput by remember { mutableStateOf("1234") }
+    // Demo credentials are pre-filled in debug builds only; release builds start with empty fields.
+    var idInput by remember { mutableStateOf(if (org.projecteden.farmermobile.BuildConfig.DEBUG) "F01" else "") }
+    var pinOrCodeInput by remember { mutableStateOf(if (org.projecteden.farmermobile.BuildConfig.DEBUG) "1234" else "") }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -109,8 +110,8 @@ fun LoginDialog(
                             .background(if (isFarmer) Primary else androidx.compose.ui.graphics.Color.Transparent)
                             .clickable {
                                 selectedRole = "farmer"
-                                idInput = "F01"
-                                pinOrCodeInput = "1234"
+                                idInput = if (org.projecteden.farmermobile.BuildConfig.DEBUG) "F01" else ""
+                                pinOrCodeInput = if (org.projecteden.farmermobile.BuildConfig.DEBUG) "1234" else ""
                             }
                             .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center
@@ -130,8 +131,13 @@ fun LoginDialog(
                             .background(if (!isFarmer) Primary else androidx.compose.ui.graphics.Color.Transparent)
                             .clickable {
                                 selectedRole = "officer"
-                                idInput = "saao_talanda_01"
-                                pinOrCodeInput = "talanda-demo"
+                                if (org.projecteden.farmermobile.BuildConfig.DEBUG) {
+                                    idInput = "saao_talanda_01"
+                                    pinOrCodeInput = "talanda-demo"
+                                } else {
+                                    idInput = ""
+                                    pinOrCodeInput = ""
+                                }
                             }
                             .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center
@@ -145,7 +151,8 @@ fun LoginDialog(
                     }
                 }
 
-                // Quick Demo Helpers
+                // Quick demo helpers: debug builds only (they fill in the server's demo accounts)
+                if (org.projecteden.farmermobile.BuildConfig.DEBUG) {
                 Text(
                     text = if (selectedRole == "farmer") "দ্রুত বাছাই (ডেমো কৃষক):" else "ডেমো কর্মকর্তা তথ্য:",
                     style = MaterialTheme.typography.labelSmall,
@@ -190,6 +197,7 @@ fun LoginDialog(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
                         )
                     }
+                }
                 }
 
                 // Input Fields

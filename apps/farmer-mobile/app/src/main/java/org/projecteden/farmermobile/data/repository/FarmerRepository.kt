@@ -26,7 +26,7 @@ import java.util.Locale
  */
 class FarmerRepository(
     private val farmDao: FarmDao,
-    private val apiClient: EdenApiClient = EdenApiClient()
+    private val apiClient: EdenApiClient
 ) {
 
     val farmProfile: Flow<FarmProfileEntity> = farmDao.getFarmProfile().map {

@@ -27,7 +27,8 @@ class EdenFarmerApp : Application() {
     override fun onCreate() {
         super.onCreate()
         database = EdenDatabase.getInstance(this)
-        apiClient = EdenApiClient()
+        // One configured API (per build type, see build.gradle.kts / gradle.properties.example); no host guessing.
+        apiClient = EdenApiClient(baseUrl = BuildConfig.EDEN_BASE_URL)
         authManager = AuthManager(this, apiClient)
         repository = FarmerRepository(database.farmDao(), apiClient)
         ttsManager = BanglaTtsManager(this)
