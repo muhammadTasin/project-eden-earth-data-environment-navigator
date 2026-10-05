@@ -285,7 +285,7 @@ export const EN = {
   'quality.p3b': ', generated automatically from a commit of the research repository.',
   // role picker, farmer portal, weather and cattle (portals.js)
   'role.change': 'Change role',
-  'entry.eyebrow': 'Mather Kotha · Project EDEN',
+  'entry.eyebrow': 'Mati Kohon · Project EDEN',
   'entry.title': 'How would you like to continue?',
   'entry.lead': 'Choose your role. Visitors can read public information without signing in.',
   'entry.checking': 'Checking your previous session…',
@@ -337,7 +337,7 @@ export const EN = {
   'erosion.padma': 'Padma',
   'erosion.meghna': 'Meghna',
   'erosion.teesta': 'Teesta',
-  'assistant.title': 'Mather Kotha assistant',
+  'assistant.title': 'Mati Kohon assistant',
   'assistant.badge': 'Answers from checked data',
   'assistant.hello': 'Assalamu alaikum! Tell me which crops you want (for example "only wheat, no rice"), or ask about irrigation, fertilizer and pests.',
   'assistant.p1': 'Only wheat, no rice',

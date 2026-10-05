@@ -2,7 +2,7 @@ package org.projecteden.farmermobile.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Mather Kotha material, the same as the story site (github.com/Tasrif-Ahmed-Mohsin/Mati-Kohon) and the SAAO
+// Mati Kohon material, the same as the story site (github.com/Tasrif-Ahmed-Mohsin/Mati-Kohon) and the SAAO
 // dashboard: matte warm paper, paddy green, rain blue and amber, high contrast for reading in the sun.
 
 val Primary = Color(0xFF2F6B48)           // paddy

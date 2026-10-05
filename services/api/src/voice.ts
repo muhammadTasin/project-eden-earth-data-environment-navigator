@@ -50,7 +50,7 @@ export function keypadMenu() {
     options,
     officerKey: KEYPAD_OFFICER,
     promptBangla: [
-      'মাঠের কথা থেকে বলছি।',
+      'মাটি কহন থেকে বলছি।',
       'কোন ফসল করতে চান, ফোনের বোতাম চেপে জানান।',
       `${options.map(o => `${bnGenitive(o.cropBangla)} জন্য ${NUMBER_WORDS[Number(o.key)]}`).join(', ')} চাপুন।`,
       `কৃষি কর্মকর্তার সাথে কথা বলতে ${NUMBER_WORDS[9]} চাপুন।`,
@@ -109,7 +109,7 @@ export function replyFor(advice: AdviceJSON, understood?: Pick<Understood, 'crop
   const notes = (choice?.notesBangla ?? []).filter(n => !n.includes('বাজারদর') && !n.includes('স্কোর') && !n.startsWith('কোনো চক্রে ধান')).slice(0, 2);
 
   const speech = speakable([
-    'আসসালামু আলাইকুম। মাঠের কথা থেকে বলছি।',
+    'আসসালামু আলাইকুম। মাটি কহন থেকে বলছি।',
     asked.length ? `আপনি ${andJoin(asked)} করতে চেয়েছেন।` : '',
     `নাসার পঁচিশ বছরের আবহাওয়া ও বৃষ্টির হিসাবে ${place} জন্য ভালো চক্র: ${[
       monsoon.seasonType === 'Aman' ? `আমনে ${monsoon.varietyBangla}` : monsoon.fallow ? '' : `বর্ষায় ${monsoon.cropBangla}`,
@@ -128,7 +128,7 @@ export function replyFor(advice: AdviceJSON, understood?: Pick<Understood, 'crop
 
   const verb = (p: typeof rabi) => (p.seasonType === 'Aman' || p.seasonType === 'Aus' || p.crop.toLowerCase().includes('rice') ? 'রোপণ' : 'বপন');
   const named = (p: typeof rabi) => `${p.seasonType === 'Aman' ? p.varietyBangla : p.cropBangla}${p.sowingBangla ? ` (${verb(p)} ~${p.sowingBangla})` : ''}`;
-  const sms = `মাঠের কথা: ${[monsoon, rabi, k1].filter(p => p && !p.fallow).map(p => named(p!)).join(' → ')}${monsoon.fallow ? '; বর্ষায় ধান নেই' : ''}। প্রশ্নে SAAO-কে ফোন করুন।`;
+  const sms = `মাটি কহন: ${[monsoon, rabi, k1].filter(p => p && !p.fallow).map(p => named(p!)).join(' → ')}${monsoon.fallow ? '; বর্ষায় ধান নেই' : ''}। প্রশ্নে SAAO-কে ফোন করুন।`;
 
   return {
     speechBangla: speech,

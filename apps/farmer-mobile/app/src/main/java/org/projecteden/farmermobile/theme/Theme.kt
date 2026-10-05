@@ -70,7 +70,7 @@ fun ProjectEDENFarmerTheme(
     darkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    // The Mather Kotha material (Color.kt), high contrast for reading in the sun; sharp corners as on the story site
+    // The Mati Kohon material (Color.kt), high contrast for reading in the sun; sharp corners as on the story site
     val colorScheme = if (darkTheme) AgroPrecisionDarkColorScheme else AgroPrecisionLightColorScheme
 
     MaterialTheme(
