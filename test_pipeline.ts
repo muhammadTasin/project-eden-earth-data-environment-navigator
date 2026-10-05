@@ -4,6 +4,7 @@ import { TANORE_LEDGER_RESEARCH, TANORE_RABI_REPLAY } from './packages/rotation-
 import { DualGateNarrationValidator, type ILocalLLMClient } from './packages/narration-core/src/dual_gate_validator.ts';
 import { TemplateNarrator } from './packages/narration-core/src/template_narrator.ts';
 import { understandRequest } from './packages/rotation-engine/src/understand.ts';
+import { placeFor } from './packages/rotation-engine/src/data/location.ts';
 
 const BN = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
 const bn = (v: unknown) => String(v).replace(/\d/g, d => BN[Number(d)]);
@@ -288,8 +289,9 @@ async function runTests() {
   }
   const potato = engine.generateAdvice({ ...TALANDA, farmerPriorities: { water: 0.5, income: 0.3, soil: 0.2 }, preferredCrops: ['potato'] }).options[0];
   if (!/% more/.test(pestTip(potato).en)) throw new Error('A potato plan must show more pesticide than Aman-Boro');
+  // Upland monsoon crops go on high land only (data/land.ts), so the waterlogging comparison is made there
   const soaked = (place: string) => {
-    const opts = engine.generateAdvice({ ...TALANDA, unionId: place, farmerPriorities: { water: 0.5, income: 0.3, soil: 0.2 }, heroCrop: 'wheat', avoidCrops: ['rice'] }).options;
+    const opts = engine.generateAdvice({ ...TALANDA, unionId: place, landType: 'high', farmerPriorities: { water: 0.5, income: 0.3, soil: 0.2 }, heroCrop: 'wheat', avoidCrops: ['rice'] }).options;
     const mung = opts.find(o => o.cropSequence.some(c => c.seasonType === 'Kharif-2' && c.crop === 'Mungbean'))!;
     return { days: mung.dimensionDetails.flood.metrics.kharif2WaterloggedDays as number, score: mung.scores.flood };
   };
@@ -308,8 +310,72 @@ async function runTests() {
   console.log(`Monsoon mungbean waterlogged days: Godagari ${dry.days} (flood ${dry.score}), Sylhet Sadar ${wet.days} (flood ${wet.score})`);
   console.log('✓ TEST 16 PASSED: Pesticide, waterlogging, jute and crop incomes come from NASA and BBS data.\n');
 
+  // TEST 17: Advice that fits the place: land type, what farmers grow, flash floods, district yields, today's soil
+  console.log('[TEST 17] Testing advice that fits each upazila...');
+  const at = (unionId: string, extra: Record<string, unknown> = {}) => {
+    const place = placeFor(unionId)!;
+    return engine.generateAdvice({
+      unionId, unionNameBangla: place.nameBangla, upazila: place.upazila, district: place.district, landType: place.defaultLandType,
+      landTypeAssumed: true, season: '2026-aman', farmerPriorities: { water: 0.5, income: 0.3, soil: 0.2 }, ...extra,
+    } as Parameters<typeof engine.generateAdvice>[0]);
+  };
+  const winterOf = (o: typeof advice.options[number]) => o.cropSequence.find(p => p.seasonType === 'Rabi')!;
+  // Haor low land (NASA NASADEM + Landsat + BRRI survey): no Aman, Boro cut before the flash floods in most springs
+  const haor = at('ADM3_Khaliajuri');
+  if (haor.scope.land_type !== 'low' || haor.options.some(o => o.cropSequence[0].seasonType === 'Aman')) {
+    throw new Error('Khaliajuri is haor low land: no option may hold Aman');
+  }
+  const haorFlood = haor.options[0].dimensionDetails.flood.metrics;
+  if (winterOf(haor.options[0]).crop !== 'Boro rice' || (haorFlood.flashFloodCaught as number) / (haorFlood.flashFloodSeasons as number) >= 0.4
+    || !['flash_flood', 'deep_flooding'].every(h => haor.local_context!.hazards.includes(h))) {
+    throw new Error('Haor low land gets a Boro cut before the flash floods in most springs, with both hazards named');
+  }
+  const higher = at('ADM3_Khaliajuri', { landType: 'medium_high', landTypeAssumed: false });
+  if (!higher.options.every(o => o.cropSequence[0].seasonType === 'Aman') || higher.local_context!.landTypeAssumed) {
+    throw new Error('When the farmer says the field is higher, Aman comes back');
+  }
+  // The coast's winter fallow is flagged as possible salinity, which the engine does not model
+  const coast = at('ADM3_Shyamnagar');
+  if (!coast.local_context!.hazards.includes('winter_fallow_salinity') || !coast.stale_or_missing_inputs.some(s => s.dataset === 'Soil salinity')) {
+    throw new Error('Shyamnagar (Fallow-Fallow-T. Aman on most land) must flag winter fallow and salinity');
+  }
+  // District yields move income: Faridpur grows the most lentil, above the national yield
+  const faridpur = at('ADM3_FaridpurSadar');
+  const lentilPlan = faridpur.options.find(o => winterOf(o).crop === 'Lentil');
+  if (!lentilPlan || (lentilPlan.dimensionDetails.income.metrics.districtYieldTPerHa as number) <= (lentilPlan.dimensionDetails.income.metrics.nationalYieldTPerHa as number)) {
+    throw new Error('Faridpur must offer lentil, with its district yield above the national one');
+  }
+  // Different places, different plans
+  const sample = ['ADM3_FaridpurSadar', 'ADM3_MunshiganjSadar', 'ADM3_Khaliajuri', 'ADM3_Nachole', 'ADM3_Shyamnagar', 'ADM3_PanchagarhSadar', 'ADM3_Chatkhil', 'ADM3_SylhetSadar', 'ADM3_Godagari', 'ADM3_BholaSadar'];
+  const winters = new Set(sample.map(id => winterOf(at(id).options[0]).crop));
+  if (winters.size < 4) throw new Error(`Ten upazilas across the country should not share one winter crop (got ${[...winters].join(', ')})`);
+  // Today's NASA reading: a dry soil in October costs the replay's 50 mm of residual water; in March it does not
+  const drySoil = { date: '2026-10-01', soilStatus: 'dry', soilRank: 0, soilYears: 10, rain30PctOfNormal: 45, source: 'test' };
+  const october = at('ADM3_FaridpurSadar', { currentConditions: drySoil, today: '2026-10-05' });
+  const march = at('ADM3_FaridpurSadar', { currentConditions: drySoil, today: '2027-03-01' });
+  const lentilOct = october.options.find(o => winterOf(o).crop === 'Lentil')!;
+  const lentilMar = march.options.find(o => o.id === lentilOct.id)!;
+  if (lentilOct.dimensionDetails.water.metrics.dryStartExtraMm !== 50 || !lentilOct.approvedActionIds.includes('action_dry_start')
+    || !october.local_context!.hazards.includes('dry_start') || lentilMar.dimensionDetails.water.metrics.dryStartExtraMm !== undefined) {
+    throw new Error('A dry soil before the winter sowing adds 50 mm and a sowing step; in March it does not');
+  }
+  // NASA GLDAS groundwater: irrigation weighs more where the aquifer falls fastest (Barind), never less on the coast
+  const barindWeight = at('ADM3_Nachole').options[0].dimensionDetails.water.metrics.groundwaterWeight as number;
+  const coastWeight = coast.options[0].dimensionDetails.water.metrics.groundwaterWeight as number;
+  if (!(barindWeight > 1.3 && coastWeight === 1)) throw new Error(`GLDAS weights: Barind ${barindWeight}, coast ${coastWeight}`);
+  // NASA SEDAC PEST-CHEMGRIDS in the pest score: potato takes more pesticide than Aman-Boro, lentil less
+  const munshiganj = at('ADM3_MunshiganjSadar');
+  const potatoPest = munshiganj.options.find(o => winterOf(o).crop === 'Potato')!.dimensionDetails.pest.metrics;
+  const lentilPest = lentilPlan.dimensionDetails.pest.metrics;
+  if (!((potatoPest.pesticideKgHa as number) > (potatoPest.pesticideAmanBoroKgHa as number) && (lentilPest.pesticideKgHa as number) < (lentilPest.pesticideAmanBoroKgHa as number))) {
+    throw new Error('PEST-CHEMGRIDS: potato above Aman-Boro, lentil below');
+  }
+  console.log(`Khaliajuri: ${haor.options[0].nameEnglish}; flash floods before harvest in ${haorFlood.flashFloodCaught} of ${haorFlood.flashFloodSeasons} springs`);
+  console.log(`Top winter crops in ten upazilas: ${[...winters].join(', ')}; GLDAS weight Barind ${barindWeight}, coast ${coastWeight}`);
+  console.log('✓ TEST 17 PASSED: Land type, current patterns, flash floods, district yields and today\'s soil shape each upazila\'s plan.\n');
+
   console.log('========================================================');
-  console.log('  ALL 16 CORE TESTS PASSED SUCCESSFULLY!                ');
+  console.log('  ALL 17 CORE TESTS PASSED SUCCESSFULLY!                ');
   console.log('========================================================');
 }
 

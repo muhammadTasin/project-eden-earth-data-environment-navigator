@@ -2,7 +2,9 @@ import type { IEvidenceDimensionPlugin, EvaluationContext, DimensionScoreResult 
 import { amanOrNull, rabiOf, kharif1Of, kharif2Of, clampScore } from '../data/lookup.ts';
 import { LOC } from '../data/location.ts';
 import { RESISTANT_VARIETIES } from '../data/ipm_catalog.ts';
-import { bnDigits, seasonDay } from '../bn.ts';
+import { choiceIdOf } from '../data/crop_choice.ts';
+import { pesticideEstimate } from '../stewardship.ts';
+import { bnDecimal, bnDigits, seasonDay } from '../bn.ts';
 
 /**
  * Pest pressure and pesticide need of a rotation, from four transparent rules:
@@ -10,13 +12,15 @@ import { bnDigits, seasonDay } from '../bn.ts';
  *  2. nitrogen: the SRDI urea total for the rotation (lush, high-N crops draw more pests)
  *  3. resistance: Rabi varieties the BWMRI/BRRI pages list as disease resistant
  *  4. timing: sowing after the handbook deadline raises pest and disease pressure
- * These are IPM rules, not field pest counts, so confidence is low until SAAOs log pest sightings.
+ * and NASA SEDAC's PEST-CHEMGRIDS estimate of the pesticide the year's crops take at this upazila, against the usual
+ * Aman-Boro rotation there (potato and vegetables take the most, pulses and oilseeds the least).
+ * These are IPM rules and a model estimate, not field pest counts, so confidence is low until SAAOs log pest sightings.
  */
 export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
   readonly id = 'pest';
   readonly displayNameBangla = 'বালাই চাপ ও কীটনাশক কমানো';
   readonly displayNameEnglish = 'Pest Pressure & Pesticide Need';
-  readonly version = '1.0.0';
+  readonly version = '1.1.0';
   readonly isEnabled = true;
 
   evaluate(context: EvaluationContext): DimensionScoreResult {
@@ -40,6 +44,15 @@ export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
     score -= (Math.max(0, rotationUrea - 300) / 1000) * 0.3;
     if (resistance) score += 0.05;
     if (!sownOnTime) score -= 0.15;
+    // NASA SEDAC PEST-CHEMGRIDS: each tenth of the Aman-Boro load more (or less) moves the score 0.025 down (or up)
+    const cropIds = [amanSlot ? 'aman' : k2 ? choiceIdOf(k2.crop.variety) : '', choiceIdOf(crop.variety), k1 ? choiceIdOf(k1.crop.variety) : '']
+      .filter(Boolean);
+    const plan = pesticideEstimate(cropIds);
+    const usual = pesticideEstimate(['aman', 'boro']);
+    const loadKgHa = (plan.low + plan.high) / 2;
+    const usualKgHa = (usual.low + usual.high) / 2;
+    const loadRatio = usualKgHa > 0 ? loadKgHa / usualKgHa : 1;
+    score -= 0.25 * (loadRatio - 1);
     const pestScore = clampScore(score, 0.1, 0.95);
 
     const partsBn = [
@@ -51,6 +64,7 @@ export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
             ? 'বছরে একবারই ধান: ধানের পোকার চক্র ভাঙে।'
             : 'ধানের পর আবার ধান: মাজরা পোকা ও বাদামি গাছফড়িং সারা বছর খাবার পায়।',
       `পুরো চক্রে ইউরিয়া ${bnDigits(rotationUrea)} কেজি/হেক্টর (SRDI)।`,
+      `নাসার PEST-CHEMGRIDS অনুমানে এই ফসলগুলোতে বছরে হেক্টরে প্রায় ${bnDecimal(loadKgHa, 2)} কেজি কীটনাশক (সক্রিয় উপাদান), আমন–বোরোতে ${bnDecimal(usualKgHa, 2)}।`,
       resistance ? `${rabiName.varietyBangla} ${resistance.bn}।` : '',
       sownOnTime ? '' : 'দেরিতে বোনায় পোকা ও রোগের চাপ বাড়ে।',
     ];
@@ -59,6 +73,7 @@ export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
         ? 'No rice in the year: stem borers and planthoppers find no host.'
         : hostBreak ? `${rabiName.crop} after ${amanSlot ? 'Aman' : 'rice'} breaks the rice-pest cycle.` : 'Rice after rice keeps stem borers and planthoppers fed all year.',
       `Rotation urea ${rotationUrea} kg/ha (SRDI).`,
+      `NASA SEDAC PEST-CHEMGRIDS: about ${loadKgHa.toFixed(2)} kg/ha of pesticide active ingredient a year on these crops here, against ${usualKgHa.toFixed(2)} on Aman-Boro.`,
       resistance ? `${crop.variety} is ${resistance.en}.` : '',
       sownOnTime ? '' : 'Late sowing raises pest and disease pressure.',
     ];
@@ -75,9 +90,11 @@ export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
         rotationUreaKgHa: rotationUrea,
         resistantVariety: resistance ? resistance.en : 'none listed',
         sownOnTime,
+        pesticideKgHa: Math.round(loadKgHa * 1000) / 1000,
+        pesticideAmanBoroKgHa: Math.round(usualKgHa * 1000) / 1000,
       },
       provenance: {
-        source: 'Rotation IPM rules (team) from BRRI/BARI IPM guidance, SRDI Talanda card, BWMRI/BRRI variety pages; no field pest counts yet',
+        source: 'Rotation IPM rules (team) from BRRI/BARI IPM guidance, SRDI Talanda card, BWMRI/BRRI variety pages; NASA SEDAC PEST-CHEMGRIDS v1.01 (2020) pesticide estimate for the upazila; no field pest counts yet',
         timePeriod: 'rules; pest sightings come from SAAO field observations',
         spatialResolution: 'Rotation level',
         measuredOrModeled: 'assumed',

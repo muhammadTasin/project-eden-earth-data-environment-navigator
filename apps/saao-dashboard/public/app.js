@@ -409,6 +409,20 @@ function pestReportsHtml(reports) {
 // SCREENS 2-3: planner and comparison, from /api/v1/advice
 // ---------------------------------------------------------------------------
 
+// The planner starts from the place's usual land (NASA NASADEM, Landsat and BRRI's survey); a land type the user picks
+// is sent as the farmer's, otherwise the server uses the place's own and says so
+let planLandTouched = false;
+$('planLandType')?.addEventListener('change', () => { planLandTouched = true; showPlanLandNote(); });
+
+function showPlanLandNote(landType) {
+  const note = $('planLandNote');
+  if (!note) return;
+  note.textContent = planLandTouched
+    ? tr('আপনার বাছাই করা জমি', 'The land type you picked')
+    : tr('এই উপজেলার স্বাভাবিক জমি (নাসা NASADEM, ল্যান্ডস্যাট ও BRRI জরিপ)', 'This upazila’s usual land (NASA NASADEM, Landsat and BRRI’s survey)');
+  if (landType && !planLandTouched && $('planLandType').querySelector(`option[value="${landType}"]`)) $('planLandType').value = landType;
+}
+
 window.runPlannerCalculation = async function(options = {}) {
   const weight = (id) => parseFloat($(id).value) / 100;
   try {
@@ -417,10 +431,7 @@ window.runPlannerCalculation = async function(options = {}) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         unionId: currentPlace,
-        unionNameBangla: 'তালন্দ ইউনিয়ন',
-        upazila: 'Tanore',
-        district: 'Rajshahi',
-        landType: $('planLandType').value,
+        landType: planLandTouched ? $('planLandType').value : undefined,
         currentAmanCrop: $('planAmanCrop').value,
         preferredCrops: selectedCrops(),
         heroCrop: $('planHeroCrop')?.value || undefined,
@@ -459,6 +470,13 @@ function renderPlannerResults(advice) {
   const note = $('thisSeasonNote');
   note.hidden = !advice.this_season;
   note.textContent = advice.this_season ? tr(`এই মৌসুম: ${advice.this_season.noteBangla}`, `This season: ${advice.this_season.noteEnglish}`) : '';
+  const local = advice.local_context;
+  const localNote = $('localContextNote');
+  if (localNote) {
+    localNote.hidden = !local;
+    setHtml('localContextNote', local ? `<strong>${tr('এই জায়গার কথা', 'About this place')}</strong><ul>${tr(local.notesBangla, local.notesEnglish).map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul>` : '');
+  }
+  if (local) showPlanLandNote(local.landTypeAssumed ? local.landType : undefined);
   renderCropChoice(advice);
 
   setHtml('plannerResultsContainer', advice.options.map((opt, idx) => `
@@ -469,7 +487,7 @@ function renderPlannerResults(advice) {
       </div>
       ${coverageTag(advice, opt.id)}
       <p class="candidate-meta">
-        ${tr('জমি খালি', 'Field free')}: <strong>${escapeHtml(tr(opt.fieldFreeDateBangla, opt.fieldFreeDateEnglish))}</strong>${opt.isBaseline ? ` • ${tr('বর্তমান প্রচলিত চক্র', 'current practice')}` : ''}${opt.id === advice.this_season_option_id ? ` <span class="tag tag-green">${tr('এ মৌসুমে সম্ভব', 'possible this season')}</span>` : ''}
+        ${tr('জমি খালি', 'Field free')}: <strong>${escapeHtml(tr(opt.fieldFreeDateBangla, opt.fieldFreeDateEnglish))}</strong>${opt.currentPractice ? ` <span class="tag tag-yellow">${tr('এখানে এখন যা চাষ হয় (BRRI)', 'what farmers here grow now (BRRI)')}</span>` : opt.isBaseline ? ` • ${tr('বর্তমান প্রচলিত চক্র', 'current practice')}` : ''}${opt.id === advice.this_season_option_id ? ` <span class="tag tag-green">${tr('এ মৌসুমে সম্ভব', 'possible this season')}</span>` : ''}
       </p>
       <div class="candidate-action">${escapeHtml(tr(opt.approvedActionBangla[2] || '', (opt.approvedActionEnglish || [])[2] || ''))}</div>
     </div>
@@ -621,8 +639,8 @@ function renderEvidence(advice) {
     const boroWater = boro?.dimensionDetails.water?.metrics;
     setText('evGroundBig', tr(`বছরে ${num(gw.trendMmPerYear)} মিমি`, `${gw.trendMmPerYear} mm a year`));
     setText('evGroundText', tr(
-      `তানোরে GRACE-নির্ভর GLDAS-2.2 অনুযায়ী ভূগর্ভস্থ পানি কমছে: ${num(gw.period.replace(' to ', ' থেকে '))} সময়ে ${num(gw.changeMm)} মিমি।`,
-      `GRACE-based GLDAS-2.2 shows Tanore’s groundwater falling: ${gw.changeMm} mm from ${gw.period}.`,
+      `${o.scope.place_kind === 'upazila' ? `${o.scope.district} জেলায়` : 'তানোরে'} GRACE-নির্ভর GLDAS-2.2 অনুযায়ী ভূগর্ভস্থ পানি কমছে: ${num(gw.period.replace(' to ', ' থেকে '))} সময়ে ${num(gw.changeMm)} মিমি।`,
+      `GRACE-based GLDAS-2.2 shows ${o.scope.place_kind === 'upazila' ? `${o.scope.district} district` : 'Tanore'}’s groundwater falling: ${gw.changeMm} mm from ${gw.period}.`,
     ));
     setHtml('evGroundList', [
       tr(
@@ -641,7 +659,7 @@ function renderEvidence(advice) {
   }
 
   setText('evIncomeBig', tr(`${bigNum(income.illustrativeTotalBdtPerHa || 0)} ৳`, `BDT ${bigNum(income.illustrativeTotalBdtPerHa || 0)}`));
-  setText('evIncomeText', tr('দুই মৌসুমের নিট লাভের নমুনা হিসাব (দলের অনুমান), যাচাই করা বাজারদর নয়।', 'Sample net profit over two seasons (team estimate), not verified market prices.'));
+  setText('evIncomeText', tr('বছরের নিট লাভের নমুনা হিসাব (দলের অনুমান ও BBS দর-ফলন), যাচাই করা বাজারদর নয়।', 'Sample net profit for the year (team estimates and BBS prices and yields), not verified market prices.'));
   setHtml('evIncomeList', [
     o && o.context.cattlePerKm2 ? tr(
       `<li><strong>গবাদিপশু:</strong> ${o.scope.place_kind === 'upazila' ? o.scope.district : 'রাজশাহী'}তে প্রতি বর্গকিমিতে ~${num(Math.round(o.context.cattlePerKm2))}টি গরু (FAO GLW4, ২০১৫)।</li>`,
@@ -1360,6 +1378,7 @@ function fillPlaceUpazilas() {
 
 async function choosePlace(id) {
   currentPlace = id;
+  planLandTouched = false;
   try { localStorage.setItem('eden.place', id); } catch { /* the choice lasts for this page only */ }
   bdMap?.setPlace(id);
   await loadOverview();

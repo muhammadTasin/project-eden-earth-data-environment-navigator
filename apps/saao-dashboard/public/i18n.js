@@ -93,6 +93,7 @@ export const EN = {
   'land.high': 'High land',
   'land.medium_low': 'Medium-low land',
   'land.low': 'Low land',
+  'land.very_low': 'Very low land',
   'planner.currentAman': 'Aman variety in the field this season',
   'aman.dhan71': 'BRRI dhan71 (114–117 days, drought tolerant)',
   'aman.dhan87': 'BRRI dhan87 (125–128 days)',

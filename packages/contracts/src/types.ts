@@ -86,6 +86,7 @@ export interface CandidateRotation {
   nameBangla: string;
   nameEnglish: string;
   isBaseline: boolean;
+  currentPractice?: boolean; // what most farmers at the place grow now (BRRI's 2014-15 survey), shown for comparison
   cropSequence: CropPhase[];
   scores: Record<string, number>; // Dimension ID -> normalized score (0.0 - 1.0)
   dimensionDetails: Record<string, DimensionScoreResult>;
@@ -156,6 +157,23 @@ export interface AdviceJSON {
   this_season_option_id?: string | null; // best option that starts from the Aman already in the field
   farmer_card?: FarmerCard;
   crop_choice?: CropChoiceResult | null; // set when the farmer named the crops they want
+  local_context?: LocalContext; // the place's land type, what farmers grow there now, and its local hazards
+}
+
+/** What the engine knows about the place beyond the weather replay, and the notes that follow from it. */
+export interface LocalContext {
+  landType: LandType;
+  landTypeAssumed: boolean; // true when the land type is the place's default, not the farmer's word
+  landEvidenceBangla: string;
+  landEvidenceEnglish: string;
+  patterns: Array<{ pattern: string; patternBangla: string; pctOfCroppedLand: number }>;
+  patternsSource: string | null;
+  croppingIntensityPct: number | null;
+  hazards: string[]; // 'deep_flooding', 'flash_flood', 'submergence', 'winter_fallow_salinity', 'dry_start'
+  /** One alert per hazard, the most serious first (flash floods, then salinity, a dry start, deep water, submergence). */
+  alerts: Array<{ hazard: string; titleBangla: string; titleEnglish: string; textBangla: string; textEnglish: string }>;
+  notesBangla: string[];
+  notesEnglish: string[];
 }
 
 /** How the crops a farmer asked for fit the year at their place, and what else fits the gap before Aman. */

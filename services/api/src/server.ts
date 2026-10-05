@@ -11,7 +11,7 @@ import { HAOR_FLASH_FLOOD, RELEASE, TANORE_ADVISORIES, TANORE_SOIL_CARBON } from
 import { LOC, listPlaces, placeFor, withPlace } from '../../../packages/rotation-engine/src/data/location.ts';
 import { AMAN_CATALOG, RABI_CATALOG } from '../../../packages/rotation-engine/src/data/crop_catalog.ts';
 import { IPM_AMAN, IPM_BY_RABI, IPM_GENERAL } from '../../../packages/rotation-engine/src/data/ipm_catalog.ts';
-import { bnDate, bnDateOf, bnDigits, bnOf, enDate } from '../../../packages/rotation-engine/src/bn.ts';
+import { LAND_TYPE_BANGLA, bnDate, bnDateOf, bnDigits, bnOf, enDate, patternBangla } from '../../../packages/rotation-engine/src/bn.ts';
 import * as desk from './officer_desk.ts';
 import { DualGateNarrationValidator } from '../../../packages/narration-core/src/dual_gate_validator.ts';
 import { TemplateNarrator } from '../../../packages/narration-core/src/template_narrator.ts';
@@ -26,7 +26,7 @@ import { liveHaor, liveStatus, liveUpazila, liveUpazilas } from './live.ts';
 import { mapLayers } from './map_layers.ts';
 import { askAiAssistant } from './ai_assistant.ts';
 import { cropMenu } from '../../../packages/rotation-engine/src/data/crop_choice.ts';
-import { cropsFromKeys, keypadMenu, replyFor, requestFromWords, understand } from './voice.ts';
+import { cropsFromKeys, keypadMenu, landFromKey, replyFor, requestFromWords, understand } from './voice.ts';
 import { awajConfig, bdMobile, sendKeypadSurvey, sendTemplateSurvey, sendTtsCall } from './awaj.ts';
 import { createFarmAoi } from './cattle/aoi.ts';
 import { cattleRepository } from './cattle/repository.ts';
@@ -126,6 +126,21 @@ function requireWriteToken(req: http.IncomingMessage) {
   if (given !== WRITE_TOKEN) throw new ApiError('unauthorized', 'A valid write token is required for this operation');
 }
 
+/** Today's NASA reading at a place from the daily live file, in the shape the engine takes; null without one. */
+function currentConditionsFor(place: ReturnType<typeof placeFor>): PlanOptionsRequest['currentConditions'] {
+  if (!place) return undefined;
+  const live = liveUpazila({ id: place.kind === 'pilot' ? 'ADM3_Tanore' : place.id });
+  if (!live?.power?.soilStatus) return undefined;
+  return {
+    date: live.power.date,
+    soilStatus: live.power.soilStatus,
+    soilRank: live.power.soilRank ?? null,
+    soilYears: live.power.soilYears ?? null,
+    rain30PctOfNormal: live.power.rain30PctOfNormal ?? null,
+    source: 'NASA POWER daily, ranked against the same date in past years (research/live/daily_update.py)',
+  };
+}
+
 function planRequest(body: any): PlanOptionsRequest {
   const place = placeFor(body.unionId || 'talanda_tanore');
   return {
@@ -133,7 +148,10 @@ function planRequest(body: any): PlanOptionsRequest {
     unionNameBangla: body.unionNameBangla || place?.nameBangla || 'তালন্দ ইউনিয়ন',
     upazila: body.upazila || place?.upazila || 'Tanore',
     district: body.district || place?.district || 'Rajshahi',
-    landType: body.landType || 'medium_high',
+    // The farmer's land type when given; else the place's usual land (NASA NASADEM, Landsat and BRRI's survey)
+    landType: body.landType || place?.defaultLandType || 'medium_high',
+    landTypeAssumed: !body.landType,
+    currentConditions: body.currentConditions ?? currentConditionsFor(place),
     season: body.season || '2026-aman',
     currentAmanCrop: body.currentAmanCrop,
     preferredCrops: cropList(body.preferredCrops),
@@ -199,6 +217,7 @@ function overviewHere(placeId: string) {
   const best = advice.options[0];
   const bestAman = LOC.aman[best.cropSequence[0].variety];
   const dhan49 = LOC.aman['BRRI dhan49'];
+  const local = advice.local_context;
   const rain = LOC.conditions.rainLast30Days;
   const smap = LOC.conditions.smap;
 
@@ -210,7 +229,8 @@ function overviewHere(placeId: string) {
       union_id: LOC.id,
       place_kind: LOC.kind,
       data_note: LOC.dataNote,
-      land_type: 'medium_high',
+      land_type: advice.scope.land_type,
+      land_type_assumed: local?.landTypeAssumed ?? true,
       lat: LOC.conditions.lat,
       lon: LOC.conditions.lon,
     },
@@ -224,9 +244,9 @@ function overviewHere(placeId: string) {
     season_summary: {
       season: 'Aman 2026 (আমন ২০২৬)',
       dominantPattern: LOC.conditions.landUse?.topPattern ?? null,
-      dominantPatternBangla: LOC.conditions.landUse ? (PATTERN_BANGLA[LOC.conditions.landUse.topPattern] ?? LOC.conditions.landUse.topPattern) : null,
+      dominantPatternBangla: LOC.conditions.landUse ? (PATTERN_BANGLA[LOC.conditions.landUse.topPattern] ?? patternBangla(LOC.conditions.landUse.topPattern)) : null,
       dominantPatternPct: LOC.conditions.landUse?.topPatternPct ?? null,
-      croppingIntensity: LOC.conditions.landUse ? `${LOC.conditions.landUse.croppingIntensityPct}%` : null,
+      croppingIntensity: typeof LOC.conditions.landUse?.croppingIntensityPct === 'number' ? `${LOC.conditions.landUse.croppingIntensityPct}%` : null,
       landUseYear: LOC.conditions.landUse?.year ?? null,
       activeFarmersInUnion: null, // no farmer interviews yet
     },
@@ -268,8 +288,20 @@ function overviewHere(placeId: string) {
       fieldFreeBangla: bnDate(r.fieldFree),
       fieldFreeEnglish: enDate(r.fieldFree),
     })),
+    local_context: local ?? null,
     active_alerts: [
-      {
+      // The place's own hazards first (haor flash floods, deep water, a dry start, winter fallow on the coast)
+      ...(local?.alerts ?? []).slice(0, 1).map(a => ({
+        id: `alt_local_${a.hazard}`,
+        type: 'warning',
+        titleBangla: a.titleBangla,
+        titleEnglish: a.titleEnglish,
+        textBangla: a.textBangla,
+        textEnglish: a.textEnglish,
+        recommendationBangla: best.nameBangla,
+        recommendationEnglish: best.nameEnglish,
+      })),
+      ...(bestAman ? [{
         id: 'alt_late_aman_drought',
         type: 'warning',
         titleBangla: 'দেরিতে ফুল আসা আমনে খরার ঝুঁকি',
@@ -278,13 +310,13 @@ function overviewHere(placeId: string) {
         textEnglish: `In ${dhan49.rescueSeasons} of ${dhan49.totalSeasons} seasons (${Math.round((100 * dhan49.rescueSeasons) / dhan49.totalSeasons)}%) BRRI dhan49 needed rescue irrigation at flowering (~${enDate(dhan49.flowering)}).`,
         recommendationEnglish: `${best.cropSequence[0].variety} flowers ~${enDate(bestAman.flowering)} (irrigation in ${bestAman.rescueSeasons} seasons) and frees the field by ${enDate(bestAman.fieldFree)}, before dhan49's ${enDate(dhan49.fieldFree)}.`,
         recommendationBangla: `${best.cropSequence[0].varietyBangla} ফুল আনে ~${bnDate(bestAman.flowering)} (${bnDigits(bestAman.rescueSeasons)}টি মৌসুমে সেচ), আর জমি খালি করে ${bnDate(bestAman.fieldFree)}, ধান৪৯-এর ${bnDateOf(bnDate(dhan49.fieldFree))} আগে।`,
-      },
+      }] : []),
     ],
     context: {
       soilTypeBangla: LOC.kind === 'pilot' ? LOC.srdi.soilTypeBangla : null,
       soilTypeEnglish: LOC.kind === 'pilot' ? 'Kharia soil (Barind)' : null,
-      landTypeBangla: LOC.srdi.landTypeBangla,
-      landTypeEnglish: 'medium-high land',
+      landTypeBangla: LOC.kind === 'pilot' ? LOC.srdi.landTypeBangla : `${LAND_TYPE_BANGLA[advice.scope.land_type] ?? ''} জমি`,
+      landTypeEnglish: `${advice.scope.land_type.replace('_', '-')} land`,
       bmdStation: LOC.conditions.bmdStation,
       bmdStationBangla: BMD_STATION_BANGLA[LOC.conditions.bmdStation] ?? LOC.conditions.bmdStation,
       bmdStationKm: LOC.conditions.bmdStationKm,
@@ -641,7 +673,9 @@ const server = http.createServer(async (req, res) => {
       const phones = (Array.isArray(body.phones) ? body.phones : [body.phone]).map((p: unknown) => bdMobile(String(p ?? ''))).filter(Boolean) as string[];
       if (!phones.length) return sendJSON(res, 400, { error: 'phone must be a Bangladeshi mobile number (01XXXXXXXXX)' });
       const cfg = awajConfig();
-      const metadata = { channel: 'mather-kotha-keypad', unionId: body.unionId ?? 'talanda_tanore', farmerId: body.farmerId ?? null };
+      // A template that also asks how deep the field floods (AWAJ_LAND_QUESTION=1) answers it last
+      const landQuestion = Boolean(cfg.surveyTemplate) && process.env.AWAJ_LAND_QUESTION === '1';
+      const metadata = { channel: 'mather-kotha-keypad', unionId: body.unionId ?? 'talanda_tanore', farmerId: body.farmerId ?? null, landQuestion };
       const menu = keypadMenu();
       const sent = cfg.surveyTemplate
         ? await sendTemplateSurvey({ phoneNumbers: phones, templateName: cfg.surveyTemplate, webhookUrl: cfg.webhookUrl ?? undefined, metadata })
@@ -672,12 +706,15 @@ const server = http.createServer(async (req, res) => {
       for (const r of Array.isArray(body.results) ? body.results : []) {
         const phone = bdMobile(String(r.phone_number ?? ''));
         if (!phone || r.status !== 'answered') continue;
-        const { crops, officer } = cropsFromKeys(Array.isArray(r.responses) ? r.responses.map(String) : [String(r.response ?? '')]);
+        const keys: string[] = Array.isArray(r.responses) ? r.responses.map(String) : [String(r.response ?? '')];
+        // With the land question the last key is the land (1 high ... 4 low); the others name crops
+        const landType = body.metadata?.landQuestion ? landFromKey(keys[keys.length - 1]) : undefined;
+        const { crops, officer } = cropsFromKeys(body.metadata?.landQuestion ? keys.slice(0, -1) : keys);
         const callback = officer ? desk.requestCallback(String(body.metadata?.farmerId ?? 'F01'), 'ivr_keypad_9') : null;
-        const reply = crops.length ? replyFor(adviseWithNarration(planRequest({ unionId, preferredCrops: crops }))) : null;
+        const reply = crops.length ? replyFor(adviseWithNarration(planRequest({ unionId, preferredCrops: crops, landType }))) : null;
         const sent = reply ? await sendTtsCall({ phoneNumbers: [phone], texts: [reply.speechBangla], metadata: { channel: 'mather-kotha', surveyId: body.survey_id, unionId } }) : null;
-        logCall({ kind: 'survey_answer', surveyId: body.survey_id, phone: maskPhone(phone), keys: r.responses ?? [r.response], crops, officer, callbackId: callback?.id ?? null, dryRun: sent?.dryRun ?? null });
-        handled.push({ phone: maskPhone(phone), crops, officer, callBack: sent ? { dryRun: sent.dryRun } : null });
+        logCall({ kind: 'survey_answer', surveyId: body.survey_id, phone: maskPhone(phone), keys: r.responses ?? [r.response], crops, landType: landType ?? null, officer, callbackId: callback?.id ?? null, dryRun: sent?.dryRun ?? null });
+        handled.push({ phone: maskPhone(phone), crops, landType: landType ?? null, officer, callBack: sent ? { dryRun: sent.dryRun } : null });
       }
       return sendJSON(res, 200, { ok: true, handled });
     }
@@ -708,7 +745,8 @@ const server = http.createServer(async (req, res) => {
       const body = await parseBody(req);
       const keypad = String(body.keypad || '1');
       const choice = KEYPAD_PRIORITIES[keypad];
-      const top = choice ? rotationEngine.generateAdvice(planRequest({ farmerPriorities: choice.priorities })).options[0] : null;
+      const landType = landFromKey(body.landKey);
+      const top = choice ? rotationEngine.generateAdvice(planRequest({ unionId: body.unionId, farmerPriorities: choice.priorities, landType })).options[0] : null;
       const callback = keypad === '9' ? desk.requestCallback(String(body.farmerId || 'F01'), 'ivr_keypad_9') : null;
 
       return sendJSON(res, 200, {

@@ -9,11 +9,11 @@
 import fs from 'node:fs';
 import type { CandidateRotation, StewardshipTip } from '@project-eden/contracts';
 import { LOC } from './data/location.ts';
-import { bnDecimal, bnDigits, bnNumber } from './bn.ts';
+import { bnDecimal, bnDigits, bnNumber, enNumber } from './bn.ts';
 
 const BIGHA_HA = 0.1336;
 
-interface AtlasClasses {
+export interface AtlasClasses {
   ph: string | null;
   organicMatter: string | null;
   phosphorus: string | null;
@@ -42,7 +42,7 @@ function pesticideLoad() {
 
 /** PEST-CHEMGRIDS crop class of each crop the engine plans; pulses, oilseeds, jute and barley are its "other crops". */
 const PEST_CLASS: Record<string, string> = {
-  aman: 'rice', boro: 'rice', aus: 'rice', wheat: 'wheat', maize: 'maize', soybean: 'soybean', soybean_k2: 'soybean',
+  aman: 'rice', boro: 'rice', boro_early: 'rice', aus: 'rice', wheat: 'wheat', maize: 'maize', soybean: 'soybean', soybean_k2: 'soybean',
   potato: 'vegfruit', sweetpotato: 'vegfruit',
 };
 
@@ -67,6 +67,11 @@ export function pesticideEstimate(cropIds: string[]): { low: number; high: numbe
 /** The upazila the advice is for: the pilot is Tanore. */
 function upazilaId(): string {
   return LOC.kind === 'pilot' ? 'ADM3_Tanore' : LOC.id;
+}
+
+/** The SRDI atlas classes (pH, organic matter, nutrients) of the upazila the advice is for, or null. */
+export function soilClassesHere(): AtlasClasses | null {
+  return soilAtlas().classes[upazilaId()] ?? null;
 }
 
 const LOW = new Set(['Low', 'Very Low']);
@@ -103,14 +108,14 @@ export function stewardshipTips(option: CandidateRotation, tspKgHa: number, rice
     tips.push({
       kind: 'water',
       bn: `প্রচলিত আমন–বোরো চক্রের চেয়ে বছরে বিঘাপ্রতি প্রায় ${bnNumber(perBigha(savedM3))} ঘনমিটার কম ভূগর্ভস্থ পানি তুলতে হয়।${trendBn}`,
-      en: `About ${Math.round(perBigha(savedM3)).toLocaleString('en-US')} m3 less groundwater pumped per bigha each year than the usual Aman-Boro rotation.${trendEn}`,
+      en: `About ${enNumber(Math.round(perBigha(savedM3)))} m3 less groundwater pumped per bigha each year than the usual Aman-Boro rotation.${trendEn}`,
       source: 'NASA POWER + GPM IMERG water replay; NASA GLDAS-2.2 (GRACE-assimilated) groundwater',
     });
   } else {
     tips.push({
       kind: 'water',
       bn: `এই চক্রে বছরে বিঘাপ্রতি প্রায় ${bnNumber(perBigha(ledger.groundwaterPumpedM3PerHa))} ঘনমিটার ভূগর্ভস্থ পানি লাগে; সেচে ভেজানো-শুকানো (AWD) পদ্ধতিতে পানি বাঁচে।${trendBn}`,
-      en: `This rotation pumps about ${Math.round(perBigha(ledger.groundwaterPumpedM3PerHa)).toLocaleString('en-US')} m3 of groundwater per bigha a year; alternate wetting and drying saves water.${trendEn}`,
+      en: `This rotation pumps about ${enNumber(Math.round(perBigha(ledger.groundwaterPumpedM3PerHa)))} m3 of groundwater per bigha a year; alternate wetting and drying saves water.${trendEn}`,
       source: 'NASA POWER + GPM IMERG water replay; BRRI alternate wetting and drying guidance',
     });
   }

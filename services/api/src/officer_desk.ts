@@ -258,6 +258,7 @@ export function planRequestForFarmer(farmerId: string, base: PlanOptionsRequest)
   return {
     ...base,
     landType: obs?.landType ?? farmer.landType,
+    landTypeAssumed: false,
     currentAmanCrop: obs?.currentAmanCrop ?? farmer.currentAmanCrop,
     farmerPriorities: obs ? { ...obs.priorities } : base.farmerPriorities,
   };

@@ -44,7 +44,7 @@ export const CHOICE_CROPS: ChoiceCrop[] = [
   release('lentil', 'BARI Masur-8', ['মসুর', 'মশুর', 'মুসুর', 'masur', 'mosur', 'moshur', 'lentil']),
   release('mustard', 'BARI Sarisha-14', ['সরিষা', 'সরষে', 'সর্ষে', 'সরিসা', 'shorisha', 'sorisha', 'sarisha', 'mustard']),
   release('wheat', 'BARI Gom 33 (Early)', ['গম', 'gom', 'wheat'], { releaseKeys: ['BARI Gom 33 (Early)', 'BARI Gom 33 (Late)'] }),
-  release('boro', 'BRRI dhan28', ['বোরো', 'boro']),
+  release('boro', 'BRRI dhan28', ['বোরো', 'boro'], { alsoCovers: ['boro_early'] }),
   {
     id: 'potato', season: 'Rabi', crop: 'Potato', cropBangla: 'আলু', cropInBangla: 'আলুতে', varietyBangla: 'বারি আলু-২৫',
     isLegume: false, isRice: false, hostGroup: 'tuber', fodderValue: 'low', fodderNoteBangla: 'আলুর গাছ গোখাদ্য হিসেবে খুব কম কাজে লাগে।',
@@ -106,6 +106,12 @@ export const CHOICE_CROPS: ChoiceCrop[] = [
     id: 'jute', season: 'Kharif-1', crop: 'Jute', cropBangla: 'পাট', cropInBangla: 'পাটে', varietyBangla: 'বিজেআরআই তোষা পাট-৪',
     isLegume: false, isRice: false, hostGroup: 'fibre', fodderValue: 'low', fodderNoteBangla: 'পাটের কচি পাতা শাক হিসেবে খাওয়া যায়; গাছ গোখাদ্য নয়।',
     illustrativeGrossMarginTkPerHa: 69624, incomeSource: RESEARCH_RETURN, aliases: ['পাট', 'jute'],
+  },
+  {
+    // BRRI dhan88 on the BRRI calendar: harvested in April, before the haor's flash floods; a request for Boro covers it
+    id: 'boro_early', season: 'Rabi', crop: 'Boro rice', cropBangla: 'বোরো ধান', cropInBangla: 'বোরো ধানে', varietyBangla: 'ব্রি ধান৮৮',
+    isLegume: false, isRice: true, hostGroup: 'rice', fodderValue: 'high', fodderNoteBangla: 'বোরোর খড় প্রচুর শুকনা গোখাদ্য দেয়।',
+    illustrativeGrossMarginTkPerHa: 62000, incomeSource: 'team estimate (crop_catalog.ts), as for BRRI dhan28', aliases: [],
   },
   {
     id: 'soybean_k2', season: 'Kharif-2', crop: 'Soybean', cropBangla: 'সয়াবিন', cropInBangla: 'সয়াবিনে', varietyBangla: 'বারি সয়াবিন-৬ (বর্ষা)',
@@ -264,8 +270,11 @@ export function yearDay(monthDay: MonthDay, laterThan?: MonthDay): number {
   return laterThan !== undefined && day < seasonDay(laterThan) ? day + 365 : day;
 }
 
-/** A crop that fits gets a record key; one that does not says why: its window closes first, or it clashes with Aman. */
-export type Fit = { key: string } | { reason: 'window_closed' | 'aman_clash' | 'no_data'; deadline: MonthDay; ready: MonthDay };
+/**
+ * A crop that fits gets a record key; one that does not says why: its window closes first, it clashes with Aman, or
+ * (haor low land) it would be harvested after the flash floods came in too many springs (`deadline` is the harvest).
+ */
+export type Fit = { key: string } | { reason: 'window_closed' | 'aman_clash' | 'no_data' | 'flash_flood'; deadline: MonthDay; ready: MonthDay };
 
 /**
  * The winter crop once the field is ready (`ready`: Aman's field-free date, a week after a monsoon crop's harvest,

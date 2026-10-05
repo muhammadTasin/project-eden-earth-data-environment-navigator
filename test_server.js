@@ -67,7 +67,10 @@ async function run() {
   const places = await (await fetch(`${BASE}/api/v1/places`)).json();
   check(places.upazilas.length === 544, `every upazila is listed (got ${places.upazilas.length})`);
   const godagari = await (await fetch(`${BASE}/api/v1/advice`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ unionId: 'ADM3_Godagari' }) })).json();
-  check(godagari.options?.length === 5 && godagari.scope.union_id === 'ADM3_Godagari', 'an upazila outside the pilot gets ranked rotations');
+  check(godagari.options?.length >= 5 && godagari.scope.union_id === 'ADM3_Godagari', 'an upazila outside the pilot gets ranked rotations');
+  check(godagari.local_context?.landTypeAssumed === true && godagari.scope.land_type === godagari.local_context.landType
+    && (godagari.options.some(o => o.currentPractice) || !godagari.local_context.patterns.some(p => p.pctOfCroppedLand >= 20)),
+    'upazila advice carries its land type, its evidence and what farmers there grow now');
   const sylhetId = places.upazilas.find(u => u.district === 'Sylhet').id;
   const sylhet = await (await fetch(`${BASE}/api/v1/overview?place=${sylhetId}`)).json();
   check(sylhet.scope.district === 'Sylhet' && sylhet.aman_replay.length >= 5, 'the overview follows the chosen place');
@@ -85,6 +88,8 @@ async function run() {
   check(callRes.status === 200 && call.call.dryRun === true && call.call.request.language_code === 'bn-BD' && call.call.request.phone_numbers[0] === '01700000000', 'the Awaj call is a dry run with the bn-BD script');
   const hook = await (await fetch(`${BASE}/api/v1/calls/survey-webhook`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ survey_id: 1, metadata: { unionId: 'talanda_tanore' }, results: [{ phone_number: '01700000000', status: 'answered', response: '6', responses: ['6', '1'] }, { phone_number: '01800000000', status: 'not_answered' }] }) })).json();
   check(hook.handled.length === 1 && hook.handled[0].crops.join() === 'sunflower,lentil' && hook.handled[0].callBack.dryRun === true, 'keypad answers (6 = sunflower, 1 = lentil) trigger a planned call-back');
+  const landHook = await (await fetch(`${BASE}/api/v1/calls/survey-webhook`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ survey_id: 2, metadata: { unionId: 'ADM3_Khaliajuri', landQuestion: true }, results: [{ phone_number: '01700000000', status: 'answered', responses: ['8', '4'] }] }) })).json();
+  check(landHook.handled[0].crops.join() === 'boro' && landHook.handled[0].landType === 'low', 'with the land question the last key is the land (4 = water over a head = low land)');
   console.log('✓ Crop choice:', menu.crops.length, 'crops at Godagari; voice top:', voice.advice.options[0].nameEnglish, '; call dry run', call.reply.durationSecondsEstimate, 's');
 
   // Any main crop, and no rice when the farmer says so; soil-and-water tips; keypad calls; MODIS greenness everywhere

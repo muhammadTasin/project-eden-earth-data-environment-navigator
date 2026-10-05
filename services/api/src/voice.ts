@@ -4,7 +4,7 @@
  * the script comes from the advice; nothing is generated freely, so the reply can be read out by any text-to-speech
  * service (Awaj Digital's bn-BD voice, or the browser's) without a review step.
  */
-import type { AdviceJSON } from '@project-eden/contracts';
+import type { AdviceJSON, LandType } from '@project-eden/contracts';
 import { understandRequest, type Understood } from '../../../packages/rotation-engine/src/understand.ts';
 import { CHOICE_BY_ID } from '../../../packages/rotation-engine/src/data/crop_choice.ts';
 import { bnDigits, bnGenitive } from '../../../packages/rotation-engine/src/bn.ts';
@@ -25,6 +25,23 @@ export const KEYPAD_CROPS: Array<{ key: string; crop: string }> = [
 ];
 export const KEYPAD_OFFICER = '9';
 
+/**
+ * The land question, asked last when the Awaj template has it (AWAJ_LAND_QUESTION=1): how deep the field stands in
+ * water in a normal monsoon, SRDI's land classes in a farmer's words (high: above the flood; medium high 0-90 cm;
+ * medium low 90-180 cm; low 180 cm or more). Without an answer the engine takes the upazila's usual land.
+ */
+export const KEYPAD_LAND: Array<{ key: string; landType: LandType; bn: string; en: string }> = [
+  { key: '1', landType: 'high', bn: 'বর্ষায় জমিতে পানি ওঠে না', en: 'no water on the field in the monsoon' },
+  { key: '2', landType: 'medium_high', bn: 'হাঁটু পানি পর্যন্ত', en: 'up to knee-deep' },
+  { key: '3', landType: 'medium_low', bn: 'কোমর থেকে বুক পানি', en: 'waist- to chest-deep' },
+  { key: '4', landType: 'low', bn: 'মাথার ওপর পানি', en: "over a person's head" },
+];
+
+/** A land key from the phone survey -> the land type, or undefined. */
+export function landFromKey(key: unknown): LandType | undefined {
+  return KEYPAD_LAND.find(k => k.key === String(key ?? '').trim())?.landType;
+}
+
 const NUMBER_WORDS = ['শূন্য', 'এক', 'দুই', 'তিন', 'চার', 'পাঁচ', 'ছয়', 'সাত', 'আট', 'নয়'];
 
 export function keypadMenu() {
@@ -39,6 +56,14 @@ export function keypadMenu() {
       `কৃষি কর্মকর্তার সাথে কথা বলতে ${NUMBER_WORDS[9]} চাপুন।`,
     ].join(' '),
     secondQuestionBangla: 'আরেকটি ফসল করতে চাইলে সেটির বোতাম চাপুন; না চাইলে অপেক্ষা করুন।',
+    landQuestion: {
+      promptBangla: [
+        'বর্ষায় আপনার জমিতে কত পানি থাকে?',
+        `${KEYPAD_LAND.map(l => `${l.bn} হলে ${NUMBER_WORDS[Number(l.key)]}`).join(', ')} চাপুন।`,
+      ].join(' '),
+      options: KEYPAD_LAND,
+      note: 'Asked last in a two- or three-question Awaj template; set AWAJ_LAND_QUESTION=1 so the webhook reads the last key as the land.',
+    },
     note: 'Awaj surveys play recorded voices (TTS is not allowed in surveys yet): record promptBangla, upload it as a voice, and use its name in question_voices.',
   };
 }

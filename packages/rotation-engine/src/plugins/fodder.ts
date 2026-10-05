@@ -30,19 +30,20 @@ export class FodderDimensionPlugin implements IEvidenceDimensionPlugin {
       dimensionId: this.id,
       score: Number(score.toFixed(2)),
       confidence: 'medium',
-      summaryBangla: `${rabiName.fodderNoteBangla}${extras.map(x => ` ${x.catalog.fodderNoteBangla}`).join('')}${noStrawBangla} রাজশাহীতে প্রতি বর্গকিমিতে প্রায় ${bnDigits(cattle)}টি গরু (FAO GLW4)।`,
-      summaryEnglish: `Residue class "${rabiName.fodderValue}" for ${rabiName.crop};${noStrawEnglish} Rajshahi has about ${cattle} cattle per km2 (FAO GLW4, 2015).`,
+      summaryBangla: `${rabiName.fodderNoteBangla}${extras.map(x => ` ${x.catalog.fodderNoteBangla}`).join('')}${noStrawBangla} ${LOC.kind === 'pilot' ? 'রাজশাহী' : 'এই'} জেলায় প্রতি বর্গকিমিতে প্রায় ${bnDigits(cattle)}টি গরু (FAO GLW4)।`,
+      summaryEnglish: `Residue class "${rabiName.fodderValue}" for ${rabiName.crop};${noStrawEnglish} ${LOC.district} has about ${cattle} cattle per km2 (FAO GLW4, 2015).`,
       metrics: {
         residueClass: rabiName.fodderValue,
         ...(k1 ? { kharif1ResidueClass: k1.catalog.fodderValue } : {}),
         ...(k2 ? { kharif2ResidueClass: k2.catalog.fodderValue } : {}),
         riceStraw: hasAman,
         districtCattlePerKm2: LOC.conditions.cattlePerKm2,
+        district: LOC.district,
       },
       provenance: {
         source: 'FAO Gridded Livestock of the World v4, cattle 2015 (Gilbert et al. 2018); residue classes are team estimates',
         timePeriod: '2015',
-        spatialResolution: 'District (Rajshahi)',
+        spatialResolution: `District (${LOC.district})`,
         measuredOrModeled: 'assumed',
         notesBangla: 'গরুর ঘনত্ব মাপা তথ্য; খড়ের শ্রেণি দলের অনুমান।',
       },
@@ -51,8 +52,8 @@ export class FodderDimensionPlugin implements IEvidenceDimensionPlugin {
 
   explain(result: DimensionScoreResult) {
     return {
-      banglaBullets: [`রাজশাহীতে প্রতি বর্গকিমিতে প্রায় ${bnDigits(Math.round(result.metrics.districtCattlePerKm2 as number))}টি গরু।`],
-      englishBullets: [`About ${Math.round(result.metrics.districtCattlePerKm2 as number)} cattle per km2 in Rajshahi.`],
+      banglaBullets: [`জেলায় প্রতি বর্গকিমিতে প্রায় ${bnDigits(Math.round(result.metrics.districtCattlePerKm2 as number))}টি গরু।`],
+      englishBullets: [`About ${Math.round(result.metrics.districtCattlePerKm2 as number)} cattle per km2 in ${result.metrics.district}.`],
     };
   }
 }

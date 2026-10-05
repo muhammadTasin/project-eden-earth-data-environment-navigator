@@ -14,13 +14,37 @@ export const LAND_TYPE_BANGLA: Record<string, string> = {
   very_low: 'খুব নিচু',
 };
 
+/** Words of BRRI's cropping-pattern names ('Boro-Fallow-T. Aman'). */
+const PATTERN_WORDS: Record<string, string> = {
+  Fallow: 'পতিত', Boro: 'বোরো', 'T. Aman': 'রোপা আমন', 'B. Aman': 'বোনা আমন', Aus: 'আউশ', Mustard: 'সরিষা', Jute: 'পাট',
+  Grasspea: 'খেসারি', Wheat: 'গম', Potato: 'আলু', Maize: 'ভুট্টা', Onion: 'পেঁয়াজ', Vegetables: 'সবজি', Fish: 'মাছ', Lentil: 'মসুর',
+};
+
+/** 'Boro-Fallow-T. Aman' -> 'বোরো – পতিত – রোপা আমন' */
+export function patternBangla(pattern: string): string {
+  return pattern
+    .replace('Aus+non-rice (zhum)', 'জুমে আউশ ও অন্য ফসল')
+    .split('-')
+    .map(word => PATTERN_WORDS[word.trim()] ?? word.trim())
+    .join(' – ');
+}
+
 export function bnDigits(value: number | string): string {
   return String(value).replace(/\d/g, d => DIGITS[Number(d)]);
 }
 
+// One formatter each: toLocaleString builds a new one on every call, which slowed scoring hundreds of plans
+const BN_NUMBER = new Intl.NumberFormat('bn-BD');
+const EN_NUMBER = new Intl.NumberFormat('en-US');
+
 /** 110000 -> '১,১০,০০০' */
 export function bnNumber(value: number): string {
-  return Math.round(value).toLocaleString('bn-BD');
+  return BN_NUMBER.format(Math.round(value));
+}
+
+/** 110000 -> '110,000' */
+export function enNumber(value: number): string {
+  return EN_NUMBER.format(Math.round(value));
 }
 
 /** 7.25 -> '৭.৩' */

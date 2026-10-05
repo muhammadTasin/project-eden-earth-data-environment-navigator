@@ -431,10 +431,13 @@
           <div class="form-group">
             <label data-i18n="planner.landType">জমির ধরন (Land Type)</label>
             <select id="planLandType" class="form-control">
-              <option value="medium_high" selected data-i18n="land.medium_high">মাঝারি উঁচু জমি</option>
               <option value="high" data-i18n="land.high">উঁচু জমি</option>
+              <option value="medium_high" selected data-i18n="land.medium_high">মাঝারি উঁচু জমি</option>
               <option value="medium_low" data-i18n="land.medium_low">মাঝারি নিচু জমি</option>
+              <option value="low" data-i18n="land.low">নিচু জমি</option>
+              <option value="very_low" data-i18n="land.very_low">খুব নিচু জমি</option>
             </select>
+            <small id="planLandNote" class="form-note"></small>
           </div>
 
           <div class="form-group">
@@ -510,6 +513,7 @@
             <span class="badge badge-neutral" id="plannerCountBadge">…</span>
           </div>
           <div id="thisSeasonNote" class="this-season-note" hidden></div>
+          <div id="localContextNote" class="local-context-note" hidden></div>
           <div id="cropChoiceNote" class="crop-choice-note" hidden></div>
           <div id="plannerResultsContainer" class="candidate-list">
             <!-- Dynamically populated -->
@@ -771,6 +775,7 @@
                   <option value="medium_high" data-i18n="land.medium_high">মাঝারি উঁচু জমি</option>
                   <option value="medium_low" data-i18n="land.medium_low">মাঝারি নিচু জমি</option>
                   <option value="low" data-i18n="land.low">নিচু জমি</option>
+                  <option value="very_low" data-i18n="land.very_low">খুব নিচু জমি</option>
                 </select>
               </div>
               <div class="form-group">
