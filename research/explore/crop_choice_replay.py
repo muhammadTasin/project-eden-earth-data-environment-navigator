@@ -3,7 +3,8 @@
 The engine's five fixed rotations (Aman, then lentil, mustard, wheat or Boro) come from connect_check.py (Tanore) and
 national_replay.py (every district). A farmer may want another crop: sunflower, potato, maize, chickpea, mungbean
 before the next Aman, or no rice at all (soybean, mungbean or sesame in the monsoon, or jute). This script replays each
-of them with the same chain, at the same NASA points:
+of them with the same chain, at the same NASA points (and an early Boro, BRRI dhan88 on the BRRI calendar, harvested
+in April before the haor's flash floods, where the research release's Boro is transplanted on 1 February):
   NASA POWER weather, Tmax/Tmin corrected by month against the nearest BMD station -> FAO-56 Penman-Monteith ET0;
   GPM IMERG Final rain (via POWER); FAO-56 crop coefficients by stage; sowing windows and durations from the BARI
   handbook (crops/bari_production_technology.csv), BRRI factsheets and crops/crop_parameters.csv.
@@ -121,6 +122,9 @@ CROPS: dict[str, dict] = {
                       days=88, days_source="BARI handbook: 85-90 days", kc=("fao", "Sesame"),
                       heat=("flowering", "ফুল আসার সময়", 40, (0.4, 0.65), "summer oilseed flowering limit; assumed"),
                       srdi=("Kharif-1", "তিল")),
+    "boro_early": dict(season="Rabi", label="Boro rice, early (BRRI dhan88)", brri="BRRI dhan88", kc=("cp", "Boro rice"),
+                       heat=("flowering", "ফুল আসার সময়", 35, None, "crops/crop_parameters.csv: spikelet sterility above 35 C"),
+                       srdi=("Rabi", "বোরো (বি আর-১৪")),
     "aus": dict(season="Kharif-1", label="Aus rice (BRRI dhan48)", brri="BRRI dhan48", kc=("cp", "Aus rice"),
                 heat=("flowering", "ফুল আসার সময়", 35, None, "crops/crop_parameters.csv: spikelet sterility above 35 C"),
                 srdi=("Kharif-1", "আউশ (")),
