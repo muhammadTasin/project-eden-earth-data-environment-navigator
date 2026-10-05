@@ -56,6 +56,13 @@ PRESETS = {
         ("SPL4SMGP.008", "Geophysical_Data_sm_surface"),
         ("SPL4SMGP.008", "Geophysical_Data_sm_rootzone"),
     ]),
+    # today's soil for every upazila (run with --sites upazilas): SMAP L4 root zone with its own percentile against
+    # the SMAP L4 climatology (2015 onwards), the last 90 days; read by research/live/smap_now.py
+    "smap_national": (str(date.today() - timedelta(days=90)), [
+        ("SPL4SMGP.008", "Geophysical_Data_sm_surface"),
+        ("SPL4SMGP.008", "Geophysical_Data_sm_rootzone"),
+        ("SPL4SMGP.008", "Geophysical_Data_sm_rootzone_pctl"),
+    ]),
 }
 
 

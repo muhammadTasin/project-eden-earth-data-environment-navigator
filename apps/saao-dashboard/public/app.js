@@ -432,6 +432,7 @@ window.runPlannerCalculation = async function(options = {}) {
       body: JSON.stringify({
         unionId: currentPlace,
         landType: planLandTouched ? $('planLandType').value : undefined,
+        irrigation: $('planIrrigation')?.value === 'none' ? 'none' : undefined,
         currentAmanCrop: $('planAmanCrop').value,
         preferredCrops: selectedCrops(),
         heroCrop: $('planHeroCrop')?.value || undefined,

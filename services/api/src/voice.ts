@@ -159,6 +159,7 @@ export function requestFromWords(heard: Understood) {
     ...(crops.length ? { preferredCrops: crops } : {}),
     ...(heard.excluded.length ? { avoidCrops: heard.excluded } : {}),
     ...(heard.landType ? { landType: heard.landType } : {}),
+    ...(heard.irrigation ? { irrigation: heard.irrigation } : {}),
     ...(heard.priorities ? { farmerPriorities: heard.priorities } : {}),
   };
 }

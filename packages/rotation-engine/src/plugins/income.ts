@@ -3,6 +3,8 @@ import { amanOrNull, rabiOf, kharif1Of, kharif2Of, clampScore } from '../data/lo
 import { ILLUSTRATIVE_AMAN_GROSS_MARGIN_TK_PER_HA } from '../data/crop_catalog.ts';
 import { CHOICE_CROPS, choiceIdOf } from '../data/crop_choice.ts';
 import { LOC, profileData } from '../data/location.ts';
+import { salinityEffect } from '../data/salinity.ts';
+import { rainfedFacts } from '../data/rainfed.ts';
 import { bnDecimal, bnDigits, bnNumber, enNumber } from '../bn.ts';
 
 /** A district grows less than this of a crop: seed and buyers may be harder to find there. */
@@ -36,6 +38,7 @@ function standIn() {
 
 interface LocalReturn {
   id: string;
+  saltYield: number | null; // share of the yield the upazila's soil salinity leaves (winter and pre-monsoon crops)
   margin: number; // net return in a typical year at this place
   badYear: number; // the same at the worst harvest price of the last four years
   adjustment: number;
@@ -53,30 +56,41 @@ interface LocalReturn {
  * well there. In a bad price year the crop value falls to its worst BBS harvest price of 2021-22 to 2024-25. BBS
  * district tables 2022-23 to 2024-25 and harvest prices (research/export/upazila_profile.py); costs as everywhere.
  */
-export function localReturn(cropId: string, margin: number | null): LocalReturn {
+export function localReturn(cropId: string, margin: number | null, salty = false, recordKey?: string): LocalReturn {
   const id = yieldIdOf(cropId);
   const nat = profileData().national[id];
   const here = LOC.local.yields[id];
   const areaHa = here?.[1] ?? 0;
+  // On saline coastal land a winter or pre-monsoon crop loses part of its yield. A district yield already carries the
+  // salt of the district's saline upazilas, so it moves by this upazila's salt against the district's; a national
+  // stand-in yield takes the upazila's salt loss in full.
+  const salt = salty ? salinityEffect(cropId) : null;
+  const saltYield = salt ? salt.relativeYield : null;
+  // Without irrigation a dry-season upland crop makes only its rain-fed share of the yield (rainfed_yield.py)
+  const rain = salty && recordKey && LOC.conditions.irrigation === 'none' ? rainfedFacts(recordKey) : null;
+  const saltFactor = (salt ? (here?.[0] != null ? salt.againstDistrict : salt.relativeYield) : 1) * (rain ? rain.againstPractice : 1);
+  const saltLoss = (value: number) => Math.round(((1 - saltFactor) * value) / 100) * 100;
   if (margin === null) {
     const s = standIn();
     const yieldHere = here?.[0] ?? nat?.lowYield ?? null;
     const ratio = nat && yieldHere !== null ? Math.min(1.4, Math.max(0.6, yieldHere / nat.yield)) : 1;
-    const adjustment = Math.round(((ratio - 1) * s.value) / 100) * 100;
+    const adjustment = Math.round(((ratio - 1) * s.value) / 100) * 100 - saltLoss(s.value * ratio);
     const standMargin = Math.round(s.margin / 100) * 100 + adjustment;
-    return { id, margin: standMargin, badYear: Math.round(standMargin - (1 - s.lowRatio) * s.value * ratio), adjustment,
+    return { id, saltYield, margin: standMargin, badYear: Math.round(standMargin - (1 - s.lowRatio) * s.value * ratio * saltFactor), adjustment,
       districtYield: yieldHere, nationalYield: nat?.yield ?? null, areaHa, assumedLow: here?.[0] == null && yieldHere !== null, standIn: true };
   }
   const lowRatio = nat?.priceLowRatio ?? standIn().lowRatio;
   const districtYield = here?.[0] ?? nat?.lowYield ?? null;
   if (!nat?.value || districtYield === null) {
-    return { id, margin, badYear: Math.round(margin - (1 - lowRatio) * (nat?.value ?? standIn().value)), adjustment: 0, districtYield: null,
-      nationalYield: nat?.yield ?? null, areaHa, assumedLow: false, standIn: false };
+    const value = nat?.value ?? standIn().value;
+    const adjustment = -saltLoss(value);
+    return { id, saltYield, margin: margin + adjustment, badYear: Math.round(margin + adjustment - (1 - lowRatio) * value * saltFactor), adjustment,
+      districtYield: null, nationalYield: nat?.yield ?? null, areaHa, assumedLow: false, standIn: false };
   }
   const ratio = Math.min(1.4, Math.max(0.6, districtYield / nat.yield));
-  const adjustment = Math.round(((ratio - 1) * nat.value) / 100) * 100;
+  const adjustment = Math.round(((ratio - 1) * nat.value) / 100) * 100 - saltLoss(nat.value * ratio);
   const local = margin + adjustment;
-  return { id, margin: local, badYear: Math.round(local - (1 - lowRatio) * nat.value * ratio), adjustment, districtYield,
+  return { id, saltYield, margin: local, badYear: Math.round(local - (1 - lowRatio) * nat.value * ratio * saltFactor), adjustment, districtYield,
     nationalYield: nat.yield, areaHa, assumedLow: here?.[0] == null, standIn: false };
 }
 
@@ -101,8 +115,8 @@ export class IncomeDimensionPlugin implements IEvidenceDimensionPlugin {
     const sources = [...new Set([hasAman ? { incomeSource: 'team estimate (crop_catalog.ts) for Aman' } : null, rabiName, k1?.catalog, k2?.catalog].filter(Boolean)
       .map(c => (c as { incomeSource?: string }).incomeSource ?? 'team estimate (crop_catalog.ts)'))];
     // Each crop's return moves with its district's yield; a summer or monsoon crop without price data is left out
-    const rabiLocal = localReturn(choiceIdOf(rabiCrop.variety), rabiName.illustrativeGrossMarginTkPerHa);
-    const k1Local = k1 && k1Margin !== null ? localReturn(choiceIdOf(k1.crop.variety), k1Margin) : null;
+    const rabiLocal = localReturn(choiceIdOf(rabiCrop.variety), rabiName.illustrativeGrossMarginTkPerHa, true, rabiCrop.variety);
+    const k1Local = k1 && k1Margin !== null ? localReturn(choiceIdOf(k1.crop.variety), k1Margin, true, k1.crop.variety) : null;
     const k2Local = k2 && k2Margin !== null ? localReturn(choiceIdOf(k2.crop.variety), k2Margin) : null;
     const local = [hasAman ? localReturn('aman', ILLUSTRATIVE_AMAN_GROSS_MARGIN_TK_PER_HA) : null, k2Local, rabiLocal, k1Local]
       .filter((r): r is LocalReturn => r !== null);
@@ -133,6 +147,14 @@ export class IncomeDimensionPlugin implements IEvidenceDimensionPlugin {
       : '';
     const standBangla = rabiLocal.standIn ? ` ${rabiName.cropBangla}-এর বাজারদরের তথ্য এখনো নেই, তাই নিচের দিকের রবি ফসলের লাভ ধরে জেলার ফলনে মিলিয়ে ${bnNumber(rabiLocal.margin)} টাকা ধরা হয়েছে।` : '';
     const standEnglish = rabiLocal.standIn ? ` No price data for ${rabiName.crop.toLowerCase()} yet, so a lower-quartile winter crop's return, moved by the district's yield, stands in (${enNumber(rabiLocal.margin)} Tk).` : '';
+    const saltNames = local.filter(r => r.saltYield !== null && r.saltYield < 0.995).map(r => ({ r, n: names.get(r)! }));
+    const sal = LOC.local.salinity;
+    const saltBangla = saltNames.length && sal
+      ? ` লবণাক্ততা (SRDI ২০০৯: চাষের জমির ${bnDigits(Math.round(sal.salineShare * 100))}% লবণাক্ত): ${saltNames.map(({ r, n }) => `${n.bn} ফলনের প্রায় ${bnDigits(Math.round(r.saltYield! * 100))}% পায়`).join(', ')} (FAO-61)।`
+      : '';
+    const saltEnglish = saltNames.length && sal
+      ? ` Salt (SRDI 2009: ${Math.round(sal.salineShare * 100)}% of the cultivated land saline): ${saltNames.map(({ r, n }) => `${n.en} keeps about ${Math.round(r.saltYield! * 100)}% of its yield`).join(', ')} (FAO-61 salt tolerance).`
+      : '';
     const few = rabiLocal.areaHa < FEW_HA;
     const fewBangla = few
       ? ` এই জেলায় ${rabiName.cropBangla} চাষ কম (BBS ২০২৪-২৫: ${bnNumber(rabiLocal.areaHa)} হেক্টর): বীজ ও বাজার উপসহকারী কৃষি কর্মকর্তার সাথে মিলিয়ে নিন।`
@@ -154,8 +176,8 @@ export class IncomeDimensionPlugin implements IEvidenceDimensionPlugin {
       score: incomeScore,
       confidence: rabiLocal.standIn ? 'uncertain' : 'low',
       staleOrMissing: true,
-      summaryBangla: `নমুনা হিসাব: ${seasonsBangla} প্রায় ${bnNumber(total)} টাকা/হেক্টর নিট লাভ ধরা হয়েছে (দলের অনুমান ও BBS দর-ফলনের হিসাব; কৃষকের খরচ যাচাই বাকি)।${badBangla}${standBangla}${leftBangla}${localBangla}${fewBangla}`,
-      summaryEnglish: `Illustrative: about ${enNumber(total)} BDT/ha over ${seasonsEnglish} (team estimates and BBS price-and-yield estimates; farmer costs not yet verified).${badEnglish}${standEnglish}${leftEnglish}${localEnglish}${fewEnglish}`,
+      summaryBangla: `নমুনা হিসাব: ${seasonsBangla} প্রায় ${bnNumber(total)} টাকা/হেক্টর নিট লাভ ধরা হয়েছে (দলের অনুমান ও BBS দর-ফলনের হিসাব; কৃষকের খরচ যাচাই বাকি)।${badBangla}${standBangla}${leftBangla}${localBangla}${saltBangla}${fewBangla}`,
+      summaryEnglish: `Illustrative: about ${enNumber(total)} BDT/ha over ${seasonsEnglish} (team estimates and BBS price-and-yield estimates; farmer costs not yet verified).${badEnglish}${standEnglish}${leftEnglish}${localEnglish}${saltEnglish}${fewEnglish}`,
       metrics: {
         illustrativeTotalBdtPerHa: total,
         badPriceYearBdtPerHa: badYear,
@@ -166,6 +188,7 @@ export class IncomeDimensionPlugin implements IEvidenceDimensionPlugin {
         nationalYieldTPerHa: rabiLocal.nationalYield ?? 'n/a',
         districtYieldAdjustmentBdtPerHa: local.reduce((sum, r) => sum + r.adjustment, 0),
         districtAreaHa: rabiLocal.areaHa,
+        ...(rabiLocal.saltYield !== null ? { winterSaltYieldShare: rabiLocal.saltYield } : {}),
       },
       provenance: {
         source: `Net return per hectare: ${sources.join('; ')}; moved by ${LOC.district}'s BBS 2022-25 yields against the national yields; a bad price year at each crop's lowest BBS harvest price of 2021-22 to 2024-25. Pending: farmer cost interviews`,

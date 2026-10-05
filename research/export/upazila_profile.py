@@ -23,6 +23,9 @@ repo held local layers that differ from place to place. This brings three of the
     Rice and potato use the HYV rows, as the engine's varieties are HYV (a district's total Aman can be mostly
     broadcast deep-water Aman). Where a district grows too little of a crop to say, the engine takes the lower tenth of
     district yields (`lowYield`): no local evidence that it does well there.
+  * soil salinity: SRDI's May 2009 survey of the coastal belt (soil/srdi_salinity_upazila.csv, from Saline Soils of
+    Bangladesh, 2010): the share of each saline upazila's cultivated land in each ECe class, with the FAO-61 salt
+    tolerance of every crop the engine plans (crops/salt_tolerance.csv)
   * the haor's flash floods: the date of the first upstream burst (100 mm or more in 3 days, GPM IMERG over the
     Meghalaya hills at Sohra) each spring 2001-2025 (floods/flash_flood_hindcast.csv), which came before every
     flash flood FFWC reported (5 of 5 years), so the engine can say how often a crop's harvest date was too late.
@@ -245,14 +248,29 @@ def flash_floods() -> dict:
     }
 
 
+def salinity() -> tuple[dict, dict]:
+    sal = pd.read_csv(RESEARCH / "soil" / "srdi_salinity_upazila.csv").dropna(subset=["site_id"])
+    per = {r.site_id: {"cultivatedHa": int(r.cultivated_ha), "salineShare": float(r.saline_share),
+                       "strongShare": float(r.strong_share),
+                       "classShares": [float(getattr(r, f"s{k}_share")) for k in range(1, 6)]}
+           for r in sal.itertuples()}
+    tol = pd.read_csv(RESEARCH / "crops" / "salt_tolerance.csv")
+    crops = {r.crop_id: {"threshold": float(r.threshold_ds_m), "slope": float(r.slope_pct_per_ds_m), "rating": r.rating,
+                         "basis": r.basis, "note": "" if pd.isna(r.note) else r.note} for r in tol.itertuples()}
+    return per, crops
+
+
 def main() -> None:
     sites = pd.read_csv(RESEARCH / "sites" / "upazilas.csv")
     top, bff, intensity, report = patterns(sites)
     land = land_types(sites, bff)
     district_yields, national = yields()
+    saline, tolerance = salinity()
     ups = {}
     for s in sites.itertuples():
         entry = {"land": land.get(s.site_id)}
+        if s.site_id in saline:
+            entry["salinity"] = saline[s.site_id]
         if s.site_id in top:
             entry["patterns"] = top[s.site_id]
             entry["boroFallowFallowPct"] = bff[s.site_id]
@@ -265,7 +283,11 @@ def main() -> None:
             "land": "NASA NASADEM elevation and JRC Global Surface Water 1984-2021 at 90 m (research/acquire/landtype_proxy.py)",
             "patterns": "BRRI cropping-pattern survey of every upazila, 2014-15 (Bangladesh Rice Journal 21(2), 2017)",
             "yields": "BBS district crop tables 2022-23 to 2024-25 (Yearbook of Agricultural Statistics 2025)",
+            "salinity": "SRDI (2010) Saline Soils of Bangladesh, Appendix 2: soil salinity classes surveyed in May 2009",
+            "saltTolerance": "FAO Irrigation and Drainage Paper 61 (2002), Annex 1 Table A1.1 (Maas and Grattan 1999)",
         },
+        "salinityClassesDsM": [3.0, 6.0, 10.0, 14.0, 18.0],  # S1-S5: 2-4, 4.1-8, 8.1-12, 12.1-16, above 16 dS/m
+        "saltTolerance": tolerance,
         "landRule": ("low: water 3-6 months a year on >= 35% of the upazila (Landsat, 2021) or Boro-Fallow-Fallow on "
                      ">= 50% of its cropped land (BRRI 2014-15); medium_low: >= 20% or >= 30%; high: lowest tenth of "
                      "the land >= 20 m (NASADEM), almost no seasonal water, >= 90% never seen wet; else medium_high"),

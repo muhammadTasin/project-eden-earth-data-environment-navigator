@@ -334,10 +334,12 @@ async function runTests() {
   if (!higher.options.every(o => o.cropSequence[0].seasonType === 'Aman') || higher.local_context!.landTypeAssumed) {
     throw new Error('When the farmer says the field is higher, Aman comes back');
   }
-  // The coast's winter fallow is flagged as possible salinity, which the engine does not model
+  // SRDI's salinity survey: Shyamnagar's saline land keeps barley and sunflower and leaves out salt-sensitive crops
   const coast = at('ADM3_Shyamnagar');
-  if (!coast.local_context!.hazards.includes('winter_fallow_salinity') || !coast.stale_or_missing_inputs.some(s => s.dataset === 'Soil salinity')) {
-    throw new Error('Shyamnagar (Fallow-Fallow-T. Aman on most land) must flag winter fallow and salinity');
+  const coastWinters = coast.options.map(o => winterOf(o).crop);
+  if (!coast.local_context!.hazards.includes('salinity') || !coast.stale_or_missing_inputs.some(s => s.dataset === 'Soil salinity')
+    || coastWinters.some(c => ['Lentil', 'Potato', 'Maize', 'Boro rice'].includes(c)) || !coastWinters.some(c => c === 'Barley' || c === 'Sunflower')) {
+    throw new Error(`Shyamnagar (99% saline, SRDI 2009) must name salinity and plan salt-tolerant winter crops (got ${coastWinters.join(', ')})`);
   }
   // District yields move income: Faridpur grows the most lentil, above the national yield
   const faridpur = at('ADM3_FaridpurSadar');
@@ -372,6 +374,13 @@ async function runTests() {
   }
   console.log(`Khaliajuri: ${haor.options[0].nameEnglish}; flash floods before harvest in ${haorFlood.flashFloodCaught} of ${haorFlood.flashFloodSeasons} springs`);
   console.log(`Top winter crops in ten upazilas: ${[...winters].join(', ')}; GLDAS weight Barind ${barindWeight}, coast ${coastWeight}`);
+  // Without irrigation: no Boro or Aus, and each dry-season upland crop carries its rain-only yield (FAO-56 root zone)
+  const noWater = at('ADM3_Nachole', { irrigation: 'none' });
+  if (noWater.options.some(o => o.cropSequence.some(p => /Boro|Aus/.test(p.crop)))
+    || !noWater.options.every(o => typeof o.dimensionDetails.water.metrics.rainfedYieldTypical === 'number' && o.dimensionDetails.water.metrics.irrigationAvailable === false)) {
+    throw new Error('A field without irrigation gets no Boro or Aus, and every plan states its rain-only yield');
+  }
+  if (understandRequest('আমার জমিতে সেচ নেই').irrigation !== 'none') throw new Error('"সেচ নেই" means no irrigation');
   console.log('✓ TEST 17 PASSED: Land type, current patterns, flash floods, district yields and today\'s soil shape each upazila\'s plan.\n');
 
   console.log('========================================================');

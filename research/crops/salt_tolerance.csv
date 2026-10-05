@@ -1,0 +1,18 @@
+crop_id,fao_crop,threshold_ds_m,slope_pct_per_ds_m,rating,basis,note
+barley,"Barley, grain",8.0,5.0,T,FAO-61 Table A1.1,less tolerant as a seedling (ECe should not exceed 4-5 dS/m then)
+wheat,Wheat (Triticum aestivum),6.0,7.1,MT,FAO-61 Table A1.1,
+soybean,Soybean,5.0,20.0,MT,FAO-61 Table A1.1,
+sunflower,Sunflower,4.8,5.0,MT,FAO-61 Table A1.1,
+boro,"Rice, paddy",3.0,12.0,S,FAO-61 Table A1.1,"ECe of the soil water while submerged; less tolerant as a seedling; BRRI's salt-tolerant Boro (BRRI dhan47, 67, 97, 99) are not the engine's varieties"
+boro_early,"Rice, paddy",3.0,12.0,S,FAO-61 Table A1.1,as for Boro
+aus,"Rice, paddy",3.0,12.0,S,FAO-61 Table A1.1,as for Boro
+maize,"Corn, grain",1.7,12.0,MS,FAO-61 Table A1.1,
+potato,Potato,1.7,12.0,MS,FAO-61 Table A1.1,BARI Potato-72 is listed as salt tolerant in crops/crop_parameters.csv
+sweetpotato,Sweet potato,1.5,11.0,MS,FAO-61 Table A1.1,
+mungbean,Mung bean,1.8,20.7,S,FAO-61 Table A1.1,
+chickpea,Chickpea,1.7,12.0,MS,FAO-61 rating only,threshold and slope assumed: the median of the table's moderately sensitive crops (maize and potato 1.7/12)
+sesame,Sesame,1.8,19.0,S,FAO-61 rating only,threshold and slope assumed: the median of the table's sensitive crops (mung bean 1.8/20.7 and bean 1.0/19)
+lentil,,1.7,12.0,MS,assumed,not in FAO-61; taken as moderately sensitive
+grasspea,,1.7,12.0,MS,assumed,not in FAO-61; taken as moderately sensitive
+mustard,,1.7,12.0,MS,assumed,"not in FAO-61 (canola, B. napus, is tolerant: 11.0/13); taken as moderately sensitive; BARI Mustard-11 and -19 are listed as salt tolerant in crops/crop_parameters.csv"
+jute,,1.7,12.0,MS,assumed,not in FAO-61; taken as moderately sensitive

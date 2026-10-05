@@ -1,6 +1,7 @@
 import type { IEvidenceDimensionPlugin, EvaluationContext, DimensionScoreResult } from '@project-eden/contracts';
 import { amanOrNull, rabiOf, kharif1Of, kharif2Of, clampScore } from '../data/lookup.ts';
 import { LOC, groundwaterDeclineRange } from '../data/location.ts';
+import { rainfedFacts } from '../data/rainfed.ts';
 import { bnDecimal, bnDigits, bnIrrigation, bnNumber, enNumber } from '../bn.ts';
 
 /**
@@ -45,7 +46,22 @@ export class WaterDimensionPlugin implements IEvidenceDimensionPlugin {
     const current = LOC.conditions.current as { dryStart?: boolean; date?: string } | null | undefined;
     const dryStart = Boolean(current?.dryStart) && !rabiName.isRice;
     const rabiMm = rabi.netIrrigationMm + (dryStart ? DRY_START_MM : 0);
-    const waterScore = clampScore(1.0 - rescueShare * 0.35 - ((rabiMm + k1Mm + k2Mm) / 1000) * 0.55 * gw.weight, 0.1, 0.98);
+    // On rain and stored soil water alone (FAO-56 root-zone balance, research/explore/rainfed_yield.py)
+    const rabiCrop = context.crops.find(c => c.season === 'Rabi')!;
+    const rabiRain = rabiName.isRice ? null : rainfedFacts(rabiCrop.variety, rabi.sowing);
+    const k1Rain = k1 && !k1.catalog.isRice ? rainfedFacts(k1.crop.variety, k1.record.sowing) : null;
+    const rainOnly = LOC.conditions.irrigation === 'none';
+    // Without irrigation the score is the share of the usual yield the dry-season crops keep on rain and stored water
+    const rainShares = [rabiRain?.againstPractice, k1Rain?.againstPractice].filter((x): x is number => typeof x === 'number');
+    const waterScore = rainOnly && rainShares.length
+      ? clampScore(Math.min(...rainShares) - rescueShare * 0.35, 0.1, 0.98)
+      : clampScore(1.0 - rescueShare * 0.35 - ((rabiMm + k1Mm + k2Mm) / 1000) * 0.55 * gw.weight, 0.1, 0.98);
+    const rainBangla = rabiRain
+      ? ` সেচ ছাড়া শুধু বৃষ্টি ও মাটির জমা রসে ${rabiName.cropBangla} পুরো ফলনের প্রায় ${bnDigits(Math.round(rabiRain.typical * 100))}% দেয়, শুকনো শীতে ${bnDigits(Math.round(rabiRain.dryYear * 100))}% (FAO-56 মাটির পানির হিসাব; নিচে পানির স্তর কাছে হলে এর বেশি)।`
+      : '';
+    const rainEnglish = rabiRain
+      ? ` On rain and stored soil water alone ${rabiName.crop.toLowerCase()} makes about ${Math.round(rabiRain.typical * 100)}% of a fully watered crop's yield in a typical winter, ${Math.round(rabiRain.dryYear * 100)}% in a dry one (FAO-56 root-zone water balance on NASA weather, FAO-33 yield response${rabiRain.kyAssumed ? ', response factor assumed' : ''}; more where a shallow water table feeds the roots).`
+      : '';
     const dryBangla = dryStart
       ? ` এখন মাটি স্বাভাবিকের চেয়ে শুকনো (নাসা POWER): আমনের পর জমিতে যে ${bnDigits(DRY_START_MM)} মিমি রস ধরা হয় তা না-ও থাকতে পারে, তাই এ বছর প্রায় ${bnDigits(rabiMm)} মিমি সেচ ধরা হয়েছে।`
       : '';
@@ -74,8 +90,8 @@ export class WaterDimensionPlugin implements IEvidenceDimensionPlugin {
       dimensionId: this.id,
       score: waterScore,
       confidence: 'medium',
-      summaryBangla: `${monsoonBangla} রবিতে ${rabiName.cropInBangla} সেচ লাগে প্রায় ${bnDigits(rabi.netIrrigationMm)} মিমি (হেক্টরে ${bnNumber(pumpedM3PerHa)} ঘনমিটার ${deep ? 'সেচের পানি' : 'ভূগর্ভস্থ পানি'})।${k1Bangla}${gwBangla}${dryBangla}`,
-      summaryEnglish: `${monsoonEnglish} ${rabiName.crop} needs about ${rabi.netIrrigationMm} mm of irrigation (${enNumber(pumpedM3PerHa)} m3/ha of ${deep ? 'irrigation water' : 'groundwater'}).${k1English}${gwEnglish}${dryEnglish}`,
+      summaryBangla: `${monsoonBangla} রবিতে ${rabiName.cropInBangla} সেচ লাগে প্রায় ${bnDigits(rabi.netIrrigationMm)} মিমি (হেক্টরে ${bnNumber(pumpedM3PerHa)} ঘনমিটার ${deep ? 'সেচের পানি' : 'ভূগর্ভস্থ পানি'})।${k1Bangla}${gwBangla}${dryBangla}${rainBangla}`,
+      summaryEnglish: `${monsoonEnglish} ${rabiName.crop} needs about ${rabi.netIrrigationMm} mm of irrigation (${enNumber(pumpedM3PerHa)} m3/ha of ${deep ? 'irrigation water' : 'groundwater'}).${k1English}${gwEnglish}${dryEnglish}${rainEnglish}`,
       metrics: {
         ...(aman
           ? {
@@ -93,6 +109,9 @@ export class WaterDimensionPlugin implements IEvidenceDimensionPlugin {
         groundwaterFallMmPerYear: gw.fallMmPerYear,
         groundwaterWeight: gw.weight,
         ...(dryStart ? { dryStartExtraMm: DRY_START_MM } : {}),
+        ...(rabiRain ? { rainfedYieldTypical: rabiRain.typical, rainfedYieldDryYear: rabiRain.dryYear, rainfedWaterShare: rabiRain.etShare } : {}),
+        ...(k1Rain ? { kharif1RainfedYieldTypical: k1Rain.typical } : {}),
+        irrigationAvailable: !rainOnly,
       },
       provenance: {
         source: `NASA POWER (FAO-56 Penman-Monteith ET0) + GPM IMERG Final daily rain; 25-season paddy water balance (research/explore/${LOC.kind === 'pilot' ? 'connect_check.py' : 'national_replay.py'})`

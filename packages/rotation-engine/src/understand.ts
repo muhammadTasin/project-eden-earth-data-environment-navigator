@@ -14,6 +14,7 @@ export interface Understood {
   excluded: string[]; // crops named in a negative clause ("বোরো করব না"); 'rice' for all rice, 'aman' for Aman
   notModelled: string[]; // crops we do not replay yet (jute, onion...)
   landType: LandType | null;
+  irrigation: 'none' | null; // 'none' when the farmer says the field has no irrigation
   priorities: Record<string, number> | null; // water, income, soil, pest, fodder
   heard: Array<{ word: string; id: string; kind: 'crop' | 'group' | 'not_modelled' | 'rice' | 'land' | 'priority' }>;
 }
@@ -34,6 +35,10 @@ const LAND: Array<[string[], LandType]> = [
   [['নিচু', 'নীচু', 'nichu', 'low land', 'lowland'], 'low'],
   [['উঁচু', 'উচু', 'uchu', 'high land', 'highland'], 'high'],
 ];
+
+/** "No irrigation" in a farmer's words: the field depends on rain. */
+const NO_IRRIGATION = ['সেচ নেই', 'সেচ নাই', 'সেচের ব্যবস্থা নেই', 'সেচের সুবিধা নেই', 'সেচ দিতে পারি না', 'সেচ দিতে পারব না',
+  'সেচ ছাড়া', 'বৃষ্টির ওপর', 'বৃষ্টির উপর', 'no irrigation', 'without irrigation', 'rainfed', 'rain-fed'];
 
 const PRIORITY: Array<[string[], string]> = [
   [['পানি', 'সেচ', 'pani', 'water', 'irrigation'], 'water'],
@@ -118,6 +123,9 @@ export function understandRequest(raw: string): Understood {
     }
   }
 
+  const dry = NO_IRRIGATION.map(nfc).find(f => text.includes(f));
+  if (dry) heard.push({ word: dry, id: 'none', kind: 'land' });
+
   const priorities: Record<string, number> = {};
   for (const [forms, id] of PRIORITY) {
     const form = forms.map(nfc).find(f => tokens(text).some(t => tokenMatches(t, f)));
@@ -135,6 +143,7 @@ export function understandRequest(raw: string): Understood {
     excluded,
     notModelled,
     landType,
+    irrigation: dry ? 'none' : null,
     priorities: Object.keys(priorities).length ? priorities : null,
     heard,
   };

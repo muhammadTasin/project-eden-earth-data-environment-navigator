@@ -2,6 +2,13 @@
 
 What changed in Project EDEN, newest first, with who made each change and the branch it came from. Every branch below was merged into `main` on 1 October 2026.
 
+## 5 October 2026 · Soil salinity, rain-only yields and NASA radar water (Tasrif, `feature/nasa-layers-yields-salinity`)
+
+- Salinity: `research/soil/srdi_salinity.py` reads SRDI's *Saline Soils of Bangladesh* (2010; May 2009 survey) into each coastal upazila's cultivated land by ECe class (99 of 102 upazilas matched). With FAO-61's salt tolerance (`research/crops/salt_tolerance.csv`; lentil, grass pea, mustard and jute assumed moderately sensitive), a place's own plans leave out winter and pre-monsoon crops that would lose half their yield, income moves by the yield left against the district's least saline upazila, and the advice names the salinity hazard with BRRI's salt-tolerant Boro.
+- Rain-only yields: `research/explore/rainfed_yield.py` runs FAO-56's root-zone soil-water balance on the replays' NASA weather (roots to the deep end of FAO-56 Table 22, FAO-33 yield response) for 16 upland crops at 65 places. The water card states each winter crop's rain-only yield. It is a lower bound: water a shallow water table feeds up to the roots is left out.
+- No irrigation: a request with `irrigation: 'none'` (planner select, or "সেচ নেই" / "no irrigation" in the farmer's words) leaves out Boro and Aus and scores water and income on the rain-only yield, against the district yield; lentil, chickpea, grass pea and sesame count as already rain-fed, since BARI gives them one irrigation at most.
+- NASA downloads started: `appeears_points.py --preset smap_national` (SMAP L4 root-zone moisture and its percentile for every upazila) and `research/acquire/opera_dswx.py` (OPERA DSWx-S1 radar water counted per upazila). Neither feeds the advice yet.
+
 ## 5 October 2026 · Advice that fits each upazila (Tasrif, `feature/local-advice`)
 
 An audit found the engine gave all 544 upazilas the same plan (BRRI dhan71 then lentil, same dates) under every keypad key but one and every land type, with six of seven scores identical, while the repo held land, soil, cropping and yield data per place. Now:

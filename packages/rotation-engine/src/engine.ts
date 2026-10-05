@@ -16,6 +16,7 @@ import { FeatureRegistry } from './registry.ts';
 import { RELEASE } from './data/tanore_replay_data.ts';
 import { LOC, placeFor, profileData, withPlace } from './data/location.ts';
 import { flashFloodExposed, flashFloodRisk, harvestTooLate, landRules, type LandRules } from './data/land.ts';
+import { SALT_LIMIT, salinityEffect } from './data/salinity.ts';
 import { AMAN_CATALOG, RABI_CATALOG } from './data/crop_catalog.ts';
 import type { AmanCatalogEntry } from './data/crop_catalog.ts';
 import type { AmanRecord, MonthDay, RabiRecord } from './data/release_types.ts';
@@ -76,6 +77,8 @@ export interface PlanOptionsRequest {
    * the same date in past years and 30-day rain against normal. From 1 September to 15 December a dry soil changes
    * the winter crop's plan (see DRY_START_MM in plugins/water.ts).
    */
+  /** 'none' when the farmer has no irrigation: rice in the dry season is left out and crops are judged on rain alone. */
+  irrigation?: 'available' | 'none';
   currentConditions?: {
     date: string;
     soilStatus: string; // 'dry' | 'normal' | 'wet'
@@ -132,7 +135,7 @@ const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 /** Options shown for a crop choice, as many as the five fixed rotations. */
 const CHOICE_OPTIONS = 5;
 /** The order in which a place's hazards are raised: the most serious first. */
-const HAZARD_ORDER = ['flash_flood', 'winter_fallow_salinity', 'dry_start', 'deep_flooding', 'submergence'];
+const HAZARD_ORDER = ['flash_flood', 'salinity', 'winter_fallow_salinity', 'dry_start', 'deep_flooding', 'submergence'];
 /** A pattern is named among what farmers grow at this share of the cropped land, and taken as current practice at this. */
 const PATTERN_NOTE_PCT = 10;
 const CURRENT_PRACTICE_PCT = 20;
@@ -761,6 +764,10 @@ export class RotationEngine {
     // where water stands, and on haor low land no crop harvested after the flash floods in too many springs
     const rules = landRules(request.landType);
     const tooLate = (harvest: MonthDay) => harvestTooLate(request.landType, harvest);
+    // A place's own plans leave out winter and pre-monsoon crops its soil salinity would halve (a farmer may still name
+    // them); without irrigation, rice in the dry season (Boro, Aus) is left out altogether
+    const rainOnly = request.irrigation === 'none';
+    const tooSalty = (crop: ChoiceCrop) => (local && (salinityEffect(crop.id)?.relativeYield ?? 1) < SALT_LIMIT) || (rainOnly && crop.isRice);
     const heroMembers = heroIndex >= 0 ? families[heroIndex].members : [];
     const heroOnlyWinter = heroMembers.length > 0 && heroMembers.every(m => m.season === 'Rabi');
     const neverWinter = families.some(f => f.members.every(m => m.season !== 'Rabi'));
@@ -793,6 +800,7 @@ export class RotationEngine {
       const ready = amanRecord ? amanRecord.fieldFree : k2Record ? addDays(k2Record.harvest, TURNAROUND_DAYS) : rules.ready;
       for (const rabiCrop of rabiPool) {
         if (k2Crop && sameFamily(k2Crop, rabiCrop)) continue;
+        if (tooSalty(rabiCrop)) continue;
         const rFit = rabiFit(rabiCrop, ready, amanRecord?.maturity);
         if (!isFit(rFit)) {
           noteMiss(rabiCrop, rFit);
@@ -807,7 +815,7 @@ export class RotationEngine {
         for (const k1Crop of k1Pool) {
           let k1Key: string | undefined;
           if (k1Crop) {
-            if (sameFamily(k1Crop, rabiCrop) || (k2Crop && sameFamily(k1Crop, k2Crop))) continue;
+            if (sameFamily(k1Crop, rabiCrop) || (k2Crop && sameFamily(k1Crop, k2Crop)) || tooSalty(k1Crop)) continue;
             const kFit = kharif1Fit(k1Crop, rabiRecord.harvest, nextStart);
             if (!isFit(kFit)) {
               noteMiss(k1Crop, kFit);
@@ -1027,8 +1035,11 @@ export class RotationEngine {
   private withCurrentPractice(specs: CandidateSpec[], options: CandidateRotation[], request: PlanOptionsRequest, seasonYear: number, rules: LandRules) {
     const top = LOC.local.patterns[0];
     const current = top && top[1] >= CURRENT_PRACTICE_PCT ? this.patternSpec(top[0], request.landType, rules) : null;
-    if (!current) return { specs, options };
-    const pulse = current.kharif1 ? null : this.withSummerCrop(current, request.landType);
+    // Without irrigation a usual pattern with Boro or Aus is not a plan this farmer can follow
+    const needsWater = (spec: CandidateSpec) => [spec.rabi, spec.kharif1].some(k => k && catalogFor(k)?.isRice);
+    if (!current || (request.irrigation === 'none' && needsWater(current))) return { specs, options };
+    const summer = current.kharif1 ? null : this.withSummerCrop(current, request.landType);
+    const pulse = summer && request.irrigation === 'none' && needsWater(summer) ? null : summer;
     const allSpecs = [...specs];
     const allOptions = [...options];
     for (const spec of [current, pulse]) {
@@ -1244,9 +1255,33 @@ export class RotationEngine {
       farmerLineEnglish = [farmerLineEnglish, 'The soil is dry this year: sow the winter crop without delay.'].filter(Boolean).join(' ');
     }
 
-    // Winter fallow on the coast: usually salinity, which the plan does not model
+    // Soil salinity: SRDI's survey where it covers the upazila, else the coast's winter fallow as a sign of it
+    const sal = local.salinity;
+    if (sal && sal.salineShare >= 0.3) {
+      const winter = CHOICE_CROPS.filter(c => c.season === 'Rabi' && c.aliases.length)
+        .map(c => ({ c, e: salinityEffect(c.id) }))
+        .filter((x): x is { c: ChoiceCrop; e: NonNullable<typeof x.e> } => x.e !== null)
+        .sort((a, b) => b.e.relativeYield - a.e.relativeYield);
+      const best = winter.slice(0, 3);
+      const out = winter.filter(x => x.e.relativeYield < SALT_LIMIT);
+      notesBangla.push([
+        `লবণাক্ততা: SRDI-র ২০০৯ সালের মে মাসের জরিপে এই উপজেলার চাষের জমির ${bnDigits(Math.round(sal.salineShare * 100))}% শুকনো মৌসুমে লবণাক্ত, ${bnDigits(Math.round(sal.strongShare * 100))}% প্রতি মিটারে ৮ ডেসিসিমেন্সের বেশি।`,
+        `সবচেয়ে বেশি ফলন রাখে: ${best.map(x => `${x.c.cropBangla} (~${bnDigits(Math.round(x.e.relativeYield * 100))}%)`).join(', ')} (FAO-61)।`,
+        out.length ? `অর্ধেকের বেশি ফলন হারায় বলে এখানে দেওয়া হয়নি: ${out.map(x => x.c.cropBangla).join(', ')}।` : '',
+        'বোরো করলে ব্রি-র লবণসহিষ্ণু জাত (ব্রি ধান৬৭, ৯৭, ৯৯); নিজের জমির লবণাক্ততা মেপে নিন।',
+      ].filter(Boolean).join(' '));
+      notesEnglish.push([
+        `Salinity: SRDI's May 2009 survey found ${Math.round(sal.salineShare * 100)}% of this upazila's cultivated land saline in the dry season, ${Math.round(sal.strongShare * 100)}% above 8 dS/m.`,
+        `Winter crops that keep the most yield here: ${best.map(x => `${x.c.crop.toLowerCase()} (~${Math.round(x.e.relativeYield * 100)}%)`).join(', ')} (FAO-61 salt tolerance; lentil, grass pea and mustard are not rated there and are taken as moderately sensitive).`,
+        out.length ? `Left out because they would lose half their yield or more: ${out.map(x => x.c.crop.toLowerCase()).join(', ')}.` : '',
+        "For Boro, BRRI's salt-tolerant varieties (BRRI dhan67, 97, 99); have the field's own salinity measured.",
+      ].filter(Boolean).join(' '));
+      hazard('salinity', ['মাটির লবণাক্ততা', 'Soil salinity']);
+      farmerLineBangla = [farmerLineBangla, `জমি লবণাক্ত হলে ${best[0]?.c.cropBangla ?? 'লবণসহিষ্ণু ফসল'} বেশি টেকে।`].filter(Boolean).join(' ');
+      farmerLineEnglish = [farmerLineEnglish, `On salty land ${best[0]?.c.crop.toLowerCase() ?? 'salt-tolerant crops'} holds up best.`].filter(Boolean).join(' ');
+    }
     const top = local.patterns[0];
-    if (COASTAL_DISTRICTS.has(LOC.district) && top && top[1] >= CURRENT_PRACTICE_PCT && /^Fallow-Fallow/.test(top[0])) {
+    if (!sal && COASTAL_DISTRICTS.has(LOC.district) && top && top[1] >= CURRENT_PRACTICE_PCT && /^Fallow-Fallow/.test(top[0])) {
       notesBangla.push(`এখানে বেশিরভাগ জমি শীতে খালি থাকে (BRRI ২০১৪-১৫: ${patternBangla(top[0])} ${bnDigits(Math.round(top[1]))}%); উপকূলে কারণ প্রায়ই মাটির লবণাক্ততা, যা এই হিসাবে এখনো নেই। বোনার আগে জমির লবণাক্ততা মাপান; গবেষণার তালিকায় লবণসহিষ্ণু জাত: বারি সরিষা-১১ ও ১৯, বারি আলু-৭২, বোরোতে ব্রি ধান৬৭, ৯৭ ও ৯৯।`);
       notesEnglish.push(`Most land here stays empty in winter (BRRI 2014-15: ${top[0]} on ${Math.round(top[1])}%); on the coast that is usually soil salinity, which this plan does not model yet. Have the field's salinity measured before sowing; salt-tolerant varieties in the research tables: BARI Mustard-11 and -19, BARI Potato-72, and BRRI dhan67, dhan97 and dhan99 for Boro.`);
       hazard('winter_fallow_salinity', ['শীতে জমি খালি: লবণাক্ততা?', 'Winter fallow: salinity?']);
@@ -1364,7 +1399,8 @@ export class RotationEngine {
     const current = request.currentConditions
       ? { ...request.currentConditions, dryStart: sowingTime && request.currentConditions.soilStatus === 'dry' }
       : null;
-    return withPlace({ ...place, conditions: { ...place.conditions, current } }, () => this.adviseHere(request));
+    const irrigation = request.irrigation === 'none' ? 'none' : 'available';
+    return withPlace({ ...place, conditions: { ...place.conditions, current, irrigation } }, () => this.adviseHere(request));
   }
 
   /** Advice for the place `LOC` currently points at (see data/location.ts). */
@@ -1376,7 +1412,7 @@ export class RotationEngine {
     const wantsChoice = Boolean(request.preferredCrops?.length || request.heroCrop || request.avoidCrops?.length);
     // Outside the pilot, and wherever the land rules Aman out, the year is planned from every crop the engine knows
     // that fits this place's land and calendar; the pilot keeps its five researched rotations.
-    const planLocally = !wantsChoice && (LOC.kind !== 'pilot' || !rules.aman);
+    const planLocally = !wantsChoice && (LOC.kind !== 'pilot' || !rules.aman || request.irrigation === 'none');
     this.landType = request.landType;
     // Land under deep monsoon water grows Boro (BRRI's survey: Boro-Fallow-Fallow on most of it), so the plan holds
     // Boro, the haor-safe early one where the flash floods come; other winter crops come in when the farmer names them
@@ -1470,6 +1506,9 @@ export class RotationEngine {
     }
     if (local.hazards.includes('winter_fallow_salinity')) {
       stale.push({ dataset: 'Soil salinity', issue: 'Not modelled; most land here stays fallow in winter, often because of salinity', affectedDimension: 'all' });
+    }
+    if (local.hazards.includes('salinity')) {
+      stale.push({ dataset: 'Soil salinity', issue: "SRDI's 2009 upazila classes, not this field: a field's own salinity may differ, so test it", affectedDimension: 'income' });
     }
     if (useChoice) {
       stale.push({ dataset: 'Heat limits for crops outside crop_parameters.csv', issue: 'Literature values, marked as assumed in the crop-choice replay', affectedDimension: 'heat' });

@@ -151,6 +151,7 @@ function planRequest(body: any): PlanOptionsRequest {
     // The farmer's land type when given; else the place's usual land (NASA NASADEM, Landsat and BRRI's survey)
     landType: body.landType || place?.defaultLandType || 'medium_high',
     landTypeAssumed: !body.landType,
+    irrigation: body.irrigation === 'none' ? 'none' : undefined,
     currentConditions: body.currentConditions ?? currentConditionsFor(place),
     season: body.season || '2026-aman',
     currentAmanCrop: body.currentAmanCrop,
@@ -177,7 +178,7 @@ function voiceAnswer(body: any) {
   const advice = adviseWithNarration(request, body.farmerId);
   return {
     understood: heard,
-    request: { unionId: request.unionId, heroCrop: request.heroCrop ?? null, preferredCrops: request.preferredCrops ?? [], avoidCrops: request.avoidCrops ?? [], landType: request.landType, farmerPriorities: request.farmerPriorities },
+    request: { unionId: request.unionId, heroCrop: request.heroCrop ?? null, preferredCrops: request.preferredCrops ?? [], avoidCrops: request.avoidCrops ?? [], landType: request.landType, irrigation: request.irrigation ?? 'available', farmerPriorities: request.farmerPriorities },
     reply: replyFor(advice, heard),
     advice,
   };

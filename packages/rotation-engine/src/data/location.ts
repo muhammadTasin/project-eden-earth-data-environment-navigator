@@ -28,12 +28,19 @@ export interface LocalProfile {
   intensityPct: number | null;
   /** District yields: crop id -> [t/ha, or null where the district grows too little to say; hectares in the latest year]. */
   yields: Record<string, [number | null, number]>;
+  /** SRDI's May 2009 salinity survey (coastal upazilas only): shares of the cultivated land in classes S1-S5. */
+  salinity: { cultivatedHa: number; salineShare: number; strongShare: number; classShares: number[] } | null;
 }
 
 interface ProfileFile {
   sources: Record<string, string>;
   landRule: string;
-  upazilas: Record<string, { land?: LocalProfile['land']; patterns?: Array<[string, number]>; boroFallowFallowPct?: number; intensityPct?: number }>;
+  upazilas: Record<string, {
+    land?: LocalProfile['land']; patterns?: Array<[string, number]>; boroFallowFallowPct?: number; intensityPct?: number;
+    salinity?: LocalProfile['salinity'];
+  }>;
+  salinityClassesDsM: number[];
+  saltTolerance: Record<string, { threshold: number; slope: number; rating: string; basis: string; note: string }>;
   districts: Record<string, Record<string, [number | null, number]>>;
   national: Record<string, {
     yield: number; lowYield: number | null; priceLowRatio: number | null; value: number | null; valueSource: string | null;
@@ -48,7 +55,7 @@ export function profileData(): ProfileFile {
     const file = new URL('./upazila_profile.json', import.meta.url);
     profile = fs.existsSync(file)
       ? JSON.parse(fs.readFileSync(file, 'utf8'))
-      : { sources: {}, landRule: '', upazilas: {}, districts: {}, national: {}, haorFlashFlood: null };
+      : { sources: {}, landRule: '', upazilas: {}, districts: {}, national: {}, haorFlashFlood: null, salinityClassesDsM: [], saltTolerance: {} };
   }
   return profile!;
 }
@@ -62,6 +69,7 @@ export function localProfile(upazilaId: string, district: string): LocalProfile 
     boroFallowFallowPct: u.boroFallowFallowPct ?? null,
     intensityPct: u.intensityPct ?? null,
     yields: data.districts[district] ?? {},
+    salinity: u.salinity ?? null,
   };
 }
 
