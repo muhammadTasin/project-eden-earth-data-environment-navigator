@@ -395,3 +395,245 @@ input[type="range"], input[type="checkbox"], input[type="radio"] { accent-color:
 .map-pin-label { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; color: var(--ink-2); }
 .map-pin-label .status-dot { width: 9px; height: 9px; background: var(--danger); display: inline-block; }
 @media (max-width: 900px) { .bd-map { height: 420px; } }
+
+/* ======================================================================
+   Role picker, farmer portal, weather and cattle (portals.js), in the same material
+   ====================================================================== */
+[hidden] { display: none !important; }
+.material-symbols-outlined {
+  font-size: 20px; line-height: 1; vertical-align: middle;
+  font-variation-settings: 'FILL' 0, 'wght' 420, 'GRAD' 0, 'opsz' 24;
+}
+body.state-entry .screen-nav, body.state-entry .main-content { display: none !important; }
+body:not(.state-entry) .entry-screen { display: none; }
+
+/* ---------- the role picker ---------- */
+.entry-screen { padding: 48px 16px 64px; }
+.entry-inner { max-width: 1040px; margin: 0 auto; }
+.entry-step { text-align: center; }
+.entry-eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--paddy); margin: 0 0 10px; }
+.entry-screen h1 { font-family: var(--font-display); font-size: clamp(30px, 4vw, 44px); font-weight: 700; color: var(--ink); margin: 0 0 10px; }
+.entry-lead { color: var(--text); font-size: 16px; margin: 0 auto 28px; max-width: 560px; }
+.entry-checking { display: inline-flex; gap: 8px; align-items: center; color: var(--muted-ink); margin: -12px 0 20px; }
+.role-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; text-align: left; }
+.role-card {
+  display: flex; flex-direction: column; gap: 10px; padding: 24px 22px 22px; cursor: pointer; border: 0; color: var(--ink);
+  background: linear-gradient(145deg, var(--face-hi), var(--face) 52%, var(--face-lo));
+  box-shadow: var(--raised); transition: transform .35s var(--spring), box-shadow .25s ease; font: inherit; text-align: left;
+}
+.role-card:hover { transform: translateY(-4px); }
+.role-card:active { transform: none; box-shadow: var(--sunken); }
+.role-card:focus-visible { outline: 3px solid var(--rain); outline-offset: 3px; }
+.role-icon {
+  width: 52px; height: 52px; display: grid; place-items: center; color: var(--paddy); flex: 0 0 auto;
+  background: linear-gradient(145deg, var(--sunk), var(--face-lo)); box-shadow: var(--sunken);
+}
+.role-icon .material-symbols-outlined { font-size: 28px; }
+.role-name { font-family: var(--font-display); font-size: 21px; font-weight: 650; }
+.role-desc { color: var(--text); font-size: 14px; line-height: 1.55; flex: 1; }
+.role-tag { align-self: flex-start; font-size: 12px; font-weight: 600; padding: 3px 9px; box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .5), inset -1px -1px 0 rgba(0, 0, 0, .08); }
+.tag-open { background: var(--paddy-soft); color: var(--paddy-deep); }
+.tag-demo { background: var(--amber-soft); color: var(--amber-deep); }
+.entry-foot { display: inline-flex; gap: 8px; align-items: center; margin-top: 26px; color: var(--muted-ink); font-size: 13px; }
+.entry-form-card {
+  max-width: 470px; margin: 0 auto; text-align: left; padding: 24px 26px 26px;
+  background: linear-gradient(145deg, var(--face-hi), var(--face) 52%, var(--face-lo)); box-shadow: var(--raised);
+}
+.entry-back { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; color: var(--paddy); font: inherit; font-weight: 600; cursor: pointer; padding: 0; margin-bottom: 14px; }
+.entry-form-head { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; }
+.entry-form-head h2 { font-family: var(--font-display); font-size: 22px; margin: 0 0 4px; }
+.entry-notice { background: var(--amber-soft); color: var(--amber-deep); padding: 9px 12px; font-size: 13px; box-shadow: inset 2px 2px 3px -1px var(--edge); }
+.entry-explain { color: var(--text); font-size: 14px; }
+.entry-form .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.entry-form label { font-size: 13px; color: var(--ink-2); font-weight: 600; }
+.entry-error { color: #8A2E20; background: #F1D4CC; padding: 8px 11px; font-size: 13px; margin-top: 10px; }
+.btn-block { width: 100%; justify-content: center; display: inline-flex; align-items: center; gap: 8px; }
+@media (max-width: 860px) { .role-grid { grid-template-columns: 1fr; } .entry-screen { padding-top: 28px; } }
+
+/* ---------- the role chip in the header ---------- */
+.role-chip {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 0; cursor: pointer; font: inherit; color: var(--ink);
+  background: linear-gradient(145deg, var(--face-hi), var(--face) 52%, var(--face-lo)); box-shadow: var(--raised);
+}
+.role-chip .material-symbols-outlined { color: var(--paddy); font-size: 18px; }
+.role-chip-name { font-weight: 650; font-size: 13px; }
+.role-chip-action { font-size: 12px; color: var(--paddy); border-left: 1px solid var(--edge); padding-left: 8px; }
+.role-chip:active { box-shadow: var(--sunken); }
+
+/* ---------- the farmer portal ---------- */
+.portal-tabs {
+  display: flex; gap: 6px; padding: 6px; margin-bottom: 18px; overflow-x: auto;
+  background: linear-gradient(145deg, var(--sunk), var(--face-lo)); box-shadow: var(--sunken);
+}
+.portal-tab {
+  flex: 1 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px;
+  border: 0; background: transparent; color: var(--ink-2); font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.portal-tab .material-symbols-outlined { color: var(--muted-ink); }
+.portal-tab.active { color: var(--paddy-deep); background: linear-gradient(145deg, var(--face-hi), var(--face) 52%, var(--face-lo)); box-shadow: var(--raised); }
+.portal-tab.active .material-symbols-outlined { color: var(--paddy); font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+.portal-panel { display: none; }
+.portal-panel.active { display: block; }
+body.weather-only .portal-tabs { display: none; }
+
+.today-head { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.today-title { font-family: var(--font-display); font-size: clamp(22px, 2.6vw, 28px); color: var(--paddy-deep); margin: 0 0 4px; }
+.today-sub { color: var(--muted-ink); margin: 0 0 14px; }
+.today-seasons { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.today-season { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; background: linear-gradient(145deg, var(--sunk), var(--face-lo)); box-shadow: var(--sunken); }
+.today-season.is-now { background: linear-gradient(145deg, var(--face-hi), var(--face) 52%, var(--face-lo)); box-shadow: var(--raised), inset 0 0 0 2px rgba(47, 107, 72, .3); }
+.today-season-label { font-size: 12px; color: var(--paddy); font-weight: 600; }
+.today-season strong { font-family: var(--font-display); font-size: 18px; color: var(--ink); }
+.today-season small { color: var(--muted-ink); }
+.today-narrative { color: var(--ink-2); line-height: 1.7; }
+.today-rain {
+  font-family: var(--font-mono); font-size: 13px; color: var(--lcd-ink); padding: 10px 12px; margin: 12px 0;
+  background: linear-gradient(180deg, var(--lcd), #BCC994); box-shadow: inset 2px 2px 5px rgba(31, 42, 22, .35), inset -1px -1px 0 rgba(255, 255, 255, .4);
+}
+.today-rain:empty { display: none; }
+.today-tips h4 { margin: 4px 0 6px; font-family: var(--font-display); color: var(--paddy-deep); }
+.today-tips ul { margin: 0 0 14px; padding-left: 20px; line-height: 1.6; color: var(--ink-2); }
+.today-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.today-actions .btn { display: inline-flex; align-items: center; gap: 8px; }
+.today-helpline { display: inline-flex; gap: 6px; align-items: center; color: var(--paddy); font-weight: 600; font-size: 13px; }
+.today-status { color: var(--muted-ink); font-size: 13px; margin: 8px 0 0; }
+.today-status:empty { display: none; }
+
+/* ---------- weather ---------- */
+.weather-card .card-header h3, .chat-card .card-header h3 { display: inline-flex; align-items: center; gap: 8px; }
+.weather-controls { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; margin-bottom: 12px; }
+.weather-field { display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.weather-gps { display: inline-flex; align-items: center; gap: 6px; }
+.weather-status { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 9px 12px; font-size: 13px; margin-bottom: 10px; }
+.weather-status-info { background: var(--rain-soft); color: var(--rain-deep); }
+.weather-status-error { background: #F1D4CC; color: #8A2E20; }
+.weather-notice { color: var(--muted-ink); font-size: 13px; }
+.weather-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 10px 0; }
+.weather-kpi {
+  display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 10px; align-items: center; padding: 12px 14px;
+  background: linear-gradient(145deg, var(--face-hi), var(--face) 52%, var(--face-lo)); box-shadow: var(--raised);
+}
+.weather-kpi .material-symbols-outlined { grid-row: span 2; font-size: 30px; color: var(--rain); }
+.weather-kpi strong { font-family: var(--font-display); font-size: 24px; color: var(--ink); }
+.weather-kpi span:last-child { font-size: 12px; color: var(--muted-ink); }
+.weather-source-note { font-size: 12px; color: var(--muted-ink); }
+.weather-forecast-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin: 8px 0 14px; }
+.weather-day-card {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 8px; text-align: center;
+  background: linear-gradient(145deg, var(--face-hi), var(--face) 52%, var(--face-lo)); box-shadow: var(--raised);
+}
+.weather-day-date { font-size: 12px; color: var(--muted-ink); font-weight: 600; }
+.weather-day-icon { font-size: 30px; color: var(--amber); }
+.weather-day-temperature { font-family: var(--font-display); font-weight: 650; color: var(--ink); }
+.weather-day-rain { font-size: 12px; color: var(--rain-deep); }
+.weather-section h4 { font-family: var(--font-display); margin: 12px 0 4px; color: var(--ink); }
+.weather-facts { margin: 6px 0; padding-left: 20px; line-height: 1.6; font-size: 13.5px; color: var(--ink-2); }
+.weather-attribution { display: block; margin-top: 12px; color: var(--muted-ink); font-size: 11.5px; }
+.hourly-thi-strip { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 10px; }
+.hourly-thi-pill {
+  flex: 0 0 auto; min-width: 74px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 6px;
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .55), inset -1px -1px 0 rgba(0, 0, 0, .1), 4px 6px 12px -8px var(--drop);
+  font-variant-numeric: tabular-nums;
+}
+.hourly-thi-pill span { font-size: 11px; color: var(--ink-2); }
+.hourly-thi-pill strong { font-family: var(--font-display); font-size: 17px; }
+.hourly-thi-pill small { font-size: 10.5px; color: var(--muted-ink); }
+.thi-normal { background: var(--paddy-soft); }
+.thi-normal strong { color: var(--paddy-deep); }
+.thi-alert { background: var(--amber-soft); }
+.thi-alert strong { color: var(--amber-deep); }
+.thi-danger { background: #F1D4CC; }
+.thi-danger strong { color: #8A2E20; }
+.thi-emergency { background: #8A2E20; }
+.thi-emergency span, .thi-emergency strong, .thi-emergency small { color: #FBEDE8; }
+.hourly-thi-pill.is-cool { outline: 2px solid var(--rain); outline-offset: -2px; }
+@media (max-width: 760px) { .weather-controls { grid-template-columns: 1fr; } .weather-kpis { grid-template-columns: 1fr; } }
+
+/* ---------- river erosion ---------- */
+.erosion-select { max-width: 200px; }
+.erosion-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.erosion-row {
+  display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 11px 14px;
+  background: linear-gradient(145deg, var(--sunk), var(--face-lo)); box-shadow: var(--sunken), inset 4px 0 0 var(--rain);
+}
+.erosion-row.is-danger { box-shadow: var(--sunken), inset 4px 0 0 #A33A2A; }
+.erosion-row small { display: block; color: var(--muted-ink); font-size: 12px; margin-top: 2px; }
+
+/* ---------- the assistant ---------- */
+.chat-messages {
+  display: flex; flex-direction: column; gap: 10px; max-height: 420px; min-height: 220px; overflow-y: auto; padding: 14px;
+  background: linear-gradient(145deg, var(--sunk), var(--face-lo)); box-shadow: var(--sunken);
+}
+.chat-bubble { max-width: 82%; padding: 10px 13px; line-height: 1.6; font-size: 14px; white-space: pre-line; }
+.chat-bubble.assistant { align-self: flex-start; color: var(--ink); background: linear-gradient(145deg, var(--face-hi), var(--face)); box-shadow: var(--raised); }
+.chat-bubble.farmer { align-self: flex-end; color: var(--cream); background: linear-gradient(145deg, #3F7C59, var(--paddy-deep)); box-shadow: 8px 10px 20px -12px var(--drop); }
+.chat-bubble.is-waiting { color: var(--muted-ink); }
+.chat-tips { margin: 8px 0 0; padding-left: 18px; white-space: normal; }
+.chat-source { display: block; margin-top: 6px; font-size: 11px; color: var(--paddy); font-family: var(--font-mono); white-space: normal; }
+.chat-quick { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.chip {
+  border: 0; cursor: pointer; font: inherit; font-size: 13px; padding: 6px 12px; color: var(--paddy-deep);
+  background: linear-gradient(145deg, var(--face-hi), var(--face) 52%, var(--face-lo));
+  box-shadow: inset 1px 1px 0 var(--hi), inset -1px -1px 0 var(--edge), 6px 8px 14px -10px var(--drop);
+}
+.chip:active { box-shadow: var(--sunken); }
+.chat-input-bar { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+.chat-input-bar .btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 12px; }
+.chat-mic.is-listening { color: var(--cream); background: linear-gradient(145deg, #B8442F, #8A2E20); }
+
+/* ---------- cattle ---------- */
+.cattle-hero-row { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.cattle-hero-row .btn { display: inline-flex; align-items: center; gap: 6px; }
+.cattle-hero h2 { font-family: var(--font-display); font-size: clamp(22px, 2.4vw, 27px); color: var(--paddy-deep); margin: 8px 0 6px; }
+.cattle-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.cattle-sub { color: var(--muted-ink); font-size: 13.5px; margin: 0; }
+.cattle-note { color: var(--muted-ink); font-size: 12px; margin: 8px 0 0; }
+.cattle-note:empty { display: none; }
+.cattle-notice { padding: 9px 12px; margin-top: 12px; font-size: 13px; }
+.cattle-notice.is-info { background: var(--rain-soft); color: var(--rain-deep); }
+.cattle-notice.is-warning { background: var(--amber-soft); color: var(--amber-deep); }
+.cattle-notice.is-error { background: #F1D4CC; color: #8A2E20; }
+.cattle-ee-banner { display: flex; gap: 10px; margin-top: 12px; padding: 11px 13px; background: var(--amber-soft); color: var(--amber-deep); box-shadow: inset 2px 2px 3px -1px var(--edge); font-size: 13px; }
+.cattle-ee-banner p { margin: 4px 0; color: var(--ink-2); }
+.cattle-ee-banner pre { white-space: pre-wrap; font-family: var(--font-mono); font-size: 11.5px; background: rgba(255, 255, 255, .45); padding: 8px; }
+.cattle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; margin: 20px 0; }
+.cattle-grid .card-header h3 { display: inline-flex; align-items: center; gap: 8px; }
+.cattle-aoi-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; margin-bottom: 12px; }
+.cattle-aoi-row .btn { display: inline-flex; align-items: center; gap: 6px; }
+.cattle-aoi-row .btn.active { background: linear-gradient(145deg, var(--sunk), var(--face-lo)); box-shadow: var(--sunken); color: var(--rain-deep); }
+.btn-danger-text { color: #8A2E20; }
+.cattle-map { height: 330px; box-shadow: var(--sunken); outline: 1px solid var(--edge); background: #DCE6EC; }
+.cattle-map.is-drawing { cursor: crosshair; outline: 2px solid var(--rain); }
+.draw-bar { margin-top: 10px; padding: 10px 12px; font-size: 13px; color: var(--lcd-ink); background: linear-gradient(180deg, var(--lcd), #BCC994); box-shadow: inset 2px 2px 5px rgba(31, 42, 22, .35); }
+.draw-bar p { margin: 0 0 8px; }
+.draw-bar-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.draw-bar-row .form-control { flex: 1 1 200px; }
+.cattle-upload { margin-top: 12px; font-size: 13px; }
+.cattle-upload summary { cursor: pointer; color: var(--paddy); font-weight: 600; }
+.cattle-upload label { display: block; margin: 10px 0 5px; font-weight: 600; color: var(--ink-2); }
+.cattle-upload .form-control, .cattle-upload input[type="file"] { width: 100%; }
+.cattle-upload .btn { margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; }
+.mono { font-family: var(--font-mono); font-size: 11.5px; }
+.job-track { height: 12px; margin: 12px 0 6px; background: linear-gradient(145deg, var(--sunk), var(--face-lo)); box-shadow: inset 2px 2px 4px -1px var(--edge), inset -1px -1px 2px var(--hi); }
+.job-fill { height: 100%; width: 0; background: linear-gradient(90deg, #46845F, var(--paddy-deep)); transition: width .4s ease; }
+.job-meta { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted-ink); }
+.job-details { font-size: 12.5px; margin: 8px 0; }
+.job-steps { margin: 10px 0 14px; padding: 12px 14px 12px 32px; font-size: 13px; line-height: 1.6; color: var(--ink-2); background: linear-gradient(145deg, var(--sunk), var(--face-lo)); box-shadow: var(--sunken); }
+.cattle-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.cattle-actions .btn { display: inline-flex; align-items: center; gap: 6px; }
+.cattle-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.cattle-kpi { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; background: linear-gradient(145deg, var(--face-hi), var(--face) 52%, var(--face-lo)); box-shadow: var(--raised); }
+.cattle-kpi-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; font-size: 12.5px; color: var(--ink-2); font-weight: 600; }
+.cattle-kpi strong { font-family: var(--font-display); font-size: 30px; color: var(--paddy-deep); }
+.cattle-kpi strong.cattle-kpi-text { font-family: var(--font-body); font-size: 14px; font-weight: 600; color: var(--ink); line-height: 1.5; }
+.cattle-kpi small { color: var(--muted-ink); font-size: 11.5px; }
+.cool-hours { font-size: 13px; color: var(--ink-2); }
+.cool-hours strong { color: var(--rain-deep); }
+.cattle-evidence { font-size: 12.5px; margin-top: 8px; }
+.cattle-advice { margin-top: 12px; padding: 12px 14px; background: var(--amber-soft); box-shadow: inset 2px 2px 3px -1px var(--edge); }
+.cattle-advice strong { color: var(--amber-deep); }
+.cattle-advice ul { margin: 6px 0 0; padding-left: 20px; line-height: 1.6; color: var(--ink-2); }
+.cattle-advisory[data-empty="true"] .cattle-kpis, .cattle-advisory[data-empty="true"] > .card { opacity: .62; }
+.cattle-missing { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 10px 12px; margin-top: 10px; background: linear-gradient(145deg, var(--sunk), var(--face-lo)); box-shadow: var(--sunken); font-size: 13px; }
+.cattle-missing small { grid-column: 1 / -1; color: var(--muted-ink); font-size: 12px; }
+.cattle-sources { font-size: 12px; }

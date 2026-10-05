@@ -83,6 +83,7 @@ export function initBdMap({ tr, num, escapeHtml, choose, currentId }) {
   let inspected = selected; // the upazila whose facts the panel shows
   const panel = document.getElementById('mapFacts');
   let upazilaLayer = null;
+  let fitted = false; // the country view waits until the map is on screen (the role picker hides it at first)
   const byId = new Map();
 
   const map = L.map(el, { zoomSnap: 0.25, minZoom: 5, maxZoom: 12, preferCanvas: true, maxBounds: [[12, 78], [34, 102]] })
@@ -316,12 +317,18 @@ export function initBdMap({ tr, num, escapeHtml, choose, currentId }) {
     controls();
     paint();
     // the whole country first (the box may have changed size while the outlines loaded); a choice flies in
-    map.invalidateSize();
-    map.fitBounds(upazilaLayer.getBounds(), { padding: [8, 8] });
-    el.dataset.view = 'country';
+    fitCountry();
   }).catch(() => {
     document.getElementById('mapLegend').innerHTML = `<p class="map-caveat">${tr('মানচিত্রের তথ্য আনা যায়নি।', 'The map data could not be loaded.')}</p>`;
   });
+
+  function fitCountry() {
+    if (fitted || !upazilaLayer || !el.clientWidth) return;
+    map.invalidateSize();
+    map.fitBounds(upazilaLayer.getBounds(), { padding: [8, 8] });
+    el.dataset.view = 'country';
+    fitted = true;
+  }
 
   function focus(id) {
     const layer = byId.get(norm(id));
@@ -340,6 +347,6 @@ export function initBdMap({ tr, num, escapeHtml, choose, currentId }) {
       controls();
       paint();
     },
-    invalidate() { map.invalidateSize(); },
+    invalidate() { map.invalidateSize(); fitCountry(); },
   };
 }

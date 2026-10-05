@@ -6,14 +6,14 @@ EDEN is a Bangla-first crop-rotation decision-support system for Bangladesh. Its
 
 ## Project status (4 October 2026)
 
-`main` holds all of the team's work up to 4 October: the research, the apps, Rayyanul's Android fixes (PR #3), the farmer's own crops with the Awaj phone channel, and muhammadTasin's weather and cattle advisories; a GitHub Action adds the daily NASA update. Branch `feature/map-and-pesticide-data` adds a real map of Bangladesh to the dashboard and works on the known limits: NASA SEDAC pesticide estimates in the tips, waterlogging from NASA soil wetness, jute's measured crop coefficient, price-based incomes for five more crops, and the story site's fonts in the app (see [Branches](#branches)):
+`main` holds all of the team's work up to 4 October: the research, the apps, Rayyanul's Android fixes (PR #3), the farmer's own crops with the Awaj phone channel, and muhammadTasin's weather and cattle advisories; a GitHub Action adds the daily NASA update. Branch `feature/map-and-pesticide-data` adds a real map of Bangladesh to the dashboard and works on the known limits: NASA SEDAC pesticide estimates in the tips, waterlogging from NASA soil wetness, jute's measured crop coefficient, price-based incomes for five more crops, and the story site's fonts in the app. Branch `feature/merge-edith-web` builds on it and brings in muhammadTasin's [Edith_Web_App_Connectivity](https://github.com/muhammadTasin/Edith_Web_App_Connectivity) work, so one server serves the website and the Android app: the weather forecast, the upazila list and the cattle module on the server, and on the dashboard a role picker, the web farmer portal and the weather and cattle tabs, in the story site's look (see [Branches](#branches)):
 
 | Part | Folder | What works |
 |---|---|---|
 | Research and data | `research/` | NASA and local datasets with their checks, the 25-season replay for the Tanore pilot, signals for five pilots, and the generator for the app's data release |
 | Rotation engine | `packages/rotation-engine/` | 5 rotations replayed through 25 seasons, 7 scores. The Talanda pilot uses data release `tanore-2026.09.30` (research commit `0469020`); every other upazila uses its district's replay (`national_replay.json`). With the farmer's crops named, it plans the whole year around them from 16 crops (`crop_choice_replay.json`) |
-| API | `services/api/` | Research/demo backend with crop choice, Bangla request reading, soil-and-water tips and Awaj calls. The Android weather/cattle screens use the separately configured Edith API described in `apps/farmer-mobile/README.md` |
-| SAAO dashboard | `apps/saao-dashboard/` | Any of the 544 upazilas, picked from a list or on a map of Bangladesh coloured by NASA layers; Bangla and English, the farmer's crops and main crop (with a no-rice switch), officer desk, soil-and-water tips, early warnings, environment ledger, daily NASA conditions and voice-to-plan flow |
+| API | `services/api/` | One server for the website and the Android app ([API contract](docs/api-contract.md)): advice, crop choice, Bangla request reading, soil-and-water tips, Awaj calls, the weather forecast for 500 upazilas, NASA POWER observations and the cattle farm-outline (AOI) pipeline |
+| SAAO dashboard | `apps/saao-dashboard/` | A role picker first (visitor, farmer, officer; each sees its own tabs); the web farmer portal with the Android app's five tabs (today, weather, river erosion, assistant, my farm); the weather tab (Open-Meteo forecast, NASA POWER, hourly cattle THI); the cattle tab (farm outlines on a map, background jobs, THI advice); any of the 544 upazilas, picked from a list or on a map of Bangladesh coloured by NASA layers; Bangla and English, the farmer's crops and main crop (with a no-rice switch), officer desk, soil-and-water tips, early warnings, environment ledger, daily NASA conditions and voice-to-plan flow |
 | Android app | `apps/farmer-mobile/` | Farmer card, weather and cattle advisories through the configured Edith API, river erosion, Bangla voice assistant and crop planning when the configured API supports `/api/v1/voice/answer`, sign-in, farm profile editing; the story site's colours, sharp corners and fonts (Anek Bangla and Hind Siliguri, bundled for offline use) |
 | Screen designs | `design/` | Six SAAO desktop screens and the portrait mobile companion |
 | Daily NASA update | `research/live/` | NASA POWER every day for all 544 upazilas (64 districts), GPM IMERG rain at 10 km with an Earthdata Login, and the live haor flash-flood check with the MODIS flood map |
@@ -24,7 +24,7 @@ The dashboard advises any of the 544 upazilas (pick the district and upazila at 
 
 ```bash
 npm install
-npm test          # 16 engine tests and every API check
+npm test          # 16 engine tests, 7 cattle tests and every API check
 npm start         # API and SAAO dashboard on http://localhost:4000
 npm run call:test -- --to 01XXXXXXXXX --crops sunflower,lentil   # the Bangla call script; a dry run until Awaj is set up
 ```
@@ -185,7 +185,13 @@ Do not commit secrets, local environment files, dependency folders, generated AP
 | POST | `/api/v1/channel-events` | Simulated IVR keypad: 1–4 re-rank by priority, 9 creates an officer call-back |
 | GET | `/api/v1/data-release` | Datasets, periods, calibration and status |
 | GET | `/api/v1/haor/flash-flood` | Haor flash-flood trigger: Sohra thresholds, 25-season hindcast, Boro variety escape, the season status and `live` (today's upstream IMERG rain and the MODIS flood map) |
-| GET | `/api/v1/weather` | NASA POWER daily agroclimatology and SMAP root-zone moisture for the pilot, fetched live and cached; observations, not a forecast |
+| GET | `/api/v1/weather?lat=&lon=` | NASA POWER daily observations for the coordinates (required; Bangladesh only), delayed 2-3 days and never labelled live; `provider_unavailable` when NASA does not answer |
+| GET | `/api/v1/weather/forecast?lat=&lon=` | Open-Meteo forecast (current, hourly with humidity, 7 days), cached 15 minutes per location, labelled a model estimate |
+| GET | `/api/v1/locations` | 64 districts and 500 upazilas with reference coordinates (Open Admin Data Bangladesh, CC BY 4.0), for the weather pickers on the website and the app |
+| GET | `/api/v1/config` | What the server can do right now: Earth Engine, text-to-speech and LLM status |
+| POST | `/api/v1/tts` | Server text-to-speech when `TTS_*` is set; otherwise `configuration_required` and clients use the device voice |
+| GET/POST/DELETE | `/api/v1/cattle/aois` (`/:id`, `/:id/advisory`) | Farm outlines (drawn or GeoJSON), their latest THI advisory |
+| GET/POST | `/api/v1/cattle/jobs` (`/:id`, `/:id/retry`), `/api/v1/cattle/readiness`, `/api/v1/cattle/models/train` | Background jobs (forecast, NASA POWER, Earth Engine when set up), readiness, and the training gate that refuses to train without labelled data |
 | GET | `/api/v1/erosion` | Riverbank erosion risk for the Jamuna corridor from BWDB/FFWC station records and IMERG basin rain |
 | POST | `/api/v1/ai/ask` | Bangla assistant that answers only from the project's evidence and refuses out-of-scope questions such as loans or pesticide brands; rules-based, with no outside AI service |
 | POST | `/api/v1/auth/login` | Officer (access code) or farmer (ID or phone and PIN) sign-in, returns a session token |
@@ -214,7 +220,7 @@ Do not commit secrets, local environment files, dependency folders, generated AP
 
 ## Tests
 
-`npm test` runs `test_pipeline.ts` (engine) and `test_server.js` (API). They check:
+`npm test` runs `test_pipeline.ts` (engine), `test_cattle.ts` (cattle AOI, THI and job rules) and `test_server.js` (API, on port 4317 or `TEST_PORT`). They check:
 
 - the ranking, feature flags and narration gates (a fake model that invents "১২ টন" and a loan offer falls back to the template);
 - that Boro is scored with Boro data, that unions without data are refused and that a stated priority leads the ranking;
@@ -283,13 +289,16 @@ The latest SMAP soil-moisture values come from the downloaded cache (`research/d
 - Floods are not modelled for Barind land. The haor warning shows the 25-season hindcast and the season status; a live trigger needs a daily IMERG Early feed and river-gauge confirmation. Rotation advice is not modelled for the haor.
 - Flooded-rice days stand in for methane; they are not a methane measurement.
 - NASA POWER weather arrives 2–3 days late and is not a forecast. River-erosion risk comes from station records and needs checking on the ground.
-- Sign-in uses a shared officer code, a demo farmer PIN, in-memory sessions and a JSON file store; a real deployment needs proper accounts and a database.
+- Sign-in uses a shared officer code, a demo farmer PIN, in-memory sessions and a JSON file store; a real deployment needs proper accounts and a database. The role picker only decides what the screen shows; the API checks its own tokens.
+- The cattle module keeps farm outlines and jobs in a local JSON file (not production-durable), and its Earth Engine worker has not been run against a real Earth Engine account; until it is set up, satellite inputs are reported as unavailable and jobs end as partial.
+- Two upazila lists live side by side for now: the 544 geoBoundaries units the advice and the map use, and the 500 Open Admin Data units the weather pickers use.
 - The Android app's API address works in the emulator only.
 
 ## Branches
 
 | Branch | What it holds |
 |---|---|
+| `feature/merge-edith-web` | `feature/map-and-pesticide-data` plus muhammadTasin's Edith_Web_App_Connectivity (c922eec): its server (forecast, locations, cattle, config, TTS and LLM adapters, error envelope, API contract and setup docs, cattle tests), three-way merged against the shared 1 October base, and its role picker, farmer portal and weather and cattle tabs rebuilt in this dashboard in the story site's look |
 | `feature/map-and-pesticide-data` | `main` (4 October) plus the map of Bangladesh, PEST-CHEMGRIDS pesticide numbers, waterlogging from NASA soil wetness, jute's measured crop coefficient, BBS-based incomes for five more crops, the app's bundled fonts, and a daily update that keeps the last IMERG reading |
 | `feature/crop-choice-and-calls` | Merged into `main` on 4 October: `sync/all-latest` plus the farmer's own crops and main crop (rice optional), soil-and-water tips, the Bangla request reader, the voice answer, Awaj calls and keypad menu, MODIS greenness for every upazila, and the story site's look for the dashboard and the app |
 | `sync/all-latest` | Everything: `research/data-access` (`0469020`) and `codex/android-app-latest` (`8e633aa`, which already carried `codex/android-apk`, `feature/eden-screen-recreation` and `demo/research-data`), plus the daily NASA update, the live haor check, advice for every upazila and Rayyanul's Android fixes (`f5a1b11`, PR #3). Merge it into `main` with a pull request ("Create a merge commit"). |

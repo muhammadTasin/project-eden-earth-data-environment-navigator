@@ -2,6 +2,14 @@
 
 What changed in Project EDEN, newest first, with who made each change and the branch it came from. Every branch below was merged into `main` on 1 October 2026.
 
+## 5 October 2026 · One server for the website and the app; role portals (Tasrif with muhammadTasin's Edith work, `feature/merge-edith-web`)
+
+- Server: muhammadTasin's Edith_Web_App_Connectivity (c922eec) merged in. `GET /api/v1/locations` (64 districts, 500 upazilas), `GET /api/v1/weather/forecast` (Open-Meteo) and `GET /api/v1/weather` (NASA POWER, coordinates required, explicit `provider_unavailable`), the cattle module (farm outlines, background jobs, THI advisory, Earth Engine worker that reports `configuration_required` until set up), `/api/v1/config`, `/api/v1/tts`, optional LLM and TTS adapters, the shared error envelope, CORS and an optional write token. Three-way merged against the shared 1 October base; our routes stay. The Android app's weather and cattle screens now work against this server.
+- Windows: the Earth Engine worker runs `python` on Windows and treats the Store shortcut as missing Python (Edith's own test failed there).
+- Dashboard: a role picker before the dashboard (visitor, farmer with the demo F01 sign-in, officer with the demo code); each role sees its own tabs, numbered 1, 2, 3…; a header chip changes role. The farmer screen is now the web farmer portal with the Android app's five tabs: today (the engine's plan for the place, the next 48 hours of rain, the soil-and-water tips, listen, ask for a call-back), weather, river erosion, the assistant (crop sentences get a plan, other questions the grounded assistant, and a mic) and my farm (the signed-in farmer's record). New weather tab (any of 500 upazilas or the device's location, 7-day forecast, NASA POWER, hourly cattle THI) and cattle tab (draw or upload a farm outline, run the analysis, THI advice, what cannot be said yet). All in the story site's look; `portals.js` holds the code.
+- Docs: `docs/api-contract.md`, `docs/SETUP.md`, `docs/cattle-aoi-ml-architecture.md` from Edith; `.env.example` merged.
+- Tests: `test_cattle.ts` and Edith's API checks run next to ours; the API tests use port 4317.
+
 ## 4 October 2026 · A map of Bangladesh; NASA pesticide and waterlogging data; fewer gaps (Tasrif, `feature/map-and-pesticide-data`)
 
 - Dashboard: the overview's satellite card is a real map (Leaflet, NASA GIBS). 544 upazilas coloured by one of ten layers (MODIS crops a year, change and winter greenness; NASA replay Boro irrigation; GLDAS groundwater; IMERG 7-day rain; POWER 30-day rain and soil wetness; PEST-CHEMGRIDS rice pesticide; SRDI organic matter), NASA MODIS/VIIRS true colour and Blue Marble underneath, MODIS flood, IMERG, SMAP and NDVI on top; hover, click for facts and to plan, a district table. `research/export/map_export.py` thins the geoBoundaries outlines; `GET /api/v1/map/upazilas` serves the values; static text files go out gzipped.

@@ -7,6 +7,7 @@
  */
 import { EN } from './i18n.js';
 import { initBdMap } from './bd-map.js';
+import { initPortals } from './portals.js';
 
 let lang = 'bn';
 let currentAdvice = null;
@@ -1169,6 +1170,47 @@ function renderQuality(data) {
 // Initial load: language, overview, advice, data quality, officer list (and desk if signed in)
 // ---------------------------------------------------------------------------
 
+// Role picker, web farmer portal, weather and cattle screens (portals.js): set up first, so the picker works at once
+let portals = null;
+function startPortals() {
+  portals = initPortals({
+    tr, num, isoDate, escapeHtml, $, setText, setHtml,
+    lang: () => lang,
+    advice: () => currentAdvice,
+    overview: () => currentOverview,
+    place: () => currentPlace,
+    officers: () => officers,
+    loadOfficers,
+    officerSignedIn: () => Boolean(officerSession),
+    async setOfficerSession(session) {
+      officerSession = session;
+      try {
+        sessionStorage.setItem('eden.officer', JSON.stringify(session));
+      } catch {
+        // storage blocked: the session lasts until this page closes
+      }
+      await loadOfficerDesk();
+      renderProfile();
+    },
+    signOutOfficer: () => window.officerSignOut(),
+    // keypad 9 from the farmer portal: the call-back lands on the officer desk (demo; no call is placed)
+    async keypad(key) {
+      try {
+        const res = await fetch('/api/v1/channel-events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ keypad: key, phone: '017XX-XXX01', farmerId: 'F01' }),
+        });
+        const data = await res.json();
+        if (data.callbackId && officerSession) loadOfficerDesk();
+        return res.ok;
+      } catch {
+        return false;
+      }
+    },
+  });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     const saved = localStorage.getItem('eden.lang');
@@ -1179,12 +1221,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     // storage blocked: start in Bangla, signed out
   }
   applyStaticText();
+  startPortals();
   await loadOverview();
   await window.runPlannerCalculation({ switchScreenAfter: false });
   await loadDataQualityTable();
   await loadOfficers();
   if (officerSession) await loadOfficerDesk();
   renderAll();
+  await portals.restoreSession();
+  portals.refresh();
 });
 
 
@@ -1322,6 +1367,7 @@ async function choosePlace(id) {
   if (typeof window.runPlannerCalculation === 'function') await window.runPlannerCalculation({ switchScreenAfter: false });
   renderAll();
   applyPlaceText();
+  portals?.refresh();
   if (liveRows && $('liveDistrict')) {
     const row = liveRows.find(r => r.id === (id === PILOT_PLACE ? 'ADM3_Tanore' : id));
     if (row) { $('liveDistrict').value = row.district; fillLiveUpazilas(); $('liveUpazila').value = row.id; renderLive(); }
@@ -1346,7 +1392,7 @@ async function loadPlaces() {
 }
 
 const setLanguageBeforePlace = window.setLanguage;
-window.setLanguage = function(next) { setLanguageBeforePlace(next); applyPlaceText(); bdMap?.refreshLanguage(); };
+window.setLanguage = function(next) { setLanguageBeforePlace(next); applyPlaceText(); bdMap?.refreshLanguage(); portals?.refresh(); };
 
 // A click on the map picks an upazila the same way the place list does
 function chooseFromMap(id) {
