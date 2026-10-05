@@ -101,14 +101,14 @@
           </button>
           <button class="role-card" type="button" onclick="chooseRole('officer')">
             <span class="role-icon"><span class="material-symbols-outlined" aria-hidden="true">shield_person</span></span>
-            <span class="role-name" data-i18n="entry.officer.name">কৃষি কর্মকর্তা / SAAO</span>
-            <span class="role-desc" data-i18n="entry.officer.desc">কর্মকর্তা ডেস্ক, কৃষকের কেস, তুলনা, কল, গবাদিপশু ও ডেটার মান।</span>
-            <span class="role-tag tag-demo" data-i18n="entry.officer.tag">ডেমো প্রবেশ</span>
+            <span class="role-name" data-i18n="entry.officer.name">ম্যানেজার</span>
+            <span class="role-desc" data-i18n="entry.officer.desc">ম্যানেজার ডেস্ক: কৃষকের কেস, তুলনা, কল, গবাদিপশু ও ডেটার মান।</span>
+            <span class="role-tag tag-open" data-i18n="entry.officer.tag">লগইন লাগবে</span>
           </button>
         </div>
         <p class="entry-foot">
           <span class="material-symbols-outlined" aria-hidden="true">info</span>
-          <span data-i18n="entry.foot">এটি ডেমো সংস্করণ। কৃষক ও কর্মকর্তার প্রবেশ নিরাপদ বা যাচাই করা লগইন নয়।</span>
+          <span data-i18n="entry.foot">কৃষকের প্রবেশ এখানে ডেমো, নিরাপদ বা যাচাই করা লগইন নয়। ম্যানেজাররা নিজের অ্যাকাউন্টে প্রবেশ করেন।</span>
         </p>
       </div>
 
@@ -141,27 +141,53 @@
         <div class="entry-form-head">
           <span class="role-icon"><span class="material-symbols-outlined" aria-hidden="true">shield_person</span></span>
           <div>
-            <h2 id="entryOfficerTitle" data-i18n="entry.officer.formTitle">কর্মকর্তা ডেমো প্রবেশ</h2>
-            <span class="role-tag tag-demo" data-i18n="entry.demoOnly">শুধু ডেমো</span>
+            <h2 id="entryOfficerTitle" data-i18n="entry.officer.formTitle">ম্যানেজার প্রবেশ</h2>
           </div>
         </div>
-        <p class="entry-notice" data-i18n="entry.officer.notice">শুধু ডেমো প্রবেশ: এটি আসল বা নিরাপদ লগইন নয়।</p>
-        <form class="entry-form" onsubmit="entryOfficerSignIn(event)">
+        <p class="entry-explain" data-i18n="entry.officer.help">আপনার অফিস থেকে পাওয়া ইউজার আইডি ও পাসওয়ার্ড দিন।</p>
+        <form class="entry-form" onsubmit="entryOfficerSignIn(event)" novalidate>
           <div class="form-group">
-            <label for="entryOfficerSelect" data-i18n="officer.idLabel">কর্মকর্তা</label>
-            <select id="entryOfficerSelect" class="form-control" required></select>
+            <label for="entryOfficerUserId" data-i18n="entry.officer.userIdLabel">ইউজার আইডি</label>
+            <input id="entryOfficerUserId" type="text" class="form-control" autocomplete="username" autocapitalize="none" spellcheck="false">
           </div>
           <div class="form-group">
-            <label for="entryOfficerCode" data-i18n="officer.codeLabel">প্রবেশ কোড</label>
-            <input id="entryOfficerCode" type="password" class="form-control" autocomplete="off" required>
+            <label for="entryOfficerPassword" data-i18n="entry.officer.passwordLabel">পাসওয়ার্ড</label>
+            <input id="entryOfficerPassword" type="password" class="form-control" autocomplete="current-password">
           </div>
           <button class="btn btn-primary btn-block" type="submit" id="entryOfficerBtn">
             <span class="material-symbols-outlined" aria-hidden="true">login</span>
             <span data-i18n="officer.signIn">প্রবেশ করুন</span>
           </button>
-          <p class="officer-hint" data-i18n="officer.codeHint">ডেমো কোড README-তে আছে। এটি ডেমোর জন্য, আসল লগইন নয়।</p>
           <p class="entry-error" id="entryOfficerError" role="alert" hidden></p>
         </form>
+
+        <!-- The old demo login: shown only when the server runs with DEMO_MODE=true -->
+        <div id="entryOfficerDemo" hidden>
+          <hr>
+          <div class="entry-form-head">
+            <div>
+              <h3 data-i18n="entry.officer.demoTitle">ম্যানেজার ডেমো প্রবেশ</h3>
+              <span class="role-tag tag-demo" data-i18n="entry.demoOnly">শুধু ডেমো</span>
+            </div>
+          </div>
+          <p class="entry-notice" data-i18n="entry.officer.notice">শুধু ডেমো প্রবেশ: এটি আসল বা নিরাপদ লগইন নয়।</p>
+          <form class="entry-form" onsubmit="entryOfficerDemoSignIn(event)">
+            <div class="form-group">
+              <label for="entryDemoUserId" data-i18n="entry.officer.userIdLabel">ইউজার আইডি</label>
+              <input id="entryDemoUserId" type="text" class="form-control" autocomplete="off" required>
+            </div>
+            <div class="form-group">
+              <label for="entryDemoPassword" data-i18n="entry.officer.passwordLabel">পাসওয়ার্ড</label>
+              <input id="entryDemoPassword" type="password" class="form-control" autocomplete="off" required>
+            </div>
+            <button class="btn btn-secondary btn-block" type="submit" id="entryDemoBtn">
+              <span class="material-symbols-outlined" aria-hidden="true">login</span>
+              <span data-i18n="officer.signIn">প্রবেশ করুন</span>
+            </button>
+            <p class="officer-hint" data-i18n="entry.officer.passwordHint">ডেমো ইউজার আইডি ও পাসওয়ার্ড সার্ভার যিনি চালান তিনি ঠিক করেন। এটি ডেমোর জন্য, আসল লগইন নয়।</p>
+            <p class="entry-error" id="entryDemoError" role="alert" hidden></p>
+          </form>
+        </div>
       </div>
     </div>
   </section>
@@ -722,11 +748,16 @@
       <div class="card">
         <div class="card-header">
           <h2 data-i18n="officer.title">কৃষি কর্মকর্তা ডেস্ক</h2>
-          <span class="badge badge-warning" id="officerStateBadge" data-i18n="officer.lockedBadge">শুধু কর্মকর্তাদের জন্য</span>
+          <span class="badge badge-warning" id="officerStateBadge" data-i18n="officer.lockedBadge">শুধু ম্যানেজারদের জন্য</span>
         </div>
         <p class="subtitle" data-i18n="officer.intro">কৃষক কিপ্যাডে ৯ চাপলে বা মাঠে সমস্যা হলে সেটি এখানে আসে। কর্মকর্তা জমি দেখে যা লেখেন, সেই তথ্য কৃষকের পরামর্শে অগ্রাধিকার পায়। কর্মকর্তারা বাড়তি তথ্যও দেখেন: পুরো SRDI কার্ড, ২৫ মৌসুমের বিস্তারিত ও বালাই ব্যবস্থাপনা।</p>
 
-        <form id="officerLogin" class="officer-login" onsubmit="officerSignIn(event)">
+        <div id="officerSignedOut" hidden>
+          <p class="officer-hint" data-i18n="officer.signedOut">আপনি এখন প্রবেশ করা নেই। ম্যানেজার ডেস্ক দেখতে আবার প্রবেশ করুন।</p>
+          <button class="btn btn-primary" type="button" onclick="signOutRole()" data-i18n="officer.signInAgain">প্রবেশ পাতায় যান</button>
+        </div>
+
+        <form id="officerLogin" class="officer-login" onsubmit="officerSignIn(event)" hidden>
           <div class="form-group">
             <label for="officerSelect" data-i18n="officer.idLabel">কর্মকর্তা</label>
             <select id="officerSelect" class="form-control"></select>
@@ -1536,6 +1567,7 @@
   </main>
 
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script defer src="/vendor/supabase.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

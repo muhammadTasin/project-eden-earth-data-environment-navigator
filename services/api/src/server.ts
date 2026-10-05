@@ -13,6 +13,7 @@ import { AMAN_CATALOG, RABI_CATALOG } from '../../../packages/rotation-engine/sr
 import { IPM_AMAN, IPM_BY_RABI, IPM_GENERAL } from '../../../packages/rotation-engine/src/data/ipm_catalog.ts';
 import { bnDate, bnDateOf, bnDigits, bnOf, enDate } from '../../../packages/rotation-engine/src/bn.ts';
 import * as desk from './officer_desk.ts';
+import { authConfig, requireManager } from './auth.ts';
 import { DualGateNarrationValidator } from '../../../packages/narration-core/src/dual_gate_validator.ts';
 import { TemplateNarrator } from '../../../packages/narration-core/src/template_narrator.ts';
 import { getNasaWeather, lastNasaSuccessAt } from './weather.ts';
@@ -38,6 +39,7 @@ const __filename = fileURLToPath(import.meta.url);
 const gzipCache = new Map<string, { mtime: number; body: Buffer }>();
 const __dirname = path.dirname(__filename);
 const PUBLIC_DIR = path.resolve(__dirname, '../../../apps/saao-dashboard/public');
+const SUPABASE_BROWSER_BUNDLE = path.resolve(__dirname, '../../../node_modules/@supabase/supabase-js/dist/umd/supabase.js');
 
 const featureRegistry = new FeatureRegistry();
 const rotationEngine = new RotationEngine(featureRegistry);
@@ -452,7 +454,7 @@ function knowledgePack() {
 }
 
 /** Everything the officer desk screen shows in one call. */
-function deskView(officer: (typeof desk.OFFICERS)[number]) {
+function deskView(officer: desk.Officer) {
   const queue = desk.queue();
   return {
     officer,
@@ -576,6 +578,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
+    // ---- Sign-in configuration for the website (public: the Supabase URL and anon key are public by design) ----
+    if (pathname === '/api/v1/auth/config' && req.method === 'GET') {
+      return sendJSON(res, 200, authConfig());
+    }
+
     // ---- Capability / status ------------------------------------------------------------------
     if (pathname === '/api/v1/config' && req.method === 'GET') {
       return sendJSON(res, 200, await capabilities());
@@ -622,9 +629,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/v1/calls/advice' && req.method === 'POST') {
       const body = await parseBody(req);
       // A real, billed call needs a signed-in officer; a dry run shows what would be sent
-      if (awajConfig().live && !desk.officerForToken(req.headers.authorization)) {
-        return sendJSON(res, 401, { error: 'Officer sign-in required to place a real call' });
-      }
+      if (awajConfig().live) await requireManager(req);
       const phone = bdMobile(String(body.phone ?? ''));
       if (!phone) return sendJSON(res, 400, { error: 'phone must be a Bangladeshi mobile number (01XXXXXXXXX)' });
       const answer = body.text ? voiceAnswer(body) : { reply: replyFor(adviseWithNarration(planRequest(body), body.farmerId)) };
@@ -635,9 +640,7 @@ const server = http.createServer(async (req, res) => {
     // The keypad call: the farmer hears the recorded crop menu and presses keys; Awaj posts them to the webhook
     if (pathname === '/api/v1/calls/keypad' && req.method === 'POST') {
       const body = await parseBody(req);
-      if (awajConfig().live && !desk.officerForToken(req.headers.authorization)) {
-        return sendJSON(res, 401, { error: 'Officer sign-in required to place a real call' });
-      }
+      if (awajConfig().live) await requireManager(req);
       const phones = (Array.isArray(body.phones) ? body.phones : [body.phone]).map((p: unknown) => bdMobile(String(p ?? ''))).filter(Boolean) as string[];
       if (!phones.length) return sendJSON(res, 400, { error: 'phone must be a Bangladeshi mobile number (01XXXXXXXXX)' });
       const cfg = awajConfig();
@@ -890,17 +893,18 @@ const server = http.createServer(async (req, res) => {
 
     // ---- Krishi officer desk -----------------------------------------------------------------------
     if (pathname === '/api/v1/officers' && req.method === 'GET') {
-      return sendJSON(res, 200, desk.OFFICERS);
+      // the demo officer list; empty unless DEMO_MODE=true
+      return sendJSON(res, 200, desk.demoEnabled() ? desk.OFFICERS : []);
     }
     if (pathname === '/api/v1/officer/login' && req.method === 'POST') {
+      // the demo login: desk.login() refuses everything unless DEMO_MODE=true (real sign-in is Supabase, see auth.ts)
       const body = await parseBody(req);
       const session = desk.login(String(body.officerId ?? ''), String(body.accessCode ?? ''));
       if (!session) throw new ApiError('unauthorized', 'Wrong officer ID or access code');
       return sendJSON(res, 200, session);
     }
     if (pathname.startsWith('/api/v1/officer/')) {
-      const officer = desk.officerForToken(req.headers.authorization);
-      if (!officer) throw new ApiError('unauthorized', 'Officer sign-in required');
+      const officer = await requireManager(req);
       if (pathname === '/api/v1/officer/desk' && req.method === 'GET') {
         return sendJSON(res, 200, deskView(officer));
       }
@@ -942,6 +946,8 @@ const server = http.createServer(async (req, res) => {
     const requested = path.resolve(PUBLIC_DIR, '.' + (pathname === '/' ? '/index.html' : pathname));
     const inside = requested === PUBLIC_DIR || requested.startsWith(PUBLIC_DIR + path.sep);
     let filePath = inside ? requested : path.join(PUBLIC_DIR, 'index.html');
+    // the Supabase browser client, served from node_modules so the site needs no CDN (this one file only)
+    if (pathname === '/vendor/supabase.js') filePath = SUPABASE_BROWSER_BUNDLE;
     if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
       filePath = path.join(PUBLIC_DIR, 'index.html');
     }

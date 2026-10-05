@@ -9,6 +9,7 @@ export type ApiErrorCode =
   | 'configuration_required'
   | 'no_data'
   | 'unauthorized'
+  | 'forbidden'
   | 'internal';
 
 const STATUS_BY_CODE: Record<ApiErrorCode, number> = {
@@ -18,6 +19,7 @@ const STATUS_BY_CODE: Record<ApiErrorCode, number> = {
   configuration_required: 503,
   no_data: 404,
   unauthorized: 401,
+  forbidden: 403,
   internal: 500,
 };
 

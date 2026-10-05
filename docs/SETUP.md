@@ -13,8 +13,8 @@ Needs Node.js ≥ 22.6 (tested on 24) and, optionally, Python 3 for Earth Engine
 
 ```bash
 cd Edith_Web_App_Connectivity
-npm install            # no runtime deps; creates workspace links
-cp .env.example .env   # edit placeholders; then export them:
+npm install            # workspace links and @supabase/supabase-js (officer sign-in)
+cp .env.example .env   # edit placeholders (SUPABASE_URL, SUPABASE_ANON_KEY for officer sign-in); then export them:
 set -a; source .env; set +a
 npm start              # http://localhost:4000  (site at /, API at /api/v1/...)
 npm test               # pipeline + cattle unit tests + live HTTP integration tests

@@ -2,6 +2,13 @@
 
 What changed in Project EDEN, newest first, with who made each change and the branch it came from. Every branch below was merged into `main` on 1 October 2026.
 
+## 6 October 2026 · Real officer sign-in with Supabase Auth
+
+- Manager entry: the demo access code is replaced by Supabase Auth (User ID + `@` + `AUTH_EMAIL_DOMAIN`, password; the User ID is trimmed and lowercased). Wrong credentials, empty fields and network errors each get a clear Bangla/English message that never says which of the two was wrong. The session survives a refresh and the role chip and desk button sign out.
+- API: `requireManager` (`services/api/src/auth.ts`) guards every `/api/v1/officer/*` route and the real-call routes: 401 without or with an invalid token, 403 unless `app_metadata.role` is `manager`. The manager's `app_metadata.site` is exposed to routes (no location filtering yet). New `GET /api/v1/auth/config`; the browser client is served from `/vendor/supabase.js`.
+- Demo login: works only with `DEMO_MODE=true` and an `EDEN_OFFICER_CODE` you set; the built-in default password and its README mention are gone. The Android officer login follows the same rule.
+- Tests: `test_auth.ts` (role and site from `app_metadata` only, 401/403) and no-demo-mode checks in `test_server.js`.
+
 ## 5 October 2026 · One server for the website and the app; role portals (Tasrif with muhammadTasin's Edith work, `feature/merge-edith-web`)
 
 - Server: muhammadTasin's Edith_Web_App_Connectivity (c922eec) merged in. `GET /api/v1/locations` (64 districts, 500 upazilas), `GET /api/v1/weather/forecast` (Open-Meteo) and `GET /api/v1/weather` (NASA POWER, coordinates required, explicit `provider_unavailable`), the cattle module (farm outlines, background jobs, THI advisory, Earth Engine worker that reports `configuration_required` until set up), `/api/v1/config`, `/api/v1/tts`, optional LLM and TTS adapters, the shared error envelope, CORS and an optional write token. Three-way merged against the shared 1 October base; our routes stay. The Android app's weather and cattle screens now work against this server.

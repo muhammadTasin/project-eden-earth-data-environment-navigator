@@ -2,7 +2,8 @@
  * Role portals for the dashboard, rebuilt from muhammadTasin's Edith web app (Edith_Web_App_Connectivity, c922eec) in
  * the story site's look:
  *
- *  - a role picker before the dashboard: visitor (no sign-in), farmer (demo sign-in as F01), officer (demo code);
+ *  - a role picker before the dashboard: visitor (no sign-in), farmer (demo sign-in as F01), manager (Supabase sign-in with
+ *    a user ID and password; the old demo login only when the server runs with DEMO_MODE=true);
  *    each role sees only its own tabs (this is presentation, not security: the API checks its own tokens);
  *  - the web farmer portal with the Android app's five tabs: today (the engine's plan for the farmer's place, the next
  *    48 hours of rain, the soil-and-water tips), weather, river erosion, the assistant (crop sentences get a plan,
@@ -15,6 +16,8 @@
  * One server serves the website and the Android app (docs/api-contract.md).
  */
 
+import { authConfig, normalizeUserId, supabaseClient, toAuthEmail } from './auth-client.js';
+
 const ROLES = {
   visitor: { home: 'screen-overview', screens: ['screen-overview', 'screen-weather'] },
   farmer: { home: 'screen-farmer', screens: ['screen-farmer', 'screen-planner', 'screen-companion'] },
@@ -24,7 +27,7 @@ const ROLES = {
       'screen-officer', 'screen-delivery', 'screen-quality', 'screen-cattle'],
   },
 };
-const ROLE_NAME = { visitor: ['দর্শনার্থী', 'Visitor'], farmer: ['কৃষক', 'Farmer'], officer: ['কৃষি কর্মকর্তা', 'Officer'] };
+const ROLE_NAME = { visitor: ['দর্শনার্থী', 'Visitor'], farmer: ['কৃষক', 'Farmer'], officer: ['ম্যানেজার', 'Manager'] };
 const ROLE_KEY = 'eden.role';
 const FARMER_KEY = 'eden.farmer';
 const WEATHER_KEY = 'eden.weather.location';
@@ -130,8 +133,10 @@ export function initPortals(ctx) {
     }
     setEntryError('entryFarmerError', '');
     setEntryError('entryOfficerError', '');
+    setEntryError('entryDemoError', '');
+    if (step === 'officer') authConfig().then(cfg => { if ($('entryOfficerDemo')) $('entryOfficerDemo').hidden = !cfg?.demoMode; });
     if (step === 'farmer') $('entryFarmerBtn')?.focus();
-    if (step === 'officer') { fillOfficerSelect(); $('entryOfficerSelect')?.focus(); }
+    if (step === 'officer') $('entryOfficerUserId')?.focus();
   };
 
   function setEntryError(id, message) {
@@ -139,15 +144,6 @@ export function initPortals(ctx) {
     if (!box) return;
     box.textContent = message || '';
     box.hidden = !message;
-  }
-
-  function fillOfficerSelect() {
-    const select = $('entryOfficerSelect');
-    if (!select) return;
-    const list = ctx.officers() || [];
-    const chosen = select.value;
-    select.innerHTML = list.map(o => `<option value="${escapeHtml(o.id)}">${escapeHtml(tr(`${o.nameBangla}, ${o.blockBangla}`, `${o.nameEnglish}, ${o.blockEnglish}`))}</option>`).join('');
-    if (chosen) select.value = chosen;
   }
 
   window.chooseRole = function(next) {
@@ -176,32 +172,93 @@ export function initPortals(ctx) {
     }
   };
 
+  /** Manager sign-in with Supabase Auth: the account's email is the user ID plus the server's AUTH_EMAIL_DOMAIN (toAuthEmail). */
   window.entryOfficerSignIn = async function(event) {
     event?.preventDefault();
     setEntryError('entryOfficerError', '');
-    const officerId = $('entryOfficerSelect')?.value;
-    if (!officerId) {
-      setEntryError('entryOfficerError', tr('কর্মকর্তার তালিকা লোড হয়নি। সার্ভার চালু আছে কি না দেখুন।', 'The officer list did not load. Check that the server is running.'));
-      await ctx.loadOfficers();
-      fillOfficerSelect();
+    const userId = normalizeUserId($('entryOfficerUserId')?.value);
+    const password = $('entryOfficerPassword')?.value || '';
+    if (!userId || !password) {
+      setEntryError('entryOfficerError', tr('ইউজার আইডি ও পাসওয়ার্ড দুটোই দিন।', 'Enter both your user ID and password.'));
+      return;
+    }
+    const wrong = tr('ইউজার আইডি বা পাসওয়ার্ড সঠিক নয়।', 'The user ID or password is incorrect.');
+    // one generic message for every credential problem: never say which of the two was wrong
+    if (/[@\s]/.test(userId)) {
+      setEntryError('entryOfficerError', wrong);
       return;
     }
     const btn = $('entryOfficerBtn');
     if (btn) btn.disabled = true;
     try {
-      const res = await fetch('/api/v1/officer/login', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ officerId, accessCode: $('entryOfficerCode').value }),
-      });
-      if (!res.ok) {
-        setEntryError('entryOfficerError', tr('কর্মকর্তা বা প্রবেশ কোড সঠিক নয়।', 'The officer or access code is not correct.'));
+      const supabase = await supabaseClient();
+      if (!supabase) {
+        const cfg = await authConfig();
+        setEntryError('entryOfficerError', cfg
+          ? tr('এই সার্ভারে কর্মকর্তা লগইন এখনো চালু করা হয়নি।', 'Officer sign-in is not set up on this server yet.')
+          : tr('সার্ভারে পৌঁছানো যায়নি। সংযোগ দেখে আবার চেষ্টা করুন।', 'Could not reach the server. Check your connection and try again.'));
         return;
       }
-      await ctx.setOfficerSession(await res.json());
-      $('entryOfficerCode').value = '';
+      const email = await toAuthEmail(userId);
+      if (!email) {
+        setEntryError('entryOfficerError', tr('এই সার্ভারে কর্মকর্তা লগইন এখনো চালু করা হয়নি।', 'Officer sign-in is not set up on this server yet.'));
+        return;
+      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        if (error.name === 'AuthRetryableFetchError' || error.status === 0 || error.status >= 500) {
+          setEntryError('entryOfficerError', tr('সার্ভারে পৌঁছানো যায়নি। সংযোগ দেখে আবার চেষ্টা করুন।', 'Could not reach the server. Check your connection and try again.'));
+        } else if (error.status === 429) {
+          setEntryError('entryOfficerError', tr('অনেকবার চেষ্টা হয়েছে। একটু পরে আবার চেষ্টা করুন।', 'Too many attempts. Please wait a moment and try again.'));
+        } else {
+          setEntryError('entryOfficerError', wrong);
+        }
+        return;
+      }
+      // the server decides whether this account is an officer (app_metadata.role); a refused account is signed out again
+      const status = await ctx.setOfficerSession({ source: 'supabase', officer: null });
+      if (status === 'denied') {
+        setEntryError('entryOfficerError', wrong);
+        return;
+      }
+      if (status === 'unavailable') {
+        await ctx.signOutOfficer();
+        setEntryError('entryOfficerError', tr('সার্ভারে পৌঁছানো যায়নি। সংযোগ দেখে আবার চেষ্টা করুন।', 'Could not reach the server. Check your connection and try again.'));
+        return;
+      }
+      $('entryOfficerUserId').value = '';
+      $('entryOfficerPassword').value = '';
       enterPortal('officer');
     } catch {
-      setEntryError('entryOfficerError', tr('সার্ভারে পৌঁছানো যায়নি। আবার চেষ্টা করুন।', 'Could not reach the server. Please try again.'));
+      setEntryError('entryOfficerError', tr('সার্ভারে পৌঁছানো যায়নি। সংযোগ দেখে আবার চেষ্টা করুন।', 'Could not reach the server. Check your connection and try again.'));
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  };
+
+  /** The old shared-code demo login. The server refuses it unless it runs with DEMO_MODE=true. */
+  window.entryOfficerDemoSignIn = async function(event) {
+    event?.preventDefault();
+    setEntryError('entryDemoError', '');
+    const officerId = $('entryDemoUserId')?.value.trim() || '';
+    const password = $('entryDemoPassword')?.value || '';
+    const btn = $('entryDemoBtn');
+    if (btn) btn.disabled = true;
+    try {
+      const res = await fetch('/api/v1/officer/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ officerId, accessCode: password }),
+      });
+      if (!res.ok) {
+        setEntryError('entryDemoError', tr('ইউজার আইডি বা পাসওয়ার্ড সঠিক নয়।', 'The user ID or password is incorrect.'));
+        return;
+      }
+      await ctx.setOfficerSession({ ...(await res.json()), source: 'demo' });
+      $('entryDemoUserId').value = '';
+      $('entryDemoPassword').value = '';
+      enterPortal('officer');
+    } catch {
+      setEntryError('entryDemoError', tr('সার্ভারে পৌঁছানো যায়নি। আবার চেষ্টা করুন।', 'Could not reach the server. Please try again.'));
     } finally {
       if (btn) btn.disabled = false;
     }
@@ -214,7 +271,7 @@ export function initPortals(ctx) {
     farmerUser = null;
     store.set('sessionStorage', FARMER_KEY, null);
     store.set('sessionStorage', ROLE_KEY, null);
-    if (role === 'officer') ctx.signOutOfficer();
+    ctx.signOutOfficer(); // ends the Supabase session (or the demo one) whatever role was open
     applyRole(null);
     window.showEntryStep('choose');
     window.scrollTo({ top: 0 });
@@ -223,7 +280,8 @@ export function initPortals(ctx) {
   /** On load: re-enter a role only for a visitor choice or a demo session the server still accepts. */
   async function restoreSession() {
     const saved = store.get('sessionStorage', ROLE_KEY);
-    if (!saved) return;
+    // a Supabase session that survived closing the browser (and that the server accepted at start-up) goes straight back in
+    if (!saved) { if (ctx.officerSignedIn()) enterPortal('officer'); return; }
     if (saved === 'visitor') { enterPortal('visitor'); return; }
     if ($('entryChecking')) $('entryChecking').hidden = false;
     try {
@@ -1097,7 +1155,6 @@ export function initPortals(ctx) {
       todayRain.key = null;
       if (farmerTab === 'today') renderToday();
       renderFarm();
-      fillOfficerSelect();
     },
   };
 }

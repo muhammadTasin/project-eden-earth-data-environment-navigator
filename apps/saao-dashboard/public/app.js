@@ -8,6 +8,7 @@
 import { EN } from './i18n.js';
 import { initBdMap } from './bd-map.js';
 import { initPortals } from './portals.js';
+import { accessToken, authConfig, supabaseSignOut } from './auth-client.js';
 
 let lang = 'bn';
 let currentAdvice = null;
@@ -16,7 +17,8 @@ let currentNarration = null;
 let currentDataRelease = null;
 let selectedOptionId = null;
 let officers = [];
-let officerSession = null; // { token, officer }
+let officerSession = null; // { source: 'supabase' | 'demo', officer, token (demo only) }
+let demoMode = false; // the server runs with DEMO_MODE=true: the demo officer login is offered
 let officerDesk = null;
 let officerKnowledge = null;
 let officerNotice = null; // result of the last saved observation
@@ -729,16 +731,30 @@ function renderOfficerSelect() {
   if (chosen) select.value = chosen;
 }
 
+/** The token for officer API calls: the demo token in a demo session, otherwise the Supabase access token (kept fresh by Supabase). */
+async function officerToken() {
+  if (officerSession?.source === 'demo') return officerSession.token;
+  return accessToken();
+}
+
 async function officerFetch(url, options = {}) {
   const res = await fetch(url, {
     ...options,
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${officerSession?.token}` },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await officerToken()}` },
   });
-  if (res.status === 401) {
-    window.officerSignOut();
-    throw new Error('Officer session expired');
+  if (res.status === 401 || res.status === 403) {
+    await window.officerSignOut();
+    throw new OfficerAccessError(res.status);
   }
   return res;
+}
+
+/** The server refused the officer token: 401 (no or expired session) or 403 (signed in, but not an officer). */
+class OfficerAccessError extends Error {
+  constructor(status) {
+    super('Officer session refused');
+    this.status = status;
+  }
 }
 
 window.officerSignIn = async function(event) {
@@ -755,7 +771,7 @@ window.officerSignIn = async function(event) {
     error.hidden = false;
     return;
   }
-  officerSession = await res.json();
+  officerSession = { ...(await res.json()), source: 'demo' };
   $('officerCode').value = '';
   try {
     sessionStorage.setItem('eden.officer', JSON.stringify(officerSession));
@@ -765,7 +781,7 @@ window.officerSignIn = async function(event) {
   await loadOfficerDesk();
 };
 
-window.officerSignOut = function() {
+window.officerSignOut = async function() {
   officerSession = null;
   officerDesk = null;
   officerKnowledge = null;
@@ -777,20 +793,25 @@ window.officerSignOut = function() {
   }
   renderOfficer();
   renderProfile();
+  await supabaseSignOut();
 };
 
+/** Loads the desk. Returns 'ok', 'denied' (no valid officer session: the session was cleared) or 'unavailable' (server or network problem). */
 async function loadOfficerDesk() {
-  if (!officerSession) return;
+  if (!officerSession) return 'denied';
   try {
     const [deskRes, knowledgeRes] = await Promise.all([officerFetch('/api/v1/officer/desk'), officerFetch('/api/v1/officer/knowledge')]);
+    if (!deskRes.ok || !knowledgeRes.ok) return 'unavailable';
     officerDesk = await deskRes.json();
     officerKnowledge = await knowledgeRes.json();
-  } catch {
-    return;
+  } catch (err) {
+    return err instanceof OfficerAccessError ? 'denied' : 'unavailable';
   }
+  if (officerDesk.officer) officerSession.officer = officerDesk.officer;
   renderOfficer();
   renderProfile();
   if (!$('obsFarmer').dataset.chosen) window.prefillObservation(officerDesk.queue[0]?.farmerId);
+  return 'ok';
 }
 
 function farmerEntry(farmerId) {
@@ -798,8 +819,8 @@ function farmerEntry(farmerId) {
 }
 
 function renderProfile() {
-  if (officerSession) {
-    const o = officerSession.officer;
+  const o = officerSession?.officer;
+  if (o) {
     setText('saaoName', tr(o.nameBangla, o.nameEnglish));
     setText('saaoRole', tr(`SAAO, ${o.blockBangla} • প্রবেশ করেছেন`, `SAAO, ${o.blockEnglish} • signed in`));
   } else {
@@ -811,13 +832,14 @@ function renderProfile() {
 function renderOfficer() {
   renderOfficerSelect();
   const signedIn = Boolean(officerSession && officerDesk);
-  $('officerLogin').hidden = signedIn;
+  $('officerLogin').hidden = signedIn || !demoMode;
+  $('officerSignedOut').hidden = signedIn || demoMode;
   $('officerWorkspace').hidden = !signedIn;
   const badge = $('officerStateBadge');
   badge.className = `badge ${signedIn ? 'badge-success' : 'badge-warning'}`;
   badge.textContent = signedIn
-    ? tr(`প্রবেশ করেছেন: ${officerSession.officer.nameBangla}`, `Signed in: ${officerSession.officer.nameEnglish}`)
-    : tr('শুধু কর্মকর্তাদের জন্য', 'Officers only');
+    ? tr(`প্রবেশ করেছেন: ${officerSession.officer?.nameBangla ?? ''}`, `Signed in: ${officerSession.officer?.nameEnglish ?? ''}`)
+    : tr('শুধু ম্যানেজারদের জন্য', 'Managers only');
   if (!signedIn) return;
   renderQueue();
   renderFarmerOptions();
@@ -1150,6 +1172,7 @@ async function loadDataQualityTable() {
   }
 }
 
+// ---------------------------------------------------------------------------
 function renderQuality(data) {
   setHtml('qualityTableBody', data.datasets.map(d => {
     const [bn, en, cls] = STATUS[d.status] || [d.status, d.status, 'badge-neutral'];
@@ -1182,15 +1205,20 @@ function startPortals() {
     officers: () => officers,
     loadOfficers,
     officerSignedIn: () => Boolean(officerSession),
+    /** Starts an officer session ({ source: 'supabase' } or a demo { source: 'demo', token, officer }) and loads the desk: 'ok' | 'denied' | 'unavailable'. */
     async setOfficerSession(session) {
       officerSession = session;
-      try {
-        sessionStorage.setItem('eden.officer', JSON.stringify(session));
-      } catch {
-        // storage blocked: the session lasts until this page closes
+      if (session.source === 'demo') {
+        // only the demo token is kept here; a Supabase session is kept (and refreshed) by Supabase itself
+        try {
+          sessionStorage.setItem('eden.officer', JSON.stringify(session));
+        } catch {
+          // storage blocked: the session lasts until this page closes
+        }
       }
-      await loadOfficerDesk();
+      const status = await loadOfficerDesk();
       renderProfile();
+      return status;
     },
     signOutOfficer: () => window.officerSignOut(),
     // keypad 9 from the farmer portal: the call-back lands on the officer desk (demo; no call is placed)
@@ -1216,7 +1244,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const saved = localStorage.getItem('eden.lang');
     if (saved === 'en' || saved === 'bn') lang = saved;
     const session = sessionStorage.getItem('eden.officer');
-    if (session) officerSession = JSON.parse(session);
+    if (session) officerSession = { ...JSON.parse(session), source: 'demo' };
   } catch {
     // storage blocked: start in Bangla, signed out
   }
@@ -1226,6 +1254,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   await window.runPlannerCalculation({ switchScreenAfter: false });
   await loadDataQualityTable();
   await loadOfficers();
+  demoMode = Boolean((await authConfig())?.demoMode);
+  // a Supabase session left in this browser (refresh, or a later visit) is checked with the server before it is trusted
+  if (!officerSession && await accessToken()) officerSession = { source: 'supabase', officer: null };
   if (officerSession) await loadOfficerDesk();
   renderAll();
   await portals.restoreSession();

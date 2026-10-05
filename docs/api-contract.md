@@ -152,8 +152,15 @@ Bangladeshi cattle. There is no milk-loss, disease or water-volume prediction.
 
 ## Authentication status and planned SMS sign-in contract
 
-**Today (demo only):** `POST /auth/login` accepts demo farmer IDs with PIN `1234`/`0000` (an unknown phone falls back to farmer F01) and the
-officer demo code (`EDEN_OFFICER_CODE`, default `talanda-demo`). Tokens are random UUIDs in server memory, never expire and vanish on restart.
+**Managers (real):** Supabase Auth. The website signs in with `signInWithPassword` (`<userId>@<AUTH_EMAIL_DOMAIN>` and the password; `GET /auth/config`
+returns the public project URL, anon key and email domain) and sends the access token as `Authorization: Bearer ...`. Every `/officer/*` route (and the
+real-call routes `/calls/advice`, `/calls/keypad` when `AWAJ_LIVE=1`) verifies it with `supabase.auth.getUser(token)`: **401** for no or an
+invalid token, **403** when `app_metadata.role` is not `manager`. Role and `site` come from `app_metadata` only. With `DEMO_MODE=true` the
+old demo officer login (`POST /officer/login`, `POST /auth/login` with an access code from `EDEN_OFFICER_CODE`) also works; otherwise it is refused.
+
+
+**Farmers (demo only):** `POST /auth/login` accepts demo farmer IDs with PIN `1234`/`0000` (an unknown phone falls back to farmer F01).
+Demo tokens are random UUIDs in server memory, never expire and vanish on restart.
 **No SMS is sent anywhere and no phone number is verified.** The website's "OTP" step is labelled as a demo sign-in; the Android dialog
 pre-fills demo credentials in debug builds only. This is not production authentication; do not host it publicly as is.
 

@@ -7,8 +7,9 @@
  *    irrigation, pests, priorities). It takes priority over defaults when that farmer's advice is built.
  *  - Farmers reach the desk by pressing 9 in the IVR call; that request tops the officer's queue.
  *
- * Demo only: the access code is a shared demo secret (EDEN_OFFICER_CODE, default in the README) and the store
- * is a JSON file under services/api/.data/ (git-ignored). Farmers here are sample records, not real people.
+ * Real officer sign-in is Supabase Auth (auth.ts). The shared access code below is the demo login: it works only when
+ * DEMO_MODE=true and EDEN_OFFICER_CODE is set (there is no built-in default). The store is a JSON file under
+ * services/api/.data/ (git-ignored). Farmers here are sample records, not real people.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -30,10 +31,33 @@ import { FORBIDDEN_TERMS } from '../../../packages/narration-core/src/dual_gate_
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STORE_FILE = process.env.EDEN_OFFICER_STORE || path.resolve(__dirname, '../.data/officer_store.json');
-const ACCESS_CODE = process.env.EDEN_OFFICER_CODE || 'talanda-demo';
 
-export const OFFICERS = [
-  { id: 'saao_talanda_01', nameBangla: 'নমুনা কর্মকর্তা (SAAO)', nameEnglish: 'Sample officer (SAAO)', blockBangla: 'তালন্দ ব্লক', blockEnglish: 'Talanda block' },
+/** The demo officer login is off unless DEMO_MODE=true. */
+export function demoEnabled(): boolean {
+  return process.env.DEMO_MODE === 'true';
+}
+
+/** The shared demo access code, or '' when none is configured (then the demo login stays closed). */
+function demoAccessCode(): string {
+  return process.env.EDEN_OFFICER_CODE ?? '';
+}
+
+if (demoEnabled() && !demoAccessCode()) {
+  console.warn('DEMO_MODE=true but EDEN_OFFICER_CODE is not set: the demo officer login stays disabled.');
+}
+
+/** An officer as the desk sees them: a demo account or a Supabase user (site comes from app_metadata.site). */
+export interface Officer {
+  id: string;
+  nameBangla: string;
+  nameEnglish: string;
+  blockBangla: string;
+  blockEnglish: string;
+  site?: string;
+}
+
+export const OFFICERS: Officer[] = [
+  { id: 'saao_talanda_01', nameBangla: 'নমুনা কর্মকর্তা (SAAO)', nameEnglish: 'Sample officer (SAAO)', blockBangla: 'তালন্দ ব্লক', blockEnglish: 'Talanda block', site: 'talanda' },
 ];
 
 export const PEST_NAMES: Record<PestSeen, { bn: string; en: string }> = {
@@ -135,10 +159,12 @@ export interface AuthUser {
 
 const userSessions = new Map<string, AuthUser>();
 
-export function login(officerId: string, accessCode: string): { token: string; officer: (typeof OFFICERS)[number] } | null {
+export function login(officerId: string, accessCode: string): { token: string; officer: Officer } | null {
+  const code = demoAccessCode();
+  if (!demoEnabled() || !code) return null;
   const officer = OFFICERS.find(o => o.id === officerId);
   const given = Buffer.from(String(accessCode ?? ''));
-  const expected = Buffer.from(ACCESS_CODE);
+  const expected = Buffer.from(code);
   if (!officer || given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) return null;
   const token = crypto.randomUUID();
   sessions.set(token, officer.id);
@@ -223,7 +249,8 @@ export function logout(authorization: string | undefined): boolean {
   return true;
 }
 
-export function officerForToken(authorization: string | undefined) {
+export function officerForToken(authorization: string | undefined): Officer | null {
+  if (!demoEnabled()) return null;
   const token = authorization?.startsWith('Bearer ') ? authorization.slice(7) : '';
   const officerId = token ? sessions.get(token) : undefined;
   return officerId ? OFFICERS.find(o => o.id === officerId) ?? null : null;
