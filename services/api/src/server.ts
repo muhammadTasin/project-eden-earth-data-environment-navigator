@@ -15,6 +15,7 @@ import { bnDate, bnDateOf, bnDigits, bnOf, enDate } from '../../../packages/rota
 import * as desk from './officer_desk.ts';
 import { authConfig, requireManager } from './auth.ts';
 import { nasaConfigStatus } from './config.ts';
+import { managerClimate } from './manager_climate.ts';
 import { DualGateNarrationValidator } from '../../../packages/narration-core/src/dual_gate_validator.ts';
 import { TemplateNarrator } from '../../../packages/narration-core/src/template_narrator.ts';
 import { getNasaWeather, lastNasaSuccessAt } from './weather.ts';
@@ -896,6 +897,9 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/v1/manager/data-sources' && req.method === 'GET') {
       await requireManager(req);
       return sendJSON(res, 200, nasaConfigStatus());
+    }
+    if (pathname === '/api/v1/manager/climate' && req.method === 'GET') {
+      return sendJSON(res, 200, await managerClimate(req));
     }
 
     // ---- Krishi officer desk -----------------------------------------------------------------------

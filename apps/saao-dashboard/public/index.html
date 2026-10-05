@@ -1339,6 +1339,43 @@
     <!-- SCREEN 10: DATA QUALITY AND COVERAGE       -->
     <!-- ========================================== -->
     <section id="screen-quality" class="screen-section">
+      <div class="card climate-card" id="climateTrendCard" aria-labelledby="climateTitle" hidden>
+        <div class="card-header">
+          <h2 id="climateTitle" data-i18n="climate.title">জলবায়ুর ধারা (গত ৩০ দিন বনাম স্বাভাবিক)</h2>
+        </div>
+        <p class="subtitle" data-i18n="climate.subtitle">আপনার ব্লকের NASA POWER তথ্য থেকে সাম্প্রতিক বৃষ্টি, গরম, শুকনো সময় ও শিকড়ের মাটির আর্দ্রতা।</p>
+
+        <div class="climate-loading" id="climateLoading" role="status" aria-live="polite">
+          <span data-i18n="climate.loading">জলবায়ুর তথ্য আসছে…</span>
+          <div class="climate-skel-row" aria-hidden="true"></div>
+        </div>
+
+        <div class="climate-error" id="climateError" role="alert" hidden>
+          <p id="climateErrorText"></p>
+          <button class="btn btn-sm btn-secondary" type="button" onclick="loadClimateTrend()" data-i18n="climate.retry">আবার চেষ্টা করুন</button>
+        </div>
+
+        <dl class="climate-indicators" id="climateIndicators" hidden>
+          <div class="climate-indicator">
+            <dt data-i18n="climate.rain">বৃষ্টি বনাম ১০ বছরের স্বাভাবিক</dt>
+            <dd id="climateRainStatus"></dd>
+          </div>
+          <div class="climate-indicator">
+            <dt data-i18n="climate.heat">৩৫°C-এর বেশি গরমের দিন</dt>
+            <dd id="climateHeatStatus"></dd>
+          </div>
+          <div class="climate-indicator">
+            <dt data-i18n="climate.dry">সবচেয়ে দীর্ঘ শুকনো সময়</dt>
+            <dd id="climateDryStatus"></dd>
+          </div>
+          <div class="climate-indicator">
+            <dt data-i18n="climate.soil">শিকড়ের মাটির আর্দ্রতা</dt>
+            <dd id="climateSoilStatus"></dd>
+          </div>
+        </dl>
+        <p class="climate-source" id="climateSourceLine" hidden></p>
+      </div>
+
       <!-- NASA data sources the server can use: read-only (GET /api/v1/manager/data-sources, set/unset flags only; no key is ever shown or entered here) -->
       <div class="card ds-card" id="dataSourcesCard" aria-labelledby="dsTitle">
         <div class="card-header">

@@ -210,6 +210,7 @@ Do not commit secrets, local environment files, dependency folders, generated AP
 | POST | `/api/v1/calls/advice` | `{ phone, unionId, text or preferredCrops }`: reads the advice to a phone through Awaj (manager sign-in when live) |
 | POST | `/api/v1/calls/survey-webhook` | Awaj keypad-survey results: keys to crops, then a call-back with the plan; optional `?key=` secret |
 | GET | `/api/v1/manager/data-sources` | Which NASA data sources the server can use: `set` / `unset` flags for Earthdata Login, the NASA API key, ADS and the offline flag. Never a key, token or password (manager Bearer token) |
+| GET | `/api/v1/manager/climate` | Site-scoped NASA POWER climate summary: 30-day rainfall against the previous-ten-year normal, heat-stress days, longest dry spell and 14-day root-zone wetness. Site comes only from a verified manager's `app_metadata.site` (Supabase Bearer token); includes data dates and `live` / `cache` / `fixture` provenance |
 | GET | `/api/v1/officer/calls` | Recent phone-channel events, numbers masked (manager Bearer token) |
 | GET | `/api/v1/officers` | The demo officers; empty unless `DEMO_MODE=true` |
 | POST | `/api/v1/officer/login` | Demo login `{ officerId, accessCode }`; refused (401) unless `DEMO_MODE=true` |
@@ -274,7 +275,7 @@ Never put the privileged Supabase server key anywhere in this project, and never
 
 3. Authentication → Providers → Email: turn off *Allow new users to sign up*, so only accounts you create exist.
 
-**Run locally:** `npm install`, fill `SUPABASE_URL` and `SUPABASE_ANON_KEY` in `.env`, `npm start`, open http://localhost:4000, choose *Manager*. The manager's site (`app_metadata.site`, e.g. `talanda`) is available to routes through `managerSite(req)` in `services/api/src/auth.ts`; no location filtering is built on it yet.
+**Run locally:** `npm install`, fill `SUPABASE_URL`, `SUPABASE_ANON_KEY` and the manager account settings in `.env`, then run `npm start` and open http://localhost:4000. Choose *Manager* and sign in with the account. The first request to `/api/v1/manager/climate` fetches daily NASA POWER data without an API key and saves it under the ignored `services/api/.data/power-climate-cache/` folder. With `OFFLINE=1`, the endpoint reads that cache (or a compatible fixture) only; if neither exists, run once online first. The supported manager sites are Talanda/Tanore, Dharmapasha, Batiaghata, Ullahpara and Mithapukur, using the checked-in coordinates from `research/sites/pilot_sites.csv`; add verified coordinates to `services/api/src/sites.ts` before assigning any other site id.
 
 ## Research
 

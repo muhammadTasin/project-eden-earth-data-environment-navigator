@@ -2,6 +2,14 @@
 
 What changed in Project EDEN, newest first, with who made each change and the branch it came from. Every branch below was merged into `main` on 1 October 2026.
 
+## 6 October 2026 · Field Shift climate trend for managers
+
+- NASA POWER daily point data now powers a site-scoped climate summary: 30-day rainfall vs the same window's prior-ten-year normal, days above 35°C, longest below-1-mm dry spell and 14-day mean root-zone wetness. POWER fill values (`-999`) are excluded; rainfall comparisons require complete windows.
+- API: `GET /api/v1/manager/climate` uses only the verified manager's `app_metadata.site`, with the five pilot-site coordinates already in the repository. Responses include units, indicator date ranges, source, available data dates and `live` / `cache` / `fixture` provenance.
+- Server: POWER uses the configured NASA daily point URL, a bounded request with one retry, an ignored disk cache, and a no-network `OFFLINE=1` path. No API key or Earthdata login is needed.
+- Dashboard: mobile-first Bangla/English climate-trend card in the existing Data quality screen with text status, loading, retry/error and source/date/provenance lines.
+- Tests: hand-built indicator data including `-999`, manager API 401/403/200 and site scope, mocked POWER fetch/retry, cache reuse and offline no-network behavior.
+
 ## 6 October 2026 · NASA data-sources card for managers
 
 - API: `GET /api/v1/manager/data-sources` (manager token: 401 without one, 403 for a non-manager) returns only the `set` / `unset` flags from `nasaConfigStatus()` and the offline flag; never a value.

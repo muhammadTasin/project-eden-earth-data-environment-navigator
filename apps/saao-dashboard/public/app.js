@@ -115,6 +115,7 @@ function renderAll() {
   renderNarration();
   if (currentDataRelease) renderQuality(currentDataRelease);
   renderDataSources();
+  renderClimateTrend();
   renderProfile();
   renderOfficer();
   renderAudioButton();
@@ -793,6 +794,7 @@ window.officerSignOut = async function() {
     // nothing stored
   }
   renderOfficer();
+  renderClimateTrend();
   renderProfile();
   await supabaseSignOut();
 };
@@ -813,6 +815,7 @@ async function loadOfficerDesk() {
   renderProfile();
   if (!$('obsFarmer').dataset.chosen) window.prefillObservation(officerDesk.queue[0]?.farmerId);
   window.loadDataSources();
+  window.loadClimateTrend();
   return 'ok';
 }
 
@@ -1172,6 +1175,101 @@ async function loadDataQualityTable() {
   } catch (err) {
     console.error('Failed to load data quality:', err);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Manager: site-scoped NASA POWER climate summary
+// ---------------------------------------------------------------------------
+
+let climateTrend = { state: 'loading', data: null, error: null };
+
+window.loadClimateTrend = async function() {
+  if (!officerSession) {
+    climateTrend = { state: 'loading', data: null, error: null };
+    renderClimateTrend();
+    return;
+  }
+  if (officerSession.source === 'demo') {
+    climateTrend = { state: 'error', data: null, error: 'supabase' };
+    renderClimateTrend();
+    return;
+  }
+  climateTrend = { state: 'loading', data: null, error: null };
+  renderClimateTrend();
+  try {
+    const token = await officerToken();
+    const res = await fetch('/api/v1/manager/climate', { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    climateTrend = { state: 'ok', data: await res.json(), error: null };
+  } catch {
+    climateTrend = { state: 'error', data: null, error: 'server' };
+  }
+  renderClimateTrend();
+};
+
+function climateNumber(value, digits = 1) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return tr('পর্যাপ্ত তথ্য নেই', 'Not enough data');
+  return num(Number(value).toFixed(digits));
+}
+
+function climateDate(value) {
+  if (!value) return '';
+  const date = new Date(`${value}T00:00:00Z`);
+  return date.toLocaleDateString(lang === 'en' ? 'en-GB' : 'bn-BD', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+
+function renderClimateTrend() {
+  const card = $('climateTrendCard');
+  if (!card) return;
+  card.hidden = !officerSession;
+  if (!officerSession) return;
+  const { state, data, error } = climateTrend;
+  $('climateLoading').hidden = state !== 'loading';
+  $('climateError').hidden = state !== 'error';
+  $('climateIndicators').hidden = state !== 'ok';
+  $('climateSourceLine').hidden = state !== 'ok';
+  if (state === 'error') {
+    setText('climateErrorText', error === 'supabase'
+      ? tr('এই সাইটের জলবায়ুর তথ্য দেখতে আসল Supabase manager account দিয়ে প্রবেশ করুন।', 'Sign in with a real Supabase manager account to view this site’s climate data.')
+      : tr('জলবায়ুর তথ্য আনা যায়নি। সার্ভার ও নেটওয়ার্ক দেখুন; OFFLINE=1 হলে আগে একবার অনলাইনে POWER তথ্য ক্যাশ করুন।', 'Could not load climate data. Check the server and network; with OFFLINE=1, first fetch POWER data once while online to cache it.'));
+    return;
+  }
+  if (state !== 'ok' || !data?.indicators) return;
+
+  const { rainfall, heatStressDays, longestDrySpell, rootZoneWetness } = data.indicators;
+  if (rainfall.anomalyMm === null || rainfall.anomalyMm === undefined) {
+    setText('climateRainStatus', rainfall.totalMm === null
+      ? tr('গত ৩০ দিনের বৃষ্টির পূর্ণ তথ্য নেই; ১০ বছরের স্বাভাবিকের সঙ্গে তুলনা করা যায়নি।', 'The full 30-day rainfall record is unavailable, so it could not be compared with the 10-year normal.')
+      : tr(`বৃষ্টি ${climateNumber(rainfall.totalMm)} মিমি; স্বাভাবিকের সঙ্গে তুলনার জন্য যথেষ্ট তথ্য নেই।`, `${climateNumber(rainfall.totalMm)} mm of rain; not enough records to compare with normal.`));
+  } else {
+    const above = rainfall.anomalyMm >= 0;
+    const percent = rainfall.anomalyPercent === null || rainfall.anomalyPercent === undefined
+      ? '' : ` (${climateNumber(Math.abs(rainfall.anomalyPercent), 0)}%)`;
+    const baseline = climateNumber(rainfall.normalMm);
+    if (rainfall.anomalyMm === 0) {
+      setText('climateRainStatus', tr(
+        `গত ৩০ দিনে ${climateNumber(rainfall.totalMm)} মিমি বৃষ্টি; ১০ বছরের স্বাভাবিক ${baseline} মিমির সমান।`,
+        `${climateNumber(rainfall.totalMm)} mm in the last 30 days, matching the 10-year normal of ${baseline} mm.`));
+    } else {
+      const direction = above ? tr('বেশি', 'above') : tr('কম', 'below');
+      setText('climateRainStatus', tr(
+        `গত ৩০ দিনে ${climateNumber(rainfall.totalMm)} মিমি বৃষ্টি; ১০ বছরের স্বাভাবিক ${baseline} মিমির চেয়ে ${climateNumber(Math.abs(rainfall.anomalyMm))} মিমি${percent} ${direction}।`,
+        `${climateNumber(rainfall.totalMm)} mm in the last 30 days; ${climateNumber(Math.abs(rainfall.anomalyMm))} mm${percent} ${direction} the 10-year normal of ${baseline} mm.`));
+    }
+  }
+  setText('climateHeatStatus', heatStressDays.value === null
+    ? tr('তাপমাত্রার যথেষ্ট তথ্য নেই।', 'Not enough temperature records.')
+    : tr(`৩৫°C-এর বেশি সর্বোচ্চ তাপমাত্রা ছিল ${climateNumber(heatStressDays.value, 0)} দিন।`, `Maximum temperature exceeded 35°C on ${climateNumber(heatStressDays.value, 0)} days.`));
+  setText('climateDryStatus', longestDrySpell.value === null
+    ? tr('বৃষ্টির যথেষ্ট তথ্য নেই।', 'Not enough rainfall records.')
+    : tr(`দিনে ১ মিমির কম বৃষ্টি টানা সর্বোচ্চ ${climateNumber(longestDrySpell.value, 0)} দিন।`, `Rainfall stayed below 1 mm/day for up to ${climateNumber(longestDrySpell.value, 0)} consecutive days.`));
+  setText('climateSoilStatus', rootZoneWetness.value === null
+    ? tr('শিকড়ের মাটির যথেষ্ট তথ্য নেই।', 'Not enough root-zone soil records.')
+    : tr(`গত ১৪ দিনের গড় ${climateNumber(rootZoneWetness.value, 2)} (০ শুকনো, ১ সম্পৃক্ত)।`, `14-day average: ${climateNumber(rootZoneWetness.value, 2)} (0 dry, 1 saturated).`));
+  const source = data.dataSource === 'live' ? tr('সরাসরি আনা', 'Live') : data.dataSource === 'fixture' ? tr('নমুনা ফাইল', 'Fixture') : tr('ক্যাশ', 'Cache');
+  setText('climateSourceLine', tr(
+    `তথ্যসূত্র: NASA POWER · ${climateDate(data.last30Days?.from)}–${climateDate(data.last30Days?.to)} · ${source}`,
+    `Data source: NASA POWER · ${climateDate(data.last30Days?.from)}–${climateDate(data.last30Days?.to)} · ${source}`));
 }
 
 // ---------------------------------------------------------------------------

@@ -640,6 +640,16 @@ body.weather-only .portal-tabs { display: none; }
 
 /* ---------- Manager dashboard: NASA data sources card (read-only) ---------- */
 .visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.climate-card .subtitle { margin-bottom: 14px; }
+.climate-indicators { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 0; }
+.climate-indicator { min-width: 0; padding: 12px; background: linear-gradient(145deg, var(--face-hi), var(--face) 52%, var(--face-lo)); box-shadow: var(--raised); }
+.climate-indicator dt { color: var(--ink-2); font-size: 13px; font-weight: 650; }
+.climate-indicator dd { margin: 6px 0 0; color: var(--ink); font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+.climate-source { margin: 12px 0 0; color: var(--muted-ink); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.climate-loading { display: grid; gap: 10px; font-size: 13px; color: var(--muted-ink); }
+.climate-skel-row { height: 48px; background: linear-gradient(90deg, var(--face-lo) 25%, var(--face-hi) 50%, var(--face-lo) 75%); background-size: 200% 100%; box-shadow: var(--sunken); animation: ds-shimmer 1.4s ease-in-out infinite; }
+.climate-error { padding: 12px; background: #F1D4CC; color: #8A2E20; font-size: 14px; box-shadow: inset 2px 2px 3px -1px var(--edge); }
+.climate-error p { margin: 0 0 10px; line-height: 1.5; }
 .ds-card .subtitle { margin-bottom: 14px; }
 .ds-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .ds-row {
@@ -667,8 +677,9 @@ body.weather-only .portal-tabs { display: none; }
   animation: ds-shimmer 1.4s ease-in-out infinite;
 }
 @keyframes ds-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
-@media (prefers-reduced-motion: reduce) { .ds-skel-row { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .ds-skel-row, .climate-skel-row { animation: none; } }
 @media (min-width: 600px) {
+  .climate-indicators { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ds-row { grid-template-columns: 1fr auto; align-items: center; }
   .ds-badge { justify-self: end; }
   .ds-help { grid-column: 1 / -1; }
