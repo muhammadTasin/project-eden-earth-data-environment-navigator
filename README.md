@@ -209,6 +209,7 @@ Do not commit secrets, local environment files, dependency folders, generated AP
 | POST | `/api/v1/calls/keypad` | `{ phone or phones, unionId }`: a keypad survey call with the recorded crop menu; the pressed keys come back to the webhook |
 | POST | `/api/v1/calls/advice` | `{ phone, unionId, text or preferredCrops }`: reads the advice to a phone through Awaj (manager sign-in when live) |
 | POST | `/api/v1/calls/survey-webhook` | Awaj keypad-survey results: keys to crops, then a call-back with the plan; optional `?key=` secret |
+| GET | `/api/v1/manager/data-sources` | Which NASA data sources the server can use: `set` / `unset` flags for Earthdata Login, the NASA API key, ADS and the offline flag. Never a key, token or password (manager Bearer token) |
 | GET | `/api/v1/officer/calls` | Recent phone-channel events, numbers masked (manager Bearer token) |
 | GET | `/api/v1/officers` | The demo officers; empty unless `DEMO_MODE=true` |
 | POST | `/api/v1/officer/login` | Demo login `{ officerId, accessCode }`; refused (401) unless `DEMO_MODE=true` |

@@ -1339,6 +1339,69 @@
     <!-- SCREEN 10: DATA QUALITY AND COVERAGE       -->
     <!-- ========================================== -->
     <section id="screen-quality" class="screen-section">
+      <!-- NASA data sources the server can use: read-only (GET /api/v1/manager/data-sources, set/unset flags only; no key is ever shown or entered here) -->
+      <div class="card ds-card" id="dataSourcesCard" aria-labelledby="dsTitle">
+        <div class="card-header">
+          <h2 id="dsTitle" data-i18n="ds.title">NASA ডেটা সোর্স</h2>
+          <span class="badge badge-warning ds-badge" id="dsOfflineBadge" hidden>
+            <span class="material-symbols-outlined" aria-hidden="true">cloud_off</span>
+            <span data-i18n="ds.offline">অফলাইন মোড চালু</span>
+          </span>
+        </div>
+        <p class="subtitle" data-i18n="ds.subtitle">এই অ্যাপ এখন নাসার কোন কোন তথ্য ব্যবহার করতে পারে, তা এখানে দেখা যায়। শুধু দেখার জন্য: এখানে কোনো চাবি বা পাসওয়ার্ড দেওয়া যায় না।</p>
+
+        <div class="ds-skeleton" id="dsSkeleton" role="status" aria-live="polite">
+          <span class="visually-hidden" data-i18n="ds.loading">লোড হচ্ছে…</span>
+          <div class="ds-skel-row"></div><div class="ds-skel-row"></div><div class="ds-skel-row"></div><div class="ds-skel-row"></div><div class="ds-skel-row"></div>
+        </div>
+
+        <div class="ds-error" id="dsError" role="alert" hidden>
+          <p id="dsErrorText"></p>
+          <button class="btn btn-sm btn-secondary" type="button" onclick="loadDataSources()" data-i18n="ds.retry">আবার চেষ্টা করুন</button>
+        </div>
+
+        <ul class="ds-list" id="dsRows" hidden>
+          <li class="ds-row" data-ds="power">
+            <div class="ds-main">
+              <strong>NASA POWER</strong>
+              <span class="muted small" data-i18n="ds.power.desc">আবহাওয়া, বৃষ্টি, সৌর বিকিরণ</span>
+            </div>
+            <span class="badge ds-badge" data-ds-badge><span class="material-symbols-outlined" aria-hidden="true"></span><span data-ds-badge-text></span></span>
+          </li>
+          <li class="ds-row" data-ds="earthdata">
+            <div class="ds-main">
+              <strong>Earthdata Login</strong>
+              <span class="muted small" data-i18n="ds.edl.desc">SMAP মাটির আর্দ্রতা, IMERG বৃষ্টি, MODIS/VIIRS NDVI</span>
+            </div>
+            <span class="badge ds-badge" data-ds-badge><span class="material-symbols-outlined" aria-hidden="true"></span><span data-ds-badge-text></span></span>
+            <p class="ds-help" data-ds-help hidden><span data-i18n="ds.edl.help">অ্যাডমিন সার্ভারের .env ফাইলে Earthdata ইউজারনেম ও পাসওয়ার্ড বসাবেন, তারপর সার্ভার আবার চালু করবেন। অ্যাকাউন্ট খুলুন:</span> <a class="ds-link" href="https://urs.earthdata.nasa.gov/users/new" target="_blank" rel="noopener noreferrer">https://urs.earthdata.nasa.gov/users/new</a></p>
+          </li>
+          <li class="ds-row" data-ds="nasaKey">
+            <div class="ds-main">
+              <strong data-i18n="ds.nasa.name">NASA API চাবি (ঐচ্ছিক)</strong>
+              <span class="muted small" data-i18n="ds.nasa.desc">ঐচ্ছিক। না থাকলে ডেমো চাবি (DEMO_KEY) চলে।</span>
+            </div>
+            <span class="badge ds-badge" data-ds-badge><span class="material-symbols-outlined" aria-hidden="true"></span><span data-ds-badge-text></span></span>
+            <p class="ds-help" data-ds-help hidden><span data-i18n="ds.nasa.help">অ্যাডমিন সার্ভারের .env ফাইলে নিজের NASA API চাবি বসাবেন, তারপর সার্ভার আবার চালু করবেন। চাবি নিন:</span> <a class="ds-link" href="https://api.nasa.gov" target="_blank" rel="noopener noreferrer">https://api.nasa.gov</a></p>
+          </li>
+          <li class="ds-row" data-ds="ads">
+            <div class="ds-main">
+              <strong data-i18n="ds.ads.name">NASA ADS (ঐচ্ছিক)</strong>
+              <span class="muted small" data-i18n="ds.ads.desc">ঐচ্ছিক। উদ্ধৃতি ও গবেষণাপত্র খোঁজার জন্য।</span>
+            </div>
+            <span class="badge ds-badge" data-ds-badge><span class="material-symbols-outlined" aria-hidden="true"></span><span data-ds-badge-text></span></span>
+            <p class="ds-help" data-ds-help hidden><span data-i18n="ds.ads.help">অ্যাডমিন সার্ভারের .env ফাইলে ADS টোকেন বসাবেন, তারপর সার্ভার আবার চালু করবেন। টোকেন নিন:</span> <a class="ds-link" href="https://ui.adsabs.harvard.edu/user/settings/token" target="_blank" rel="noopener noreferrer">https://ui.adsabs.harvard.edu/user/settings/token</a></p>
+          </li>
+          <li class="ds-row" data-ds="firms">
+            <div class="ds-main">
+              <strong>FIRMS</strong>
+              <span class="muted small" data-i18n="ds.firms.desc">আগুন ও পোড়ানোর তথ্য</span>
+            </div>
+            <span class="badge ds-badge" data-ds-badge><span class="material-symbols-outlined" aria-hidden="true"></span><span data-ds-badge-text></span></span>
+          </li>
+        </ul>
+      </div>
+
       <div class="card quality-hero">
         <div class="card-header">
           <h2 data-i18n="quality.title">ডেটা মান, ফ্রেশনেস ও কভারেজ ড্যাশবোর্ড (Data Quality & Transparency)</h2>

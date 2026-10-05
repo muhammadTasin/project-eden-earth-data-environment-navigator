@@ -2,6 +2,8 @@ CLAUDE.md
 
 # secrets - copy .env.example to .env locally, never commit it
 .env
+.env.*
+!.env.example
 .netrc
 
 # dependencies and generated builds

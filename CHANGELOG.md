@@ -2,6 +2,12 @@
 
 What changed in Project EDEN, newest first, with who made each change and the branch it came from. Every branch below was merged into `main` on 1 October 2026.
 
+## 6 October 2026 · NASA data-sources card for managers
+
+- API: `GET /api/v1/manager/data-sources` (manager token: 401 without one, 403 for a non-manager) returns only the `set` / `unset` flags from `nasaConfigStatus()` and the offline flag; never a value.
+- Dashboard: a small read-only "NASA data sources" card at the top of the Data quality tab: NASA POWER (no key), Earthdata Login, NASA API key, ADS and FIRMS, each with an icon and a text badge, a help line plus sign-up link for what is not set up (the admin adds keys to the server's `.env`; nothing can be typed or stored in the browser), an offline badge, a loading skeleton, a retry on error and a return to sign-in on 401/403.
+- Tests: HTTP checks with a fake Supabase auth server (401 / 403 / 200) and an assertion that no fake secret value appears in the response.
+
 ## 6 October 2026 · Real officer sign-in with Supabase Auth
 
 - Manager entry: the demo access code is replaced by Supabase Auth (User ID + `@` + `AUTH_EMAIL_DOMAIN`, password; the User ID is trimmed and lowercased). Wrong credentials, empty fields and network errors each get a clear Bangla/English message that never says which of the two was wrong. The session survives a refresh and the role chip and desk button sign out.

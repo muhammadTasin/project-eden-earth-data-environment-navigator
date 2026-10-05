@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import crypto from 'node:crypto';
+import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -8,12 +10,31 @@ const BASE = `http://localhost:${PORT}`;
 // The officer desk writes to a throwaway store so tests never touch the demo data
 const STORE = path.join(os.tmpdir(), `eden-officer-test-${process.pid}.json`);
 const CATTLE_STORE = path.join(os.tmpdir(), `eden-cattle-test-${process.pid}.json`);
-const OFFICER_CODE = process.env.EDEN_OFFICER_CODE || 'talanda-demo';
+// The demo officer login exists only with DEMO_MODE=true and a code; the tests make up a fresh code every run
+const OFFICER_CODE = crypto.randomBytes(12).toString('hex');
+// A stand-in for the Supabase Auth server (GET /auth/v1/user), so the manager routes can be tested over HTTP without a project:
+// 'mgr-token' is a manager, 'viewer-token' a signed-in user whose app_metadata.role is not manager, anything else is invalid.
+const FAKE_USERS = {
+  'mgr-token': { id: 'u-manager', email: 'sentry@example.test', app_metadata: { role: 'manager', site: 'talanda' }, user_metadata: {} },
+  'viewer-token': { id: 'u-viewer', email: 'viewer@example.test', app_metadata: { role: 'viewer' }, user_metadata: { role: 'manager' } },
+};
+const fakeSupabase = http.createServer((req, res) => {
+  const user = FAKE_USERS[(req.headers.authorization || '').replace(/^Bearer\s+/i, '')];
+  res.writeHead(user ? 200 : 401, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(user ?? { code: 401, error_code: 'bad_jwt', msg: 'invalid JWT' }));
+});
+await new Promise((resolve) => fakeSupabase.listen(0, '127.0.0.1', resolve));
+const FAKE_SUPABASE_URL = `http://127.0.0.1:${fakeSupabase.address().port}`;
+// Made-up credentials for the data-sources test: none of these strings may ever appear in an API response
+const FAKE_SECRETS = {
+  EARTHDATA_USERNAME: 'fake-edl-user-7q1', EARTHDATA_PASSWORD: 'fake-edl-pass-7q2', EARTHDATA_TOKEN: 'fake-edl-token-7q3',
+  NASA_API_KEY: 'fake-nasa-key-7q4', ADS_API_TOKEN: 'fake-ads-token-7q5', FIRMS_MAP_KEY: 'fake-firms-key-7q6',
+};
 const serverProc = spawn('node', ['--experimental-strip-types', 'services/api/src/server.ts'], {
   stdio: ['inherit', 'pipe', 'pipe'],
   // tests never place a real call, never reach an LLM or TTS service, and read a fixed day of NASA conditions
   // (the daily update rewrites the live file)
-  env: { ...process.env, PORT, EDEN_OFFICER_STORE: STORE, CATTLE_STORE_PATH: CATTLE_STORE, SEED_DEMO_DATA: 'false', LLM_BASE_URL: '', TTS_BASE_URL: '',
+  env: { ...process.env, PORT, DEMO_MODE: 'true', EDEN_OFFICER_CODE: OFFICER_CODE, SUPABASE_URL: FAKE_SUPABASE_URL, SUPABASE_ANON_KEY: 'fake-anon-key', ...FAKE_SECRETS, OFFLINE: '1', EDEN_OFFICER_STORE: STORE, CATTLE_STORE_PATH: CATTLE_STORE, SEED_DEMO_DATA: 'false', LLM_BASE_URL: '', TTS_BASE_URL: '',
     API_WRITE_TOKEN: '', AWAJ_LIVE: '0', EDEN_LIVE_FILE: path.resolve('tests/fixtures/live_conditions_2026-10-01.json') },
 });
 
@@ -425,13 +446,86 @@ async function run() {
   check(delRes.status === 200, 'delete AOI status');
   console.log('✓ Cattle AOI & Advisory Pipeline verified: create -> job enqueue -> advisory -> delete');
 
+  // Officer routes without a token or with a token that is not valid
+  console.log('Testing officer route protection ...');
+  for (const [method, route] of [['GET', '/api/v1/officer/desk'], ['GET', '/api/v1/officer/knowledge'], ['GET', '/api/v1/officer/calls'],
+    ['POST', '/api/v1/officer/observations'], ['POST', '/api/v1/officer/reset']]) {
+    const noToken = await fetch(`${BASE}${route}`, { method });
+    check(noToken.status === 401, `${method} ${route} without a token must be 401, got ${noToken.status}`);
+    const junk = await fetch(`${BASE}${route}`, { method, headers: { Authorization: 'Bearer not-a-real-token' } });
+    check(junk.status === 401 || junk.status === 503, `${method} ${route} with an unknown token must be refused, got ${junk.status}`);
+  }
+  const demoConfig = await (await fetch(`${BASE}/api/v1/auth/config`)).json();
+  check(demoConfig.demoMode === true, 'auth config reports demo mode when DEMO_MODE=true');
+  console.log('✓ Officer routes refuse missing and unknown tokens');
+
+  // Manager data-sources status: 401 / 403 / 200 over HTTP, and never a secret value
+  console.log('Testing GET /api/v1/manager/data-sources ...');
+  const sources = '/api/v1/manager/data-sources';
+  check((await fetch(`${BASE}${sources}`)).status === 401, 'data sources without a token must be 401');
+  check((await fetch(`${BASE}${sources}`, { headers: { Authorization: 'Bearer nope' } })).status === 401, 'data sources with an unknown token must be 401');
+  const asViewer = await fetch(`${BASE}${sources}`, { headers: { Authorization: 'Bearer viewer-token' } });
+  check(asViewer.status === 403, `a signed-in non-manager must get 403, got ${asViewer.status}`);
+  check(!(await asViewer.text()).includes('earthdataLogin'), 'the 403 body carries no status');
+  const asManager = await fetch(`${BASE}${sources}`, { headers: { Authorization: 'Bearer mgr-token' } });
+  check(asManager.status === 200, `a manager must get 200, got ${asManager.status}`);
+  const managerText = await asManager.text();
+  check(JSON.stringify(JSON.parse(managerText)) === JSON.stringify({ earthdataLogin: 'set', earthdataToken: 'set', firmsMapKey: 'set', nasaApiKey: 'set', adsApiToken: 'set', offline: true }), `unexpected data-sources body: ${managerText}`);
+  for (const value of Object.values(FAKE_SECRETS)) check(!managerText.includes(value), 'the data-sources response must never contain a secret value');
+  const demoSources = await fetch(`${BASE}${sources}`, { headers: { Authorization: `Bearer ${session.token}` } });
+  check(demoSources.status === 200, 'the demo desk session may read the data-sources status in DEMO_MODE');
+  const demoText = await demoSources.text();
+  for (const value of Object.values(FAKE_SECRETS)) check(!demoText.includes(value), 'the demo response must never contain a secret value');
+  console.log('✓ Data sources: 401 without a token, 403 for a non-manager, 200 for a manager, flags only (no secret)');
+
+  await checkDemoModeOff();
+
   console.log('\n===========================================');
   console.log('  ALL ENDPOINTS TESTED & VERIFIED!          ');
   console.log('===========================================');
 }
 
+/** A second server without DEMO_MODE: the demo officer credentials must not work at all. */
+async function checkDemoModeOff() {
+  console.log('Testing that the demo login is closed without DEMO_MODE ...');
+  const port = String(Number(PORT) + 1);
+  const base = `http://localhost:${port}`;
+  const store = path.join(os.tmpdir(), `eden-officer-test-nodemo-${process.pid}.json`);
+  const env = { ...process.env, PORT: port, EDEN_OFFICER_CODE: OFFICER_CODE, SUPABASE_URL: FAKE_SUPABASE_URL, SUPABASE_ANON_KEY: 'fake-anon-key', EDEN_OFFICER_STORE: store,
+    CATTLE_STORE_PATH: CATTLE_STORE, LLM_BASE_URL: '', TTS_BASE_URL: '', API_WRITE_TOKEN: '', AWAJ_LIVE: '0',
+    EDEN_LIVE_FILE: path.resolve('tests/fixtures/live_conditions_2026-10-01.json') };
+  delete env.DEMO_MODE;
+  const proc = spawn('node', ['--experimental-strip-types', 'services/api/src/server.ts'], { stdio: 'ignore', env });
+  try {
+    let up = false;
+    for (let i = 0; i < 50 && !up; i++) {
+      try { up = (await fetch(`${base}/api/v1/overview`)).ok; } catch { await new Promise((r) => setTimeout(r, 100)); }
+    }
+    check(up, 'the no-demo server did not start');
+    const json = { 'Content-Type': 'application/json' };
+    const login = await fetch(`${base}/api/v1/officer/login`, { method: 'POST', headers: json, body: JSON.stringify({ officerId: 'saao_talanda_01', accessCode: OFFICER_CODE }) });
+    check(login.status === 401, `demo officer login must be refused without DEMO_MODE, got ${login.status}`);
+    const unified = await fetch(`${base}/api/v1/auth/login`, { method: 'POST', headers: json, body: JSON.stringify({ role: 'officer', officerId: 'saao_talanda_01', accessCode: OFFICER_CODE }) });
+    check(unified.status === 401, `unified officer login must be refused without DEMO_MODE, got ${unified.status}`);
+    const officers = await (await fetch(`${base}/api/v1/officers`)).json();
+    check(Array.isArray(officers) && officers.length === 0, 'the demo officer list is empty without DEMO_MODE');
+    const desk = await fetch(`${base}/api/v1/officer/desk`);
+    check(desk.status === 401, 'officer desk needs a token');
+    const config = await (await fetch(`${base}/api/v1/auth/config`)).json();
+    check(config.demoMode === false && Object.keys(config).sort().join() === 'demoMode,emailDomain,supabaseAnonKey,supabaseUrl', 'auth config exposes only the URL, the anon key, the email domain and the demo flag');
+    // nothing configured: the manager sees "unset" and the demo NASA key
+    const unset = await (await fetch(`${base}/api/v1/manager/data-sources`, { headers: { Authorization: 'Bearer mgr-token' } })).json();
+    check(JSON.stringify(unset) === JSON.stringify({ earthdataLogin: 'unset', earthdataToken: 'unset', firmsMapKey: 'unset', nasaApiKey: 'unset', adsApiToken: 'unset', offline: false }), `unexpected unset data-sources body: ${JSON.stringify(unset)}`);
+    console.log('✓ Without DEMO_MODE the demo officer credentials do not work at all');
+  } finally {
+    proc.kill();
+    fs.rmSync(store, { force: true });
+  }
+}
+
 function finish(code) {
   serverProc.kill();
+  fakeSupabase.close();
   fs.rmSync(STORE, { force: true });
   fs.rmSync(CATTLE_STORE, { force: true });
   process.exit(code);

@@ -114,6 +114,7 @@ function renderAll() {
   }
   renderNarration();
   if (currentDataRelease) renderQuality(currentDataRelease);
+  renderDataSources();
   renderProfile();
   renderOfficer();
   renderAudioButton();
@@ -811,6 +812,7 @@ async function loadOfficerDesk() {
   renderOfficer();
   renderProfile();
   if (!$('obsFarmer').dataset.chosen) window.prefillObservation(officerDesk.queue[0]?.farmerId);
+  window.loadDataSources();
   return 'ok';
 }
 
@@ -1173,6 +1175,62 @@ async function loadDataQualityTable() {
 }
 
 // ---------------------------------------------------------------------------
+// Manager: which NASA data sources the server can use (read-only; the API returns set/unset flags, never a key)
+// ---------------------------------------------------------------------------
+
+let dataSources = { state: 'loading', data: null, error: null }; // state: 'loading' | 'ok' | 'error'
+
+window.loadDataSources = async function() {
+  if (!officerSession) return;
+  dataSources = { state: 'loading', data: null, error: null };
+  renderDataSources();
+  try {
+    const res = await officerFetch('/api/v1/manager/data-sources');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    dataSources = { state: 'ok', data: await res.json(), error: null };
+  } catch (err) {
+    // officerFetch already ended the session on 401/403: go back to the sign-in picker
+    if (err instanceof OfficerAccessError) { window.signOutRole?.(); return; }
+    dataSources = { state: 'error', data: null, error: navigator.onLine === false ? 'offline' : 'server' };
+  }
+  renderDataSources();
+};
+
+/** One row: a status badge (icon + text, never colour alone) and, when something is not set up, the help line with the sign-up link. */
+function setDataSourceRow(key, cls, icon, bn, en, showHelp) {
+  const row = document.querySelector(`.ds-row[data-ds="${key}"]`);
+  if (!row) return;
+  const badge = row.querySelector('[data-ds-badge]');
+  badge.className = `badge ds-badge ${cls}`;
+  badge.querySelector('.material-symbols-outlined').textContent = icon;
+  badge.querySelector('[data-ds-badge-text]').textContent = tr(bn, en);
+  const help = row.querySelector('[data-ds-help]');
+  if (help) help.hidden = !showHelp;
+}
+
+function renderDataSources() {
+  if (!$('dataSourcesCard')) return;
+  const { state, data, error } = dataSources;
+  $('dsSkeleton').hidden = state !== 'loading';
+  $('dsError').hidden = state !== 'error';
+  $('dsRows').hidden = state !== 'ok';
+  $('dsOfflineBadge').hidden = !(state === 'ok' && data.offline === true);
+  if (state === 'error') {
+    setText('dsErrorText', error === 'offline'
+      ? tr('আপনি অফলাইনে আছেন। সংযোগ দেখে আবার চেষ্টা করুন।', 'You appear to be offline. Check your connection and try again.')
+      : tr('ডেটা সোর্সের অবস্থা আনা যায়নি। আবার চেষ্টা করুন।', 'Could not load the data source status. Please try again.'));
+  }
+  if (state !== 'ok') return;
+  setDataSourceRow('power', 'badge-success', 'check_circle', 'চাবি লাগে না, সব সময় পাওয়া যায়', 'No key needed, always available', false);
+  const edl = data.earthdataLogin === 'set';
+  setDataSourceRow('earthdata', edl ? 'badge-success' : 'badge-warning', edl ? 'check_circle' : 'error', edl ? 'সংযুক্ত' : 'সেট করা নেই', edl ? 'Connected' : 'Not set up', !edl);
+  const nasa = data.nasaApiKey === 'set';
+  setDataSourceRow('nasaKey', nasa ? 'badge-success' : 'badge-neutral', nasa ? 'check_circle' : 'info', nasa ? 'সংযুক্ত' : 'ডেমো চাবি ব্যবহার হচ্ছে', nasa ? 'Connected' : 'Using demo key', !nasa);
+  const ads = data.adsApiToken === 'set';
+  setDataSourceRow('ads', ads ? 'badge-success' : 'badge-neutral', ads ? 'check_circle' : 'error', ads ? 'সংযুক্ত' : 'সেট করা নেই', ads ? 'Connected' : 'Not set up', !ads);
+  setDataSourceRow('firms', 'badge-neutral', 'info', 'এই চ্যালেঞ্জে লাগে না', 'Not needed for this challenge', false);
+}
+
 function renderQuality(data) {
   setHtml('qualityTableBody', data.datasets.map(d => {
     const [bn, en, cls] = STATUS[d.status] || [d.status, d.status, 'badge-neutral'];

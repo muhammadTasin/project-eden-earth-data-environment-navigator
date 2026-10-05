@@ -158,6 +158,7 @@ real-call routes `/calls/advice`, `/calls/keypad` when `AWAJ_LIVE=1`) verifies i
 invalid token, **403** when `app_metadata.role` is not `manager`. Role and `site` come from `app_metadata` only. With `DEMO_MODE=true` the
 old demo officer login (`POST /officer/login`, `POST /auth/login` with an access code from `EDEN_OFFICER_CODE`) also works; otherwise it is refused.
 
+`GET /manager/data-sources` (manager token) returns only configuration flags (`earthdataLogin`, `earthdataToken`, `firmsMapKey`, `nasaApiKey`, `adsApiToken`: `set` / `unset`; `offline`: boolean). It never contains a key, token, username or password.
 
 **Farmers (demo only):** `POST /auth/login` accepts demo farmer IDs with PIN `1234`/`0000` (an unknown phone falls back to farmer F01).
 Demo tokens are random UUIDs in server memory, never expire and vanish on restart.

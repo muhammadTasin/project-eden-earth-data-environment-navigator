@@ -14,6 +14,7 @@ import { IPM_AMAN, IPM_BY_RABI, IPM_GENERAL } from '../../../packages/rotation-e
 import { bnDate, bnDateOf, bnDigits, bnOf, enDate } from '../../../packages/rotation-engine/src/bn.ts';
 import * as desk from './officer_desk.ts';
 import { authConfig, requireManager } from './auth.ts';
+import { nasaConfigStatus } from './config.ts';
 import { DualGateNarrationValidator } from '../../../packages/narration-core/src/dual_gate_validator.ts';
 import { TemplateNarrator } from '../../../packages/narration-core/src/template_narrator.ts';
 import { getNasaWeather, lastNasaSuccessAt } from './weather.ts';
@@ -889,6 +890,12 @@ const server = http.createServer(async (req, res) => {
     }
     if (pathname === '/api/v1/auth/logout' && req.method === 'POST') {
       return sendJSON(res, 200, { ok: desk.logout(req.headers.authorization) });
+    }
+
+    // ---- Which NASA data sources the server can use (manager only; set/unset flags, never a key, token or password) ----
+    if (pathname === '/api/v1/manager/data-sources' && req.method === 'GET') {
+      await requireManager(req);
+      return sendJSON(res, 200, nasaConfigStatus());
     }
 
     // ---- Krishi officer desk -----------------------------------------------------------------------
