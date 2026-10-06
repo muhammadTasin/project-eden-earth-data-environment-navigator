@@ -8,7 +8,7 @@ import type { PlanOptionsRequest } from '../../../packages/rotation-engine/src/e
 import { RotationEngine, UnsupportedUnionError, SUPPORTED_UNIONS } from '../../../packages/rotation-engine/src/engine.ts';
 import { FeatureRegistry } from '../../../packages/rotation-engine/src/registry.ts';
 import { HAOR_FLASH_FLOOD, RELEASE, TANORE_ADVISORIES, TANORE_SOIL_CARBON } from '../../../packages/rotation-engine/src/data/tanore_replay_data.ts';
-import { LOC, listPlaces, placeFor, withPlace } from '../../../packages/rotation-engine/src/data/location.ts';
+import { LOC, NO_SOIL_CARD, listPlaces, placeFor, withPlace } from '../../../packages/rotation-engine/src/data/location.ts';
 import { AMAN_CATALOG, RABI_CATALOG } from '../../../packages/rotation-engine/src/data/crop_catalog.ts';
 import { IPM_AMAN, IPM_BY_RABI, IPM_GENERAL } from '../../../packages/rotation-engine/src/data/ipm_catalog.ts';
 import { bnDate, bnDateOf, bnDigits, bnOf, enDate } from '../../../packages/rotation-engine/src/bn.ts';
@@ -16,6 +16,7 @@ import * as desk from './officer_desk.ts';
 import { authConfig, requireManager } from './auth.ts';
 import { nasaConfigStatus } from './config.ts';
 import { managerArea, managerClimate } from './manager_climate.ts';
+import { normalizeSite } from './sites.ts';
 import { DualGateNarrationValidator } from '../../../packages/narration-core/src/dual_gate_validator.ts';
 import { TemplateNarrator } from '../../../packages/narration-core/src/template_narrator.ts';
 import { getNasaWeather, lastNasaSuccessAt } from './weather.ts';
@@ -403,21 +404,23 @@ function farmerRows() {
   });
 }
 
-/** Officer-only reference: the full SRDI card, replay details, IPM steps and data caveats. */
+/**
+ * Officer-only reference for the pilot site: the full SRDI card, replay details, IPM steps and data caveats. All of it is Talanda/Tanore data,
+ * so only a manager whose site is the pilot gets it (see noKnowledgePack for everyone else).
+ */
 function knowledgePack() {
   const advice = adviseWithNarration(planRequest({}));
   const rabiKeys = Object.keys(LOC.rabi).filter(k => k !== 'BARI Gom 33 (Late)');
   return {
-    // the officer reference is the pilot's; a place with no soil card has none to show
-    srdi: LOC.srdi ? {
-      soilTypeBangla: LOC.srdi.soilTypeBangla,
-      landTypeBangla: LOC.srdi.landTypeBangla,
-      source: LOC.srdi.source,
+    srdi: {
+      soilTypeBangla: LOC.srdi!.soilTypeBangla,
+      landTypeBangla: LOC.srdi!.landTypeBangla,
+      source: LOC.srdi!.source,
       rows: [
-        { cropBangla: 'আমন ধান', cropEnglish: 'Aman rice', dose: LOC.srdi.aman },
+        { cropBangla: 'আমন ধান', cropEnglish: 'Aman rice', dose: LOC.srdi!.aman },
         ...rabiKeys.map(k => ({ cropBangla: RABI_CATALOG[k].cropBangla, cropEnglish: RABI_CATALOG[k].crop, dose: LOC.rabi[k].fertilizer })),
       ],
-    } : null,
+    },
     amanReplay: Object.values(LOC.aman).map(r => ({
       variety: r.variety,
       varietyBangla: AMAN_CATALOG[r.variety]?.varietyBangla ?? r.variety,
@@ -492,6 +495,11 @@ function deskView(officer: desk.Officer) {
       };
     }),
   };
+}
+
+/** What a manager of any other site gets instead: no soil card, and none of the pilot's replay, IPM, caveats or haor and cattle tables. */
+function noKnowledgePack() {
+  return { srdi: null, noSoilCard: NO_SOIL_CARD };
 }
 
 function dataRelease() {
@@ -943,14 +951,15 @@ const server = http.createServer(async (req, res) => {
         return sendJSON(res, 200, request);
       }
       if (pathname === '/api/v1/officer/calls' && req.method === 'GET') {
-        return sendJSON(res, 200, { calls: CALL_LOG.filter(c => c.site === officer.site), provider: awajConfig() });
+        return sendJSON(res, 200, { calls: CALL_LOG.filter(c => c.site === normalizeSite(officer.site)), provider: awajConfig() });
       }
       if (pathname === '/api/v1/officer/knowledge' && req.method === 'GET') {
-        return sendJSON(res, 200, knowledgePack());
+        return sendJSON(res, 200, normalizeSite(officer.site) === PILOT_SITE ? knowledgePack() : noKnowledgePack());
       }
       if (pathname === '/api/v1/officer/reset' && req.method === 'POST') {
-        if (!officer.site) throw new ApiError('forbidden', 'This manager account has no site in app_metadata');
-        desk.resetDesk(officer.site); // only this manager's own site
+        const site = normalizeSite(officer.site);
+        if (!site) throw new ApiError('site_required', 'This manager account has no site in app_metadata');
+        desk.resetDesk(site); // only this manager's own site
         return sendJSON(res, 200, { ok: true });
       }
       throw new ApiError('not_found', 'Unknown officer endpoint');

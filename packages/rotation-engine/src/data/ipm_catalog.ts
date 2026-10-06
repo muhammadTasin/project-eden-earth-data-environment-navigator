@@ -4,7 +4,8 @@ import type { IpmTip } from '@project-eden/contracts';
  * Integrated pest management (IPM) steps shown with each rotation. They favour rotation, timing, resistant
  * varieties and scouting over sprays, and never name a pesticide product (the narration gate also blocks brands).
  *
- * Facts from the research tables are cited to them (BWMRI and BRRI variety pages, SRDI card). The rest are
+ * Facts from the research tables are cited to them (BWMRI and BRRI variety pages, SRDI card). A tip that cites or leans on the SRDI card
+ * carries `needsSoilCard: true` and is left out where a place has no card. The rest are
  * standard IPM rules, marked "IPM principle"; there are no field pest counts for Talanda yet.
  */
 
@@ -18,6 +19,7 @@ export const IPM_GENERAL: IpmTip[] = [
     bn: 'SRDI কার্ডের চেয়ে বেশি ইউরিয়া দেবেন না; বেশি নাইট্রোজেনে পোকা ও রোগ বাড়ে।',
     en: 'Do not go above the SRDI urea dose; extra nitrogen invites pests and disease.',
     source: 'SRDI Talanda card; IPM principle',
+    needsSoilCard: true,
   },
 ];
 
@@ -36,6 +38,7 @@ export const IPM_BY_RABI: Record<string, IpmTip[]> = {
       bn: 'ধানের পর ডাল: ধানের পোকার চক্র ভাঙে, আর মসুরে ইউরিয়া লাগে সামান্য।',
       en: 'A pulse after rice breaks the rice-pest cycle, and lentil needs little urea.',
       source: 'IPM principle; SRDI Talanda card',
+      needsSoilCard: true,
     },
     {
       bn: 'জমিতে পানি জমতে দেবেন না; ভেজা মাটিতে গোড়া পচা রোগ বাড়ে।',

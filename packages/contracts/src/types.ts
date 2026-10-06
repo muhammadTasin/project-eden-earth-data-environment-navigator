@@ -125,6 +125,8 @@ export interface IpmTip {
   bn: string;
   en: string;
   source: string;
+  /** The tip cites or depends on the SRDI soil card, so it is not given at a place that has none. */
+  needsSoilCard?: boolean;
 }
 
 export interface AdviceJSON {

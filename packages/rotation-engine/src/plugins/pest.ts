@@ -12,6 +12,10 @@ import { bnDigits, seasonDay } from '../bn.ts';
  *  4. timing: sowing after the handbook deadline raises pest and disease pressure
  * These are IPM rules, not field pest counts, so confidence is low until SAAOs log pest sightings.
  */
+/** Said wherever this score is shown when the place has no SRDI soil card: the nitrogen term is left out. */
+export const PARTIAL_BN = 'আংশিক হিসাব, মাটির কার্ড ছাড়া (নাইট্রোজেনের অংশ বাদ; পাইলটের পূর্ণ স্কোরের সাথে তুলনীয় নয়)।';
+export const PARTIAL_EN = 'Partial score, no soil card (the nitrogen term is left out; not comparable with the pilot’s full score).';
+
 export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
   readonly id = 'pest';
   readonly displayNameBangla = 'বালাই চাপ ও কীটনাশক কমানো';
@@ -51,7 +55,7 @@ export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
           : hostBreak
             ? 'বছরে একবারই ধান: ধানের পোকার চক্র ভাঙে।'
             : 'ধানের পর আবার ধান: মাজরা পোকা ও বাদামি গাছফড়িং সারা বছর খাবার পায়।',
-      rotationUrea === null ? '' : `পুরো চক্রে ইউরিয়া ${bnDigits(rotationUrea)} কেজি/হেক্টর (SRDI)।`,
+      rotationUrea === null ? PARTIAL_BN : `পুরো চক্রে ইউরিয়া ${bnDigits(rotationUrea)} কেজি/হেক্টর (SRDI)।`,
       resistance ? `${rabiName.varietyBangla} ${resistance.bn}।` : '',
       sownOnTime ? '' : 'দেরিতে বোনায় পোকা ও রোগের চাপ বাড়ে।',
     ];
@@ -59,7 +63,7 @@ export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
       riceCrops === 0
         ? 'No rice in the year: stem borers and planthoppers find no host.'
         : hostBreak ? `${rabiName.crop} after ${amanSlot ? 'Aman' : 'rice'} breaks the rice-pest cycle.` : 'Rice after rice keeps stem borers and planthoppers fed all year.',
-      rotationUrea === null ? '' : `Rotation urea ${rotationUrea} kg/ha (SRDI).`,
+      rotationUrea === null ? PARTIAL_EN : `Rotation urea ${rotationUrea} kg/ha (SRDI).`,
       resistance ? `${crop.variety} is ${resistance.en}.` : '',
       sownOnTime ? '' : 'Late sowing raises pest and disease pressure.',
     ];
@@ -76,13 +80,15 @@ export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
         rotationUreaKgHa: rotationUrea,
         resistantVariety: resistance ? resistance.en : 'none listed',
         sownOnTime,
+        // no soil card: the nitrogen term is left out, so this score is partial and is never compared with the pilot's full score
+        ...(rotationUrea === null ? { partial: true } : {}),
       },
       provenance: {
         source: `Rotation IPM rules (team) from BRRI/BARI IPM guidance, ${LOC.srdi ? 'SRDI Talanda card, ' : ''}BWMRI/BRRI variety pages; no field pest counts yet`,
         timePeriod: 'rules; pest sightings come from SAAO field observations',
         spatialResolution: 'Rotation level',
         measuredOrModeled: 'assumed',
-        notesBangla: 'মাঠে পোকা গোনার তথ্য এলে (কর্মকর্তার পর্যবেক্ষণ) এই স্কোর আরও নির্ভুল হবে।',
+        notesBangla: (rotationUrea === null ? `${PARTIAL_BN} ` : '') + 'মাঠে পোকা গোনার তথ্য এলে (কর্মকর্তার পর্যবেক্ষণ) এই স্কোর আরও নির্ভুল হবে।',
       },
     };
   }
@@ -91,10 +97,12 @@ export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
     const m = result.metrics;
     return {
       banglaBullets: [
+        ...(m.partial ? [PARTIAL_BN] : []),
         m.breaksRicePestCycle ? 'রবিতে ধান নয়, তাই ধানের পোকার চক্র ভাঙে।' : 'বছরে দুবার ধান: পোকার চক্র চলতেই থাকে।',
       ],
       englishBullets: [
         m.breaksRicePestCycle ? 'No rice in Rabi, so the rice-pest cycle breaks.' : 'Two rice crops a year keep the pest cycle going.',
+        ...(m.partial ? [PARTIAL_EN] : []),
       ],
     };
   }

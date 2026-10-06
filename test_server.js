@@ -19,6 +19,8 @@ const FAKE_USERS = {
   // JWT-shaped tokens (three parts) for the site-scoped routes: a manager of talanda, a manager of another site, a manager with no site
   'h.talanda.s': { id: 'u-talanda', email: 'sentry@example.test', app_metadata: { role: 'manager', site: 'talanda' }, user_metadata: {} },
   'h.other.s': { id: 'u-other', email: 'other@example.test', app_metadata: { role: 'manager', site: 'sun_dharmapasha' }, user_metadata: { site: 'talanda' } },
+  'h.upper.s': { id: 'u-upper', email: 'upper@example.test', app_metadata: { role: 'manager', site: 'Talanda' }, user_metadata: {} },
+  'h.alias.s': { id: 'u-alias', email: 'alias@example.test', app_metadata: { role: 'manager', site: ' tanore ' }, user_metadata: {} },
   'h.viewer.s': { id: 'u-viewer2', email: 'viewer2@example.test', app_metadata: { role: 'viewer', site: 'talanda' }, user_metadata: { role: 'manager' } },
   'h.nosite.s': { id: 'u-nosite', email: 'nosite@example.test', app_metadata: { role: 'manager' }, user_metadata: { site: 'talanda' } },
   'viewer-token': { id: 'u-viewer', email: 'viewer@example.test', app_metadata: { role: 'viewer' }, user_metadata: { role: 'manager' } },
@@ -557,7 +559,26 @@ async function run() {
     const calls = await (await fetch(`${BASE}/api/v1/officer/calls`, as(token))).json();
     check(calls.calls.length === 0, `${token}: the phone log of another site is not shown`);
   }
-  check((await fetch(`${BASE}/api/v1/officer/reset`, { method: 'POST', ...as('h.nosite.s') })).status === 403, 'a manager without a site cannot reset');
+  const noSiteReset = await fetch(`${BASE}/api/v1/officer/reset`, { method: 'POST', ...as('h.nosite.s') });
+  check(noSiteReset.status === 403 && (await noSiteReset.json()).error.code === 'site_required', 'a manager without a site cannot reset: 403 site_required (the dashboard shows the message and stays signed in)');
+  // the same site written another way is the same site: the desk, the climate card and the area
+  for (const token of ['h.upper.s', 'h.alias.s']) {
+    const desk = await deskOf(token);
+    check(desk.farmers.length === 4 && desk.callbacks.some((c) => c.id === 'cb_seed_04'), `${token}: a differently written talanda site sees the talanda desk`);
+    const climate = await fetch(`${BASE}/api/v1/manager/climate`, as(token));
+    const climateBody = await climate.json();
+    check(climate.status === 200 && climateBody.area.id === 'talanda' && climateBody.area.isHome === true, `${token}: and the talanda climate card (status ${climate.status})`);
+    const area = await (await fetch(`${BASE}/api/v1/manager/area`, as(token))).json();
+    check(area.siteId === 'talanda' && area.placeId === 'talanda_tanore', `${token}: and the talanda home area`);
+    const pack = await (await fetch(`${BASE}/api/v1/officer/knowledge`, as(token))).json();
+    check(pack.srdi && pack.srdi.rows.length >= 4 && Array.isArray(pack.amanReplay), `${token}: and the talanda knowledge pack`);
+  }
+  // the knowledge pack is the pilot's: any other site gets only the no-soil-card message
+  for (const token of ['h.other.s', 'h.nosite.s']) {
+    const pack = await (await fetch(`${BASE}/api/v1/officer/knowledge`, as(token))).json();
+    check(pack.srdi === null && pack.noSoilCard.bn === NO_CARD_BN && pack.noSoilCard.en.includes('soil card'), `${token}: the knowledge pack is the no-soil-card message`);
+    for (const key of ['amanReplay', 'rabiReplay', 'ipm', 'caveats', 'saaoNotes', 'cattleHeat', 'haorSkill', 'haorEscape']) check(!(key in pack), `${token}: no ${key} (it is Tanore-point data)`);
+  }
   await fetch(`${BASE}/api/v1/officer/reset`, { method: 'POST', ...as('h.other.s') });
   const afterReset = await deskOf('h.talanda.s');
   check(afterReset.farmers.length === 4 && afterReset.callbacks.some((c) => c.id === 'cb_seed_04' && c.status === 'open'), 'another site\'s reset leaves the talanda desk alone');

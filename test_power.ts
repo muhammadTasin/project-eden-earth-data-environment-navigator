@@ -68,10 +68,14 @@ const managerToken = 'header.manager.signature';
 const viewerToken = 'header.viewer.signature';
 const noSiteToken = 'header.nosite.signature';
 const unknownSiteToken = 'header.unknownsite.signature';
+const protoSiteToken = 'header.protosite.signature';
+const paddedSiteToken = 'header.paddedsite.signature';
 const users: Record<string, any> = {
   [managerToken]: { id: 'manager-1', email: 'field@example.test', app_metadata: { role: 'manager', site: 'talanda' }, user_metadata: { site: 'dharmapasha' } },
   [viewerToken]: { id: 'viewer-1', email: 'viewer@example.test', app_metadata: { role: 'viewer', site: 'talanda' } },
   [unknownSiteToken]: { id: 'manager-3', email: 'manager3@example.test', app_metadata: { role: 'manager', site: 'atlantis' } },
+  [protoSiteToken]: { id: 'manager-4', email: 'manager4@example.test', app_metadata: { role: 'manager', site: 'constructor' } },
+  [paddedSiteToken]: { id: 'manager-5', email: 'manager5@example.test', app_metadata: { role: 'manager', site: '  Talanda ' } },
   [noSiteToken]: { id: 'manager-2', email: 'manager2@example.test', app_metadata: { role: 'manager' }, user_metadata: { site: 'talanda' } },
 };
 const verify = async (token: string) => users[token] ?? null;
@@ -209,6 +213,50 @@ assert.equal(fellBack.dataSource, 'cache');
 assert.equal(fellBack.liveFetchFailed, true);
 assert.equal(fellBack.offline, false);
 console.log('✓ Refresh: downloads again, limited to once a minute, falls back to the saved copy and reports it.');
+
+// A site written "  Talanda " is still the talanda site; "constructor" and friends are no site at all
+const paddedClimate = await managerClimate(reqFor('', `Bearer ${paddedSiteToken}`), areaOptions);
+assert.equal(paddedClimate.area.id, 'talanda');
+assert.equal(paddedClimate.area.isHome, true);
+for (const [token, name] of [[protoSiteToken, 'constructor']] as const) {
+  await assert.rejects(managerClimate(reqFor('', `Bearer ${token}`), areaOptions), (error: any) => error instanceof ApiError && error.status === 403, `site "${name}"`);
+}
+await assert.rejects(managerClimate(reqFor('', `Bearer ${noSiteToken}`), areaOptions), (error: any) => error instanceof ApiError && error.status === 403 && error.code === 'site_required', 'no site is the site_required refusal (403)');
+console.log('✓ Climate: "  Talanda " is the talanda site; "constructor" is no site (403); no site is site_required.');
+
+// A cache write that fails (the cache "directory" is a file) loses only the cache: the fresh NASA data is still returned
+const siteForCache = { id: 'talanda', nameBangla: 'তালন্দ', nameEnglish: 'Talanda', lat: 24.62, lon: 88.56 };
+const blocker = path.join(scratch, 'not-a-directory');
+await fs.writeFile(blocker, 'x');
+const warnings: string[] = [];
+const originalWarn = console.warn;
+console.warn = (...args: unknown[]) => { warnings.push(args.map(String).join(' ')); };
+let writeFailResult;
+try {
+  writeFailResult = await getPowerClimate(siteForCache, { cacheDir: path.join(blocker, 'cache'), fixturePath, now: fixedNow, fetchImpl: areaFetch });
+} finally {
+  console.warn = originalWarn;
+}
+assert.equal(writeFailResult.dataSource, 'live', 'the downloaded data is returned');
+assert.equal(writeFailResult.liveFetchFailed, false, 'a cache write error is not a failed download');
+assert.equal(writeFailResult.fetchedAt, fixedNow.toISOString());
+assert.equal(warnings.length, 1, 'one warning is logged');
+assert.match(warnings[0], /cache write failed/);
+assert.ok(!warnings[0].includes(scratch), 'the warning does not print the cache path');
+// and no half-written file is left in a cache directory that does exist but cannot take the file (a directory where the file should be)
+const clash = path.join(scratch, 'clash-cache');
+await fs.mkdir(clash, { recursive: true });
+const clashFetch = areaFetch;
+const first = await getPowerClimate(siteForCache, { cacheDir: clash, fixturePath, now: fixedNow, fetchImpl: clashFetch });
+assert.equal(first.dataSource, 'live');
+const written = (await fs.readdir(clash)).filter(name => name.endsWith('.json'));
+assert.equal(written.length, 1);
+await fs.rm(path.join(clash, written[0]));
+await fs.mkdir(path.join(clash, written[0])); // the target name is now a directory: rename onto it fails
+const second = await getPowerClimate(siteForCache, { cacheDir: clash, fixturePath, now: fixedNow, fetchImpl: clashFetch });
+assert.equal(second.dataSource, 'live');
+assert.deepEqual((await fs.readdir(clash)).filter(name => name.endsWith('.tmp')), [], 'no temporary file is left behind');
+console.log('✓ Cache write failure: the fresh data is returned, one warning is logged, no temporary file remains.\n');
 
 // OFFLINE=1: newest cache entry for the site (any date range), then the committed fixture, then a clear no_data error. Never a fetch.
 const talanda = { id: 'talanda', nameBangla: 'তালন্দ', nameEnglish: 'Talanda', lat: 24.62, lon: 88.56 };

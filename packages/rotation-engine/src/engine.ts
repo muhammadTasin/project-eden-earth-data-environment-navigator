@@ -108,18 +108,18 @@ export class UnsupportedUnionError extends Error {
 
 /** Weight of a score the farmer gave no priority for, so the stated priorities decide the ranking. */
 const UNSTATED_PRIORITY_WEIGHT = 0.05;
-/** One bigha of 33 decimals, in hectares. */
-
 const roundOrNull = (value: number | null): number | null => (value === null ? null : Math.round(value));
 
-/** IPM tips that lean on the SRDI card ("do not go above the SRDI urea dose") only where the place has one. */
-function withoutSoilCardTips<T extends { en: string; source?: string }>(tips: T[]): T[] {
-  if (LOC.srdi) return tips;
-  return tips
-    .filter(tip => !/SRDI/.test(tip.en))
-    .map(tip => (tip.source ? { ...tip, source: tip.source.replace(/;? ?SRDI Talanda card;? ?/, '').trim() } : tip));
+/**
+ * IPM tips that cite or lean on the SRDI card (flagged `needsSoilCard` in the catalog) are given only where the place has one.
+ * The flag is a catalog attribute: it is not part of the advice, so the pilot's output is exactly what it was.
+ */
+function withoutSoilCardTips<T extends { needsSoilCard?: boolean }>(tips: T[]): Array<Omit<T, 'needsSoilCard'>> {
+  return (LOC.srdi ? tips : tips.filter(tip => !tip.needsSoilCard)).map(({ needsSoilCard: _flag, ...tip }) => tip);
 }
 
+
+/** One bigha of 33 decimals, in hectares. */
 const BIGHA_HA = 0.1336;
 const DAY_MS = 86_400_000;
 const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -1131,6 +1131,9 @@ export class RotationEngine {
       { dataset: 'Farmer interviews in Talanda', issue: 'Priority weights are defaults until interviews', affectedDimension: 'all' },
       { dataset: 'Flood model for Barind land', issue: LOC.srdi ? 'Not modelled; land-type assumption from the SRDI card' : 'Not modelled; land type is the one chosen, not from a soil card', affectedDimension: 'flood' },
     ];
+    if (!LOC.srdi) {
+      stale.push({ dataset: 'SRDI soil card (fertilizer)', issue: 'No soil card for this area: no fertilizer advice, and the pest score is partial (no nitrogen term), not comparable with the pilot\'s', affectedDimension: 'pest' });
+    }
     if (useChoice) {
       stale.push({ dataset: 'Heat limits for crops outside crop_parameters.csv', issue: 'Literature values, marked as assumed in the crop-choice replay', affectedDimension: 'heat' });
     }

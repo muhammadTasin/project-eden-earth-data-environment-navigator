@@ -385,8 +385,13 @@ async function saveCache(cacheDir: string, key: string, envelope: PowerEnvelope)
   await fs.mkdir(cacheDir, { recursive: true });
   const target = path.join(cacheDir, `${key}.json`);
   const temporary = `${target}.${process.pid}.tmp`;
-  await fs.writeFile(temporary, JSON.stringify(envelope));
-  await fs.rename(temporary, target);
+  try {
+    await fs.writeFile(temporary, JSON.stringify(envelope));
+    await fs.rename(temporary, target);
+  } catch (error) {
+    await fs.rm(temporary, { force: true }).catch(() => {}); // no half-written file is left behind
+    throw error;
+  }
 }
 
 export async function fetchPower(url: URL, fetchImpl: typeof fetch, timeoutMs: number): Promise<RawPowerResponse> {
@@ -468,7 +473,6 @@ export async function getPowerClimate(site: ManagerSite, options: PowerClientOpt
         fetchedAt: (options.now ?? new Date()).toISOString(),
         response,
       };
-      await saveCache(cacheDir, key, envelope);
       dataSource = 'live';
     } catch {
       liveFetchFailed = true;
@@ -476,6 +480,15 @@ export async function getPowerClimate(site: ManagerSite, options: PowerClientOpt
       envelope = fallback?.envelope ?? null;
       if (!envelope) throw new ApiError('provider_unavailable', 'NASA POWER could not be reached and no compatible cached data is available');
       dataSource = fallback?.source ?? 'cache';
+    }
+  }
+
+  if (dataSource === 'live' && envelope) {
+    // A failed cache write loses only the cache: the data just downloaded is still returned
+    try {
+      await saveCache(cacheDir, key, envelope);
+    } catch (error) {
+      console.warn(`NASA POWER cache write failed (${site.id}): ${error instanceof Error ? error.message.replaceAll(cacheDir, '<cache dir>') : 'unknown error'}`);
     }
   }
 

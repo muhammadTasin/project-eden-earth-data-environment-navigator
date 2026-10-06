@@ -25,7 +25,7 @@ async function verifiedManagerSite(req: http.IncomingMessage, verify?: VerifyTok
   }
   await requireManager(req, verify);
   const siteId = managerSite(req);
-  if (!siteId) throw new ApiError('forbidden', 'This manager account has no site in app_metadata');
+  if (!siteId) throw new ApiError('site_required', 'This manager account has no site in app_metadata');
   const site = managerSiteConfig(siteId);
   if (!site) throw new ApiError('forbidden', 'Climate data is not configured for this manager site');
   return site;

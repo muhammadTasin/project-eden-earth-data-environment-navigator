@@ -34,6 +34,9 @@ const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'
 const tr = (bn, en) => (lang === 'en' ? en : bn);
 // Shown instead of fertilizer amounts at a place with no SRDI soil card (the same words as the server's NO_SOIL_CARD)
 const noSoilCard = () => tr('এই এলাকার মাটির কার্ড (SRDI) যোগ করা হয়নি, সার-পরামর্শ দেওয়া যাচ্ছে না', 'This area’s soil card (SRDI) has not been added, so fertilizer advice cannot be given');
+// The pest score has no nitrogen term where there is no soil card: it is shown with this tag and is never compared with the pilot's full score
+const partialTag = (detail) => (detail?.metrics?.partial ? `<span class="tag tag-yellow">${tr('আংশিক, মাটির কার্ড ছাড়া', 'partial, no soil card')}</span>` : '');
+const partialNote = () => tr('আংশিক হিসাব, মাটির কার্ড ছাড়া: পাইলটের পূর্ণ স্কোরের সাথে তুলনীয় নয়।', 'Partial score, no soil card: not comparable with the pilot’s full score.');
 const bnDigits = (value) => String(value).replace(/\d/g, d => BN_DIGITS[Number(d)]);
 // Digits in the current language; a leading minus becomes '−' but ranges like 2003-07 keep their hyphen
 const num = (value) => (lang === 'en' ? String(value) : bnDigits(value)).replace(/(^|[\s(:])-(?=[0-9০-৯])/g, '$1−');
@@ -556,10 +559,10 @@ function renderLedger(advice) {
           <td>${o.ledger.ureaKgHa === null ? '—' : num(o.ledger.ureaKgHa)}</td>
           <td>${yesNo(o.ledger.legume)}</td>
           <td>${num(o.ledger.bareDays)}</td>
-          <td>${num(Math.round((o.scores.pest ?? 0) * 100))}</td>
+          <td>${num(Math.round((o.scores.pest ?? 0) * 100))} ${partialTag(o.dimensionDetails.pest)}</td>
         </tr>`).join('')}
       </tbody>
-    </table>${rows.some(o => o.ledger.ureaKgHa === null) ? `<p class="muted small">${escapeHtml(noSoilCard())}</p>` : ''}`);
+    </table>${rows.some(o => o.ledger.ureaKgHa === null) ? `<p class="muted small">${escapeHtml(noSoilCard())}</p>` : ''}${rows.some(o => o.dimensionDetails.pest?.metrics?.partial) ? `<p class="muted small">${escapeHtml(partialNote())}</p>` : ''}`);
 }
 
 function pestReportsHtml(reports) {
@@ -655,6 +658,7 @@ const DIMENSIONS = {
 };
 
 function dimensionTag(detail) {
+  if (detail?.metrics?.partial) return tr('আংশিক, মাটির কার্ড ছাড়া', 'partial, no soil card');
   if (detail?.staleOrMissing) return tr('নমুনা', 'sample');
   if (detail?.provenance?.measuredOrModeled === 'assumed') return tr('অনুমান', 'assumed');
   return '';
@@ -848,7 +852,7 @@ function renderIpm(advice) {
     return `
       <div class="ipm-column ${opt.isBaseline ? 'baseline' : 'recommended'}">
         <h4>${escapeHtml(tr(opt.nameBangla, opt.nameEnglish))}</h4>
-        <div class="ipm-score">${num(Math.round((opt.scores.pest ?? 0) * 100))}<small>/${num(100)}</small></div>
+        <div class="ipm-score">${num(Math.round((opt.scores.pest ?? 0) * 100))}<small>/${num(100)}</small> ${partialTag(opt.dimensionDetails.pest)}</div>
         <ul class="kv-list">
           <li><span>${tr('ধানের পোকার চক্র ভাঙে', 'Breaks the rice-pest cycle')}</span><strong>${yesNo(m.breaksRicePestCycle)}</strong></li>
           ${m.rotationUreaKgHa === null || m.rotationUreaKgHa === undefined ? '' : `<li><span>${tr('পুরো চক্রে ইউরিয়া (SRDI)', 'Rotation urea (SRDI)')}</span><strong>${num(m.rotationUreaKgHa)} ${tr('কেজি/হেক্টর', 'kg/ha')}</strong></li>`}
@@ -876,11 +880,11 @@ function renderIpm(advice) {
     const pct = Math.round((opt.scores.pest ?? 0) * 100);
     return `
       <div class="dim-item">
-        <div class="dim-header"><span>${escapeHtml(tr(opt.nameBangla, opt.nameEnglish))}</span><span>${num(pct)}/${num(100)}</span></div>
+        <div class="dim-header"><span>${escapeHtml(tr(opt.nameBangla, opt.nameEnglish))} ${partialTag(opt.dimensionDetails.pest)}</span><span>${num(pct)}/${num(100)}</span></div>
         <div class="dim-bar-wrap"><div class="dim-bar-fill pest" style="width: ${pct}%"></div></div>
         <span class="dim-note">${escapeHtml(tr(opt.dimensionDetails.pest?.summaryBangla, opt.dimensionDetails.pest?.summaryEnglish))}</span>
       </div>`;
-  }).join(''));
+  }).join('') + (advice.options.some(o => o.dimensionDetails.pest?.metrics?.partial) ? `<p class="muted small">${escapeHtml(partialNote())}</p>` : ''));
 }
 
 // ---------------------------------------------------------------------------
@@ -910,6 +914,9 @@ async function officerFetch(url, options = {}) {
     ...options,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await officerToken()}` },
   });
+  if (res.status === 403 && (await res.clone().json().catch(() => null))?.error?.code === 'site_required') {
+    return res; // a signed-in manager whose account has no site: refused, but still signed in; the caller shows the message
+  }
   if (res.status === 401 || res.status === 403) {
     await window.officerSignOut();
     throw new OfficerAccessError(res.status);
@@ -1080,8 +1087,13 @@ function renderRegister() {
 function renderKnowledge() {
   const k = officerKnowledge;
   if (!k) return;
+  if (!k.amanReplay) {
+    // a manager of another site: no soil card, and none of the pilot's replay, IPM or caveats
+    setHtml('officerKnowledge', `<div class="knowledge-block"><p class="muted">${escapeHtml(noSoilCard())}</p></div>`);
+    return;
+  }
   const kg = (v) => num(Number.isInteger(v) ? v : v.toFixed(1));
-  const srdiBlock = !k.srdi ? `<div class="knowledge-block"><p class="muted">${escapeHtml(noSoilCard())}</p></div>` : `
+  const srdiBlock = `
     <div class="knowledge-block">
       <h4>${tr('SRDI তালন্দ কার্ড (মাঝারি উঁচু জমি, কেজি/হেক্টর)', 'SRDI Talanda card (medium-high land, kg/ha)')}</h4>
       <p class="muted">${escapeHtml(tr(`${k.srdi.soilTypeBangla}; কৃষকের অ্যাপে শুধু ইউরিয়া, টিএসপি, এমওপি যায়।`, 'Kharia soil; the farmer app shows only urea, TSP and MoP.'))}</p>
@@ -1193,7 +1205,14 @@ window.resolveCallback = async function(callbackId) {
 };
 
 window.officerReset = async function() {
-  await officerFetch('/api/v1/officer/reset', { method: 'POST', body: '{}' });
+  const res = await officerFetch('/api/v1/officer/reset', { method: 'POST', body: '{}' });
+  if (!res.ok) {
+    // e.g. 403 site_required: show the server's message and stay signed in
+    const body = await res.json().catch(() => null);
+    officerNotice = { error: body?.error?.message || tr('রিসেট করা যায়নি।', 'Could not reset.') };
+    renderObservationResult();
+    return;
+  }
   officerNotice = null;
   delete $('obsFarmer').dataset.chosen;
   await Promise.all([loadOfficerDesk(), loadOverview()]);

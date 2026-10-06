@@ -9,6 +9,8 @@ import { TALANDA_SRDI } from './packages/rotation-engine/src/data/tanore_replay_
 import { recordFor } from './packages/rotation-engine/src/data/crop_choice.ts';
 import { withPlace } from './packages/rotation-engine/src/data/location.ts';
 import { cropsFromKeys, keypadMenu, replyFor } from './services/api/src/voice.ts';
+import { IPM_AMAN, IPM_BY_RABI, IPM_GENERAL } from './packages/rotation-engine/src/data/ipm_catalog.ts';
+import { PARTIAL_BN, PARTIAL_EN } from './packages/rotation-engine/src/plugins/pest.ts';
 
 console.log('========================================================');
 console.log('  SOIL CARD (SRDI) SCOPE TEST SUITE                     ');
@@ -144,6 +146,38 @@ assert.ok(keypadTexts >= 40, `the check covers the keypad replies (${keypadTexts
 const pilotReply = keypadReply(PILOT_ID, ['1']);
 assert.ok(pilotReply.texts[0].length > 50, 'the pilot\'s keypad reply is still produced');
 console.log(`✓ Keypad survey replies: ${keypadTexts} spoken and SMS texts at two non-pilot places carry no fertilizer amount, soil card text or Talanda name; keypad 9 still asks for the officer.\n`);
+
+// ---- 5. IPM tips: an explicit flag, no text matching at runtime
+const allTips = [...IPM_GENERAL, ...IPM_AMAN, ...Object.values(IPM_BY_RABI).flat()];
+assert.ok(allTips.length >= 10);
+const flagged = allTips.filter(tip => tip.needsSoilCard);
+assert.ok(flagged.length >= 2, 'the SRDI-dependent tips carry the flag');
+// data consistency: a tip that mentions the SRDI card anywhere is flagged, and a flagged tip really does
+for (const tip of allTips) assert.equal(Boolean(tip.needsSoilCard), /SRDI/.test(JSON.stringify(tip)), `flag matches the tip: ${tip.en}`);
+for (const id of NON_PILOT) for (const option of advise(id).options) {
+  assert.ok(option.ipmActions!.every(tip => !('needsSoilCard' in tip) && !/SRDI/.test(JSON.stringify(tip))), `${id}: no tip that leans on the SRDI card, and no internal flag in the output`);
+  assert.equal(option.ipmActions!.length, [...(IPM_BY_RABI[option.cropSequence.find(c => c.seasonType === 'Rabi')?.variety ?? ''] ?? []), ...IPM_AMAN.slice(0, option.cropSequence[0].seasonType === 'Aman' ? IPM_AMAN.length : 0), ...IPM_GENERAL].filter(tip => !tip.needsSoilCard).length, `${id} ${option.id}: the other tips stay`);
+}
+assert.ok(advise(PILOT_ID).options.every(o => o.ipmActions!.every(tip => !('needsSoilCard' in tip))), 'the flag is not part of the advice, so the pilot\'s output has no new field');
+assert.ok(advise(PILOT_ID).options.some(o => o.ipmActions!.some(tip => /SRDI/.test(tip.en))), 'the pilot keeps the tips that cite the SRDI card');
+console.log('✓ IPM tips: the SRDI-dependent tips are flagged in the catalog and dropped outside the pilot; the others stay.');
+
+// ---- 6. the pest score is partial without a soil card, and only then
+for (const id of NON_PILOT) {
+  const advice = advise(id);
+  for (const option of advice.options) {
+    const pest = option.dimensionDetails.pest;
+    assert.equal(pest.metrics.partial, true, `${id} ${option.id}: partial flag`);
+    assert.ok(pest.summaryBangla.includes('আংশিক হিসাব, মাটির কার্ড ছাড়া') && pest.summaryBangla.includes(PARTIAL_BN), `${id}: the Bangla summary says so`);
+    assert.ok(pest.summaryEnglish.includes('Partial score, no soil card') && pest.summaryEnglish.includes(PARTIAL_EN), `${id}: and the English one`);
+    assert.ok(pest.provenance.notesBangla.startsWith(PARTIAL_BN));
+    assert.ok(pest.metrics.rotationUreaKgHa === null);
+  }
+  assert.ok(advice.stale_or_missing_inputs.some(g => g.affectedDimension === 'pest' && /partial/.test(g.issue)), `${id}: the data-gaps list says the pest score is partial`);
+}
+const pilotPest = advise(PILOT_ID).options.map(o => o.dimensionDetails.pest);
+assert.ok(pilotPest.every(p => !('partial' in p.metrics) && !p.summaryBangla.includes('আংশিক হিসাব')), 'the pilot\'s pest score is the full one, with no partial marker');
+console.log('✓ Pest score: partial (flagged, worded in Bangla and English, listed as a data gap) outside the pilot; the pilot\'s is unchanged.\n');
 
 console.log('========================================================');
 console.log('  ALL SOIL CARD SCOPE TESTS PASSED                      ');

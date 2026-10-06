@@ -41,7 +41,7 @@ npm run call:test -- --to 01XXXXXXXXX --crops sunflower,lentil   # the Bangla ca
 
 `python research/explore/national_replay.py` runs the Tanore replay's method (FAO-56 water balance, BRRI and BARI calendars, heat at flowering and grain filling) at each of the 64 districts' NASA POWER and GPM IMERG point for 2001–2025, with temperatures corrected against the nearest BMD station within 100 km, and writes `packages/rotation-engine/src/data/national_replay.json`. `packages/rotation-engine/src/data/location.ts` points the engine at the chosen place: the Talanda pilot, or an upazila using its district's replay. At Rajshahi district it reproduces Tanore's research figures closely (BRRI dhan71: 7 of 25 rescue seasons; Boro 790 mm against 797 mm).
 
-Where a place has no data yet, the dashboard says so instead of borrowing Tanore's: SMAP soil moisture, MODIS greenness and land use are pilot-only so far; fertilizer doses use the SRDI Talanda card until each upazila's card is added; upazila names are in English. `GET /api/v1/places` lists the places, `GET /api/v1/overview?place=<id>` and `POST /api/v1/advice` with `unionId: <id>` follow the choice.
+Where a place has no data yet, the dashboard says so instead of borrowing Tanore's: SMAP soil moisture, MODIS greenness and land use are pilot-only so far; there is no SRDI soil card outside the pilot, so those places get the crop calendar and rotation replay but no fertilizer amounts (the advice says "this area's soil card (SRDI) has not been added, so fertilizer advice cannot be given"); upazila names are in English. `GET /api/v1/places` lists the places, `GET /api/v1/overview?place=<id>` and `POST /api/v1/advice` with `unionId: <id>` follow the choice.
 
 ### The farmer's own crops
 
@@ -313,7 +313,7 @@ The latest SMAP soil-moisture values come from the downloaded cache (`research/d
 
 ## Known limits
 
-- Upazilas outside the Talanda pilot use their district's NASA point (about 50 km grid), the SRDI Talanda fertilizer card as a stand-in, and no SMAP, MODIS greenness or land-use context yet. Unknown places get HTTP 422.
+- Upazilas outside the Talanda pilot use their district's NASA point (about 50 km grid), no SRDI soil card (so no fertilizer amounts; the Talanda card is never used as a stand-in), and no SMAP, MODIS greenness or land-use context yet. Unknown places get HTTP 422.
 - Income is a team estimate or a BBS price-and-yield estimate until farmer cost interviews are in; soybean, sunflower and barley (no BBS harvest price) keep a neutral income score.
 - Kharif-1 irrigation assumes no soil water left by the winter crop, so it is an upper estimate; heat limits for crops outside `crop_parameters.csv` are literature values marked as assumed. Onion, garlic, groundnut and vegetables are not replayed yet.
 - Speech-to-text runs in the browser (Chrome) and on Android phones with Google's recogniser; phone-call speech needs a recording first (see the phone section).

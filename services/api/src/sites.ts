@@ -21,12 +21,33 @@ const ENTRIES: Array<{ aliases: string[]; site: ManagerSite }> = [
   { aliases: ['ran_mithapukur', 'mithapukur'], site: { id: 'RAN_MITHAPUKUR', nameBangla: 'মিঠাপুকুর', nameEnglish: 'Mithapukur', lat: 25.55, lon: 89.29, placeId: 'ADM3_MithaPukur', district: 'Rangpur' } },
 ];
 
+// A null-prototype object: a site such as "constructor" or "__proto__" is not found instead of resolving to an inherited member.
 export const MANAGER_SITES: Readonly<Record<string, ManagerSite>> = Object.freeze(
-  Object.fromEntries(ENTRIES.flatMap(({ aliases, site }) => aliases.map(alias => [alias, site]))),
+  Object.assign(Object.create(null) as Record<string, ManagerSite>, Object.fromEntries(ENTRIES.flatMap(({ aliases, site }) => aliases.map(alias => [alias, site])))),
 );
 
+/** The one way a site string is turned into a lookup key: trimmed and lower case. Anything that is not a non-empty string gives null. */
+function siteKey(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const key = raw.trim().toLowerCase();
+  return key || null;
+}
+
 export function managerSiteConfig(siteId: string): ManagerSite | undefined {
-  return MANAGER_SITES[siteId.trim().toLowerCase()];
+  const key = siteKey(siteId);
+  return key !== null && Object.hasOwn(MANAGER_SITES, key) ? MANAGER_SITES[key] : undefined;
+}
+
+/**
+ * The one way a site is written wherever sites are compared (desk records, call-backs, reset, climate, area): trimmed, lower case, and an
+ * alias of a known site ("tanore", "RAJ_TANORE") turned into that site's id ("talanda"). An unknown site stays as typed (trimmed, lower
+ * case), so it matches only itself; an empty or non-string site is null and matches nothing.
+ */
+export function normalizeSite(raw: unknown): string | null {
+  const key = siteKey(raw);
+  if (key === null) return null;
+  const known = managerSiteConfig(key);
+  return known ? known.id.toLowerCase() : key;
 }
 
 /**

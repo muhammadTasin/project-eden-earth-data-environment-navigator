@@ -27,6 +27,7 @@ import type {
 import type { PlanOptionsRequest } from '../../../packages/rotation-engine/src/engine.ts';
 import { thisSeasonFit } from '../../../packages/rotation-engine/src/engine.ts';
 import { LOC } from '../../../packages/rotation-engine/src/data/location.ts';
+import { normalizeSite } from './sites.ts';
 import { FORBIDDEN_TERMS } from '../../../packages/narration-core/src/dual_gate_validator.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -48,7 +49,15 @@ if (demoEnabled() && !demoAccessCode()) {
 
 /** Desk records written before sites existed belong to the pilot site. */
 const DEFAULT_SITE = 'talanda';
-const siteOfFarmer = (farmer: FarmerRecord): string => farmer.site ?? DEFAULT_SITE;
+const siteOfFarmer = (farmer: FarmerRecord): string => normalizeSite(farmer.site ?? DEFAULT_SITE) ?? DEFAULT_SITE;
+
+/**
+ * A site as the desk compares it: undefined stays "no officer, every site" (farmer-facing callers), null and an empty or unknown site
+ * match nothing, anything else is normalised (trim, lower case, aliases such as "tanore" -> "talanda") on both sides of the comparison.
+ */
+function scopeOf(site: string | null | undefined): string | null | undefined {
+  return site === undefined ? undefined : normalizeSite(site);
+}
 
 /** An officer as the desk sees them: a demo account or a Supabase user (site comes from app_metadata.site). */
 export interface Officer {
@@ -142,8 +151,10 @@ function save(): void {
 }
 
 /** Restore the sample data (used by tests and before a demo recording). */
-export function resetDesk(site?: string): void {
+export function resetDesk(rawSite?: string | null): void {
   const fresh = seedStore();
+  const site = scopeOf(rawSite);
+  if (site === null) return; // an empty or missing site resets nothing
   if (site === undefined) {
     store.farmers = fresh.farmers;
     store.observations = fresh.observations;
@@ -282,13 +293,14 @@ export function latestObservation(farmerId: string): FieldObservation | undefine
 }
 
 /** The farmers of one site; with no site, all of them (farmer-facing code that has no officer). A manager without a site sees none. */
-export function farmers(site?: string | null): FarmerRecord[] {
+export function farmers(rawSite?: string | null): FarmerRecord[] {
+  const site = scopeOf(rawSite);
   return site === undefined ? store.farmers : store.farmers.filter(f => site !== null && siteOfFarmer(f) === site);
 }
 
-export function callbacks(site?: string | null): CallbackRequest[] {
-  if (site === undefined) return store.callbacks;
-  const ids = new Set(farmers(site).map(f => f.id));
+export function callbacks(rawSite?: string | null): CallbackRequest[] {
+  if (rawSite === undefined) return store.callbacks;
+  const ids = new Set(farmers(rawSite).map(f => f.id));
   return store.callbacks.filter(c => ids.has(c.farmerId));
 }
 
@@ -341,7 +353,8 @@ export function resolveCallback(callbackId: string, site?: string | null): Callb
 }
 
 /** Validates and stores an officer's field observation; returns an error message instead when invalid. */
-export function addObservation(officerId: string, body: any, site?: string | null): { observation?: FieldObservation; error?: string } {
+export function addObservation(officerId: string, body: any, rawSite?: string | null): { observation?: FieldObservation; error?: string } {
+  const site = scopeOf(rawSite);
   const farmer = farmerById(String(body.farmerId ?? ''));
   if (!farmer || (site !== undefined && (site === null || siteOfFarmer(farmer) !== site))) return { error: 'Unknown farmer' };
   if (!LAND_TYPES.includes(body.landType)) return { error: 'landType must be one of ' + LAND_TYPES.join(', ') };
