@@ -114,7 +114,8 @@ export interface StewardshipTip {
 export interface EnvironmentLedger {
   groundwaterPumpedM3PerHa: number;
   floodedRiceDays: number; // transplanting to two weeks before harvest: a methane proxy, not a measurement
-  ureaKgHa: number;
+  /** Urea for the whole rotation; null where the place has no SRDI soil card (no fertilizer amount is given there). */
+  ureaKgHa: number | null;
   legume: boolean;
   bareDays: number; // days in the year with no crop in the field
 }
@@ -209,7 +210,7 @@ export interface FarmerCard {
   rotationTitleBangla: string;
   rotationSubtitleBangla: string;
   season1: { name: string; variety: string; windowBangla: string; stageBangla: string; irrigationBangla: string };
-  season2: { name: string; variety: string; windowBangla: string; notesBangla: string; fertilizerBangla: string };
+  season2: { name: string; variety: string; windowBangla: string; notesBangla: string; fertilizerBangla: string; fertilizerEnglish?: string };
   alternative: { name: string; categoryBangla: string; sowingBangla: string; yieldBangla: string; noteBangla: string; marketPriceBangla: string };
   narrativeBangla: string;
   provenanceBangla: string;

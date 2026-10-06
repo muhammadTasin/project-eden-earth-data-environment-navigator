@@ -32,6 +32,8 @@ const BN_MONTHS = ['জানুয়ারি', 'ফেব্রুয়া�
 const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const tr = (bn, en) => (lang === 'en' ? en : bn);
+// Shown instead of fertilizer amounts at a place with no SRDI soil card (the same words as the server's NO_SOIL_CARD)
+const noSoilCard = () => tr('এই এলাকার মাটির কার্ড (SRDI) যোগ করা হয়নি, সার-পরামর্শ দেওয়া যাচ্ছে না', 'This area’s soil card (SRDI) has not been added, so fertilizer advice cannot be given');
 const bnDigits = (value) => String(value).replace(/\d/g, d => BN_DIGITS[Number(d)]);
 // Digits in the current language; a leading minus becomes '−' but ranges like 2003-07 keep their hyphen
 const num = (value) => (lang === 'en' ? String(value) : bnDigits(value)).replace(/(^|[\s(:])-(?=[0-9০-৯])/g, '$1−');
@@ -551,13 +553,13 @@ function renderLedger(advice) {
           <td>${escapeHtml(tr(o.nameBangla, o.nameEnglish))}${o.isBaseline ? ` <span class="tag tag-yellow">${tr('প্রচলিত', 'current practice')}</span>` : ''}</td>
           <td>${bigNum(o.ledger.groundwaterPumpedM3PerHa)}</td>
           <td>${num(o.ledger.floodedRiceDays)}</td>
-          <td>${num(o.ledger.ureaKgHa)}</td>
+          <td>${o.ledger.ureaKgHa === null ? '—' : num(o.ledger.ureaKgHa)}</td>
           <td>${yesNo(o.ledger.legume)}</td>
           <td>${num(o.ledger.bareDays)}</td>
           <td>${num(Math.round((o.scores.pest ?? 0) * 100))}</td>
         </tr>`).join('')}
       </tbody>
-    </table>`);
+    </table>${rows.some(o => o.ledger.ureaKgHa === null) ? `<p class="muted small">${escapeHtml(noSoilCard())}</p>` : ''}`);
 }
 
 function pestReportsHtml(reports) {
@@ -767,11 +769,11 @@ function renderEvidence(advice) {
       `<li><strong>GLDAS-2.2:</strong> ১০ থেকে ১৯ নভেম্বরে শিকড় অঞ্চল থেকে আরও ~${num(gldas.lostNov10To19)} মিমি পানি শুকায়; SMAP-এর সাথে মিল (Spearman ${num(gldas.smapSpearman)})।</li>`,
       `<li><strong>GLDAS-2.2:</strong> the root zone loses another ~${gldas.lostNov10To19} mm between 10 and 19 Nov; it agrees with SMAP (Spearman ${gldas.smapSpearman}).</li>`,
     ) : '',
-    tr(
+    soil.rotationUreaKgHa === null ? `<li>${escapeHtml(noSoilCard())}</li>` : tr(
       `<li><strong>SRDI তালন্দ কার্ড:</strong> ${escapeHtml(soil.srdiSoilType || '')}; ইউরিয়া ${num(soil.rabiUreaKgHa)} কেজি/হেক্টর (${rabi.cropBangla})।</li>`,
       `<li><strong>SRDI Talanda card:</strong> Kharia soil; urea ${soil.rabiUreaKgHa} kg/ha for ${rabi.crop.toLowerCase()}.</li>`,
     ),
-    boroSoil ? tr(
+    boroSoil && soil.rotationUreaKgHa !== null ? tr(
       `<li><strong>পুরো চক্রে ইউরিয়া:</strong> ${num(soil.rotationUreaKgHa)} কেজি/হেক্টর, বোরো চক্রে ${num(boroSoil.rotationUreaKgHa)} কেজি।</li>`,
       `<li><strong>Urea for the whole rotation:</strong> ${soil.rotationUreaKgHa} kg/ha, against ${boroSoil.rotationUreaKgHa} kg/ha with Boro.</li>`,
     ) : '',
@@ -849,18 +851,20 @@ function renderIpm(advice) {
         <div class="ipm-score">${num(Math.round((opt.scores.pest ?? 0) * 100))}<small>/${num(100)}</small></div>
         <ul class="kv-list">
           <li><span>${tr('ধানের পোকার চক্র ভাঙে', 'Breaks the rice-pest cycle')}</span><strong>${yesNo(m.breaksRicePestCycle)}</strong></li>
-          <li><span>${tr('পুরো চক্রে ইউরিয়া (SRDI)', 'Rotation urea (SRDI)')}</span><strong>${num(m.rotationUreaKgHa)} ${tr('কেজি/হেক্টর', 'kg/ha')}</strong></li>
+          ${m.rotationUreaKgHa === null || m.rotationUreaKgHa === undefined ? '' : `<li><span>${tr('পুরো চক্রে ইউরিয়া (SRDI)', 'Rotation urea (SRDI)')}</span><strong>${num(m.rotationUreaKgHa)} ${tr('কেজি/হেক্টর', 'kg/ha')}</strong></li>`}
           <li><span>${tr('রোগ প্রতিরোধী জাত', 'Disease-resistant variety')}</span><strong>${resistant}</strong></li>
           <li><span>${tr('সময়মতো বোনা', 'Sown on time')}</span><strong>${yesNo(m.sownOnTime)}</strong></li>
         </ul>
       </div>`;
   };
+  const noCard = top.dimensionDetails.pest?.metrics.rotationUreaKgHa === null;
   const topUrea = top.dimensionDetails.pest?.metrics.rotationUreaKgHa;
   const boroUrea = boro?.dimensionDetails.pest?.metrics.rotationUreaKgHa;
   const less = topUrea && boroUrea ? Math.round((100 * (boroUrea - topUrea)) / boroUrea) : null;
   setHtml('ipmCompare', `
     ${column(top)}
     ${boro && boro.id !== top.id ? column(boro) : ''}
+    ${noCard ? `<p class="ipm-summary">${escapeHtml(noSoilCard())}</p>` : ''}
     ${less !== null && less > 0 ? `<p class="ipm-summary">${tr(`প্রস্তাবিত চক্রে বছরে ইউরিয়া ${num(less)}% কম, আর ধানের পোকার চক্র ভাঙে। কম নাইট্রোজেন আর খাবারের বিরতি মানে কম পোকা, তাই কম স্প্রে।`, `The recommended rotation uses ${less}% less urea a year and breaks the rice-pest cycle. Less nitrogen and a break in the food supply mean fewer pests, so fewer sprays.`)}</p>` : ''}
   `);
 
@@ -1077,7 +1081,7 @@ function renderKnowledge() {
   const k = officerKnowledge;
   if (!k) return;
   const kg = (v) => num(Number.isInteger(v) ? v : v.toFixed(1));
-  setHtml('officerKnowledge', `
+  const srdiBlock = !k.srdi ? `<div class="knowledge-block"><p class="muted">${escapeHtml(noSoilCard())}</p></div>` : `
     <div class="knowledge-block">
       <h4>${tr('SRDI তালন্দ কার্ড (মাঝারি উঁচু জমি, কেজি/হেক্টর)', 'SRDI Talanda card (medium-high land, kg/ha)')}</h4>
       <p class="muted">${escapeHtml(tr(`${k.srdi.soilTypeBangla}; কৃষকের অ্যাপে শুধু ইউরিয়া, টিএসপি, এমওপি যায়।`, 'Kharia soil; the farmer app shows only urea, TSP and MoP.'))}</p>
@@ -1086,6 +1090,9 @@ function renderKnowledge() {
         <tbody>${k.srdi.rows.map(r => `<tr><td>${escapeHtml(tr(r.cropBangla, r.cropEnglish))}</td><td>${kg(r.dose.ureaKgHa)}</td><td>${kg(r.dose.tspKgHa)}</td><td>${kg(r.dose.mopKgHa)}</td><td>${kg(r.dose.gypsumKgHa)}</td><td>${kg(r.dose.zincSulphateKgHa)}</td><td>${kg(r.dose.boricAcidKgHa)}</td></tr>`).join('')}</tbody>
       </table></div>
     </div>
+  `;
+  setHtml('officerKnowledge', `
+    ${srdiBlock}
     <div class="knowledge-block">
       <h4>${tr('আমন রি-প্লে (২০০১–২০২৫)', 'Aman replay (2001–2025)')}</h4>
       <div class="table-responsive"><table class="data-table compact">
@@ -1321,7 +1328,7 @@ function renderCompanion(advice) {
   setText('compRotation', `${tr('ফসল চক্র', 'Rotation')}: ${tr(top.nameBangla, top.nameEnglish)}`);
   setText('compWater', `${num(water.rabiNetIrrigationMm)} ${tr('মিমি', 'mm')}`);
   setText('compHeat', `${num(heat.hotDays ?? 0)} ${tr('দিন', 'days')}`);
-  setText('compUrea', `${num(Math.round(soil.rotationUreaKgHa || 0))} ${tr('কেজি', 'kg')}`);
+  setText('compUrea', soil.rotationUreaKgHa === null || soil.rotationUreaKgHa === undefined ? '—' : `${num(Math.round(soil.rotationUreaKgHa))} ${tr('কেজি', 'kg')}`);
   setText('compFooter', `${tr('রিলিজ', 'Release')} ${advice.release.id} • ${tr('ক্যাশড ভার্সন', 'cached version')}`);
 }
 

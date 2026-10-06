@@ -408,7 +408,8 @@ function knowledgePack() {
   const advice = adviseWithNarration(planRequest({}));
   const rabiKeys = Object.keys(LOC.rabi).filter(k => k !== 'BARI Gom 33 (Late)');
   return {
-    srdi: {
+    // the officer reference is the pilot's; a place with no soil card has none to show
+    srdi: LOC.srdi ? {
       soilTypeBangla: LOC.srdi.soilTypeBangla,
       landTypeBangla: LOC.srdi.landTypeBangla,
       source: LOC.srdi.source,
@@ -416,7 +417,7 @@ function knowledgePack() {
         { cropBangla: 'আমন ধান', cropEnglish: 'Aman rice', dose: LOC.srdi.aman },
         ...rabiKeys.map(k => ({ cropBangla: RABI_CATALOG[k].cropBangla, cropEnglish: RABI_CATALOG[k].crop, dose: LOC.rabi[k].fertilizer })),
       ],
-    },
+    } : null,
     amanReplay: Object.values(LOC.aman).map(r => ({
       variety: r.variety,
       varietyBangla: AMAN_CATALOG[r.variety]?.varietyBangla ?? r.variety,

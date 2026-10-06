@@ -94,6 +94,13 @@ async function run() {
   check(places.upazilas.length === 544, `every upazila is listed (got ${places.upazilas.length})`);
   const godagari = await (await fetch(`${BASE}/api/v1/advice`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ unionId: 'ADM3_Godagari' }) })).json();
   check(godagari.options?.length === 5 && godagari.scope.union_id === 'ADM3_Godagari', 'an upazila outside the pilot gets ranked rotations');
+  // no SRDI soil card outside the pilot: the calendar stays, but no fertilizer amount and the plain message instead
+  const NO_CARD_BN = 'এই এলাকার মাটির কার্ড (SRDI) যোগ করা হয়নি, সার-পরামর্শ দেওয়া যাচ্ছে না';
+  check(godagari.farmer_card.season2.fertilizerBangla === NO_CARD_BN, 'the farmer card carries the no-soil-card message instead of doses');
+  check(godagari.options.every(o => o.ledger.ureaKgHa === null && o.dimensionDetails.soil.metrics.rotationUreaKgHa === null && o.timeline.length > 0), 'no urea numbers outside the pilot, calendar kept');
+  check(!/ureaKgHa":\s*[0-9]|tspKgHa":\s*[0-9]|mopKgHa":\s*[0-9]/.test(JSON.stringify(godagari)), 'no fertilizer dose number anywhere in the advice JSON');
+  const talandaAdvice = await (await fetch(`${BASE}/api/v1/advice`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ unionId: 'talanda_tanore' }) })).json();
+  check(talandaAdvice.options.every(o => typeof o.ledger.ureaKgHa === 'number') && !talandaAdvice.farmer_card.season2.fertilizerBangla.includes(NO_CARD_BN), 'the pilot still has its fertilizer numbers');
   const sylhetId = places.upazilas.find(u => u.district === 'Sylhet').id;
   const sylhet = await (await fetch(`${BASE}/api/v1/overview?place=${sylhetId}`)).json();
   check(sylhet.scope.district === 'Sylhet' && sylhet.aman_replay.length >= 5, 'the overview follows the chosen place');
@@ -482,6 +489,57 @@ async function run() {
   const demoText = await demoSources.text();
   for (const value of Object.values(FAKE_SECRETS)) check(!demoText.includes(value), 'the demo response must never contain a secret value');
   console.log('✓ Data sources: 401 without a token, 403 for a non-manager, 200 for a manager, flags only (no secret)');
+
+  // Everything a farmer hears or is sent (narration, audio script, voice reply, SMS, call script, keypad call, keypad-9 survey
+  // answers, channel acknowledgements, the assistant): outside the pilot it carries no fertilizer amount and nothing from the Talanda SRDI card
+  console.log('Testing spoken and delivered text outside the pilot ...');
+  const postJson = async (route, body) => (await fetch(`${BASE}${route}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
+  const phone = '01712345678';
+  const NO_CARD = 'এই এলাকার মাটির কার্ড (SRDI) যোগ করা হয়নি, সার-পরামর্শ দেওয়া যাচ্ছে না';
+  const FERT_AMOUNT = /(urea|tsp|mop|potash|gypsum|zinc|ইউরিয়া|টিএসপি|এমওপি|পটাশ|জিপসাম|জিংক)[^.।]*[0-9০-৯]|[0-9০-৯][^.।]*(kg|কেজি)[^.।]*(urea|tsp|mop|ইউরিয়া|টিএসপি|এমওপি)/i;
+  const SOIL_CARD_TEXT = /SRDI|Kharia|খিয়ার|এসআরডিআই|Talanda card|তালন্দ কার্ড/;
+  const TALANDA_WORDS = /তালন্দ|Talanda|তানোর|Tanore/;
+  const deliveredTexts = async (place, near) => {
+    const texts = [];
+    const add = (name, value) => { if (typeof value === 'string' && value) texts.push({ name, value }); };
+    const advice = await postJson('/api/v1/advice', { unionId: place });
+    const card = advice.farmer_card;
+    for (const k of ['audioScriptBangla', 'narrativeBangla', 'provenanceBangla']) add(`farmer_card.${k}`, card[k]);
+    add('farmer_card.season2.fertilizerBangla', card.season2.fertilizerBangla);
+    add('farmer_card.season2.notesBangla', card.season2.notesBangla);
+    const narration = await postJson('/api/v1/narrate', { advice, selectedOptionId: advice.options[0].id });
+    for (const k of ['banglaSpeechText', 'englishGloss', 'banglaKeypadPrompt']) add(`narrate.${k}`, narration[k]);
+    for (const text of ['আমি মসুর ও সরিষা করতে চাই', 'আলু করতে চাই, সার কত দেব', 'বোরো ধান করব']) {
+      const v = await postJson('/api/v1/voice/answer', { unionId: place, text });
+      add(`voice[${text}].speech`, v.reply.speechBangla); add(`voice[${text}].sms`, v.reply.smsBangla);
+    }
+    const call = await postJson('/api/v1/calls/advice', { unionId: place, phone, text: 'গম করতে চাই' });
+    call.call.request.texts.forEach((t, i) => add(`calls/advice.texts[${i}]`, t));
+    add('calls/advice.sms', call.reply.smsBangla);
+    const keypad = await postJson('/api/v1/calls/keypad', { unionId: place, phone });
+    add('calls/keypad.menu', keypad.menu); add('calls/keypad.request', JSON.stringify(keypad.call.request ?? keypad.call));
+    for (const key of ['1', '2', '3', '4', '5', '9']) {
+      const c = await postJson('/api/v1/channel-events', { keypad: key, farmerId: 'F01', unionId: place });
+      add(`channel-events[${key}].bn`, c.acknowledgementBangla); add(`channel-events[${key}].en`, c.acknowledgementEnglish);
+    }
+    const assistant = await postJson('/api/v1/ai/ask', { query: 'এই এলাকায় সারের সুপারিশ কী?', ...near });
+    return { texts, assistant };
+  };
+  const away = await deliveredTexts('ADM3_Godagari', { lat: 24.4, lon: 88.3 });
+  check(away.texts.length >= 30, `the check really covers the delivered texts (${away.texts.length} texts)`);
+  for (const { name, value } of away.texts) {
+    const text = value.replace(NO_CARD, '');
+    check(!FERT_AMOUNT.test(text), `Godagari ${name} carries a fertilizer amount: ${text.slice(0, 120)}`);
+    check(!SOIL_CARD_TEXT.test(text), `Godagari ${name} carries Talanda SRDI card text: ${text.slice(0, 120)}`);
+    check(!TALANDA_WORDS.test(text), `Godagari ${name} names Talanda or Tanore: ${text.slice(0, 120)}`);
+  }
+  check(away.assistant.evidenceLevel === 'insufficient_evidence' && !FERT_AMOUNT.test(away.assistant.answer) && !/[0-9০-৯]+ কেজি/.test(away.assistant.answer), 'the assistant gives no fertilizer amount away from Talanda');
+  const home = await deliveredTexts('talanda_tanore', { lat: 24.62, lon: 88.56 });
+  check(home.texts.some(({ name, value }) => name === 'farmer_card.season2.fertilizerBangla' && /ইউরিয়া.*টিএসপি.*এমওপি/.test(value)), 'the pilot\'s farmer card keeps its fertilizer line');
+  check(home.assistant.evidenceLevel === 'reference_card' && /ইউরিয়া/.test(home.assistant.answer), 'the assistant still reads the Talanda card at Talanda');
+  check(home.texts.every(({ value }) => !value.includes(NO_CARD)), 'the no-soil-card message never reaches a pilot text');
+  check(home.texts.some(({ name }) => name.startsWith('calls/advice')) && home.texts.some(({ name }) => name.startsWith('channel-events')), 'the pilot\'s call and acknowledgement texts are still produced');
+  console.log(`✓ Delivered text: ${away.texts.length} Godagari texts (narration, audio script, voice, SMS, call script, keypad menu, acknowledgements) carry no fertilizer amount, Talanda soil card text or Talanda name; the pilot is unchanged`);
 
   // Site scope over HTTP: a manager sees and changes only their own site's desk; the area parameter accepts known ids only
   console.log('Testing manager site scope ...');

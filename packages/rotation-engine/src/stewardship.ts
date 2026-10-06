@@ -8,7 +8,8 @@
  */
 import fs from 'node:fs';
 import type { CandidateRotation, StewardshipTip } from '@project-eden/contracts';
-import { LOC } from './data/location.ts';
+import { rotationDose } from './data/lookup.ts';
+import { LOC, NO_SOIL_CARD } from './data/location.ts';
 import { bnDecimal, bnDigits, bnNumber } from './bn.ts';
 
 const BIGHA_HA = 0.1336;
@@ -75,10 +76,11 @@ const ACID = new Set(['Strongly Acidic', 'Very Strongly Acidic']);
 /** What the usual Aman-Boro rotation (BRRI dhan49 then BRRI dhan28) takes at this place, from the same records. */
 function baseline() {
   const boro = LOC.rabi['BRRI dhan28'];
+  const doses = [LOC.srdi?.aman ?? null, boro.fertilizer];
   return {
     pumpedM3PerHa: boro.pumpedM3PerHa,
-    ureaKgHa: LOC.srdi.aman.ureaKgHa + boro.fertilizer.ureaKgHa,
-    tspKgHa: LOC.srdi.aman.tspKgHa + boro.fertilizer.tspKgHa,
+    ureaKgHa: rotationDose(doses, 'ureaKgHa'), // null where there is no SRDI soil card
+    tspKgHa: rotationDose(doses, 'tspKgHa'),
   };
 }
 
@@ -88,7 +90,7 @@ const perBigha = (kgHa: number) => kgHa * BIGHA_HA;
  * Tips for one option. `tspKgHa` is the plan's phosphate per hectare; `riceCrops` how many rice crops the year holds;
  * `cropIds` the year's crops (engine ids such as 'aman', 'wheat', 'jute').
  */
-export function stewardshipTips(option: CandidateRotation, tspKgHa: number, riceCrops: number, cropIds: string[]): StewardshipTip[] {
+export function stewardshipTips(option: CandidateRotation, tspKgHa: number | null, riceCrops: number, cropIds: string[]): StewardshipTip[] {
   const base = baseline();
   const ledger = option.ledger!;
   const tips: StewardshipTip[] = [];
@@ -115,28 +117,38 @@ export function stewardshipTips(option: CandidateRotation, tspKgHa: number, rice
     });
   }
 
-  // Fertilizer: urea and phosphate against the usual rotation; legumes fix nitrogen; extra urea ends up in water
-  const ureaLess = perBigha(base.ureaKgHa - ledger.ureaKgHa);
-  const tspLess = perBigha(base.tspKgHa - tspKgHa);
+  // Fertilizer: urea and phosphate against the usual rotation; legumes fix nitrogen; extra urea ends up in water.
+  // With no SRDI soil card at this place there are no amounts to compare: the tip says so instead.
   const legume = ledger.legume;
-  tips.push({
-    kind: 'fertilizer',
-    bn: [
-      ureaLess > 0.5
-        ? `প্রচলিত চক্রের চেয়ে বছরে বিঘাপ্রতি প্রায় ${bnDecimal(ureaLess)} কেজি কম ইউরিয়া${tspLess > 0.5 ? ` ও ${bnDecimal(tspLess)} কেজি কম টিএসপি` : ''} লাগে।`
-        : `এই চক্রে বছরে বিঘাপ্রতি ইউরিয়া প্রায় ${bnDecimal(perBigha(ledger.ureaKgHa))} কেজি লাগে।`,
-      legume ? 'ডাল ফসলের শিকড়ের গুটি বাতাসের নাইট্রোজেন মাটিতে ধরে রাখে।' : '',
-      'কার্ডের মাত্রার বেশি ইউরিয়া দিলে বাড়তি নাইট্রোজেন নাইট্রেট হয়ে পানিতে মেশে।',
-    ].filter(Boolean).join(' '),
-    en: [
-      ureaLess > 0.5
-        ? `About ${ureaLess.toFixed(1)} kg less urea${tspLess > 0.5 ? ` and ${tspLess.toFixed(1)} kg less TSP` : ''} per bigha a year than the usual rotation.`
-        : `About ${perBigha(ledger.ureaKgHa).toFixed(1)} kg of urea per bigha a year.`,
-      legume ? 'The legume fixes nitrogen from the air in its root nodules.' : '',
-      'Urea above the card dose leaves as nitrate in the water.',
-    ].filter(Boolean).join(' '),
-    source: 'SRDI Fertilizer Recommendation cards (Talanda stand-in); FAO fertilizer guidance',
-  });
+  if (ledger.ureaKgHa === null || base.ureaKgHa === null || tspKgHa === null || base.tspKgHa === null) {
+    tips.push({
+      kind: 'fertilizer',
+      bn: [NO_SOIL_CARD.bn + '।', legume ? 'ডাল ফসলের শিকড়ের গুটি বাতাসের নাইট্রোজেন মাটিতে ধরে রাখে।' : ''].filter(Boolean).join(' '),
+      en: [NO_SOIL_CARD.en + '.', legume ? 'The legume fixes nitrogen from the air in its root nodules.' : ''].filter(Boolean).join(' '),
+      source: 'No SRDI soil card for this area',
+    });
+  } else {
+    const ureaLess = perBigha(base.ureaKgHa - ledger.ureaKgHa);
+    const tspLess = perBigha(base.tspKgHa - tspKgHa);
+    tips.push({
+      kind: 'fertilizer',
+      bn: [
+        ureaLess > 0.5
+          ? `প্রচলিত চক্রের চেয়ে বছরে বিঘাপ্রতি প্রায় ${bnDecimal(ureaLess)} কেজি কম ইউরিয়া${tspLess > 0.5 ? ` ও ${bnDecimal(tspLess)} কেজি কম টিএসপি` : ''} লাগে।`
+          : `এই চক্রে বছরে বিঘাপ্রতি ইউরিয়া প্রায় ${bnDecimal(perBigha(ledger.ureaKgHa))} কেজি লাগে।`,
+        legume ? 'ডাল ফসলের শিকড়ের গুটি বাতাসের নাইট্রোজেন মাটিতে ধরে রাখে।' : '',
+        'কার্ডের মাত্রার বেশি ইউরিয়া দিলে বাড়তি নাইট্রোজেন নাইট্রেট হয়ে পানিতে মেশে।',
+      ].filter(Boolean).join(' '),
+      en: [
+        ureaLess > 0.5
+          ? `About ${ureaLess.toFixed(1)} kg less urea${tspLess > 0.5 ? ` and ${tspLess.toFixed(1)} kg less TSP` : ''} per bigha a year than the usual rotation.`
+          : `About ${perBigha(ledger.ureaKgHa).toFixed(1)} kg of urea per bigha a year.`,
+        legume ? 'The legume fixes nitrogen from the air in its root nodules.' : '',
+        'Urea above the card dose leaves as nitrate in the water.',
+      ].filter(Boolean).join(' '),
+      source: 'SRDI Fertilizer Recommendation cards (Talanda stand-in); FAO fertilizer guidance',
+    });
+  }
 
   // Pesticide: NASA SEDAC's estimate for the year's crops against Aman-Boro, the rice-pest cycle, and safe use
   const plan = pesticideEstimate(cropIds);
@@ -219,8 +231,8 @@ export function stewardshipTips(option: CandidateRotation, tspKgHa: number, rice
   });
   tips.push({
     kind: 'metals',
-    bn: `টিএসপির মতো ফসফেট সারে অল্প ক্যাডমিয়াম থাকে: এই চক্রে বছরে বিঘাপ্রতি টিএসপি প্রায় ${bnDecimal(perBigha(tspKgHa))} কেজি, কার্ডের বেশি দেবেন না। কলকারখানা, ট্যানারি বা ব্যাটারি ভাঙার জায়গার বর্জ্য পানি দিয়ে সেচ দেবেন না, শহরের স্লাজ জমিতে দেবেন না: সীসা, ক্রোমিয়াম ও পারদ মাটিতে থেকে যায়। উপগ্রহ এগুলো মাপতে পারে না; সন্দেহ হলে SRDI-তে মাটি পরীক্ষা করান।`,
-    en: `Phosphate fertilizers such as TSP carry some cadmium: this rotation uses about ${perBigha(tspKgHa).toFixed(1)} kg of TSP per bigha a year; do not exceed the card. Do not irrigate with waste water from factories, tanneries or battery-breaking sites, or spread city sludge: lead, chromium and mercury stay in the soil. Satellites cannot measure them; test suspect soil at SRDI.`,
+    bn: `টিএসপির মতো ফসফেট সারে অল্প ক্যাডমিয়াম থাকে: ${tspKgHa === null ? 'কৃষি কর্মকর্তার দেওয়া মাত্রার বেশি দেবেন না।' : `এই চক্রে বছরে বিঘাপ্রতি টিএসপি প্রায় ${bnDecimal(perBigha(tspKgHa))} কেজি, কার্ডের বেশি দেবেন না।`} কলকারখানা, ট্যানারি বা ব্যাটারি ভাঙার জায়গার বর্জ্য পানি দিয়ে সেচ দেবেন না, শহরের স্লাজ জমিতে দেবেন না: সীসা, ক্রোমিয়াম ও পারদ মাটিতে থেকে যায়। উপগ্রহ এগুলো মাপতে পারে না; সন্দেহ হলে SRDI-তে মাটি পরীক্ষা করান।`,
+    en: `Phosphate fertilizers such as TSP carry some cadmium: ${tspKgHa === null ? 'do not exceed the dose your agriculture officer gives.' : `this rotation uses about ${perBigha(tspKgHa).toFixed(1)} kg of TSP per bigha a year; do not exceed the card.`} Do not irrigate with waste water from factories, tanneries or battery-breaking sites, or spread city sludge: lead, chromium and mercury stay in the soil. Satellites cannot measure them; test suspect soil at SRDI.`,
     source: 'EU Regulation 2019/1009 (cadmium in phosphate fertilizers); WHO (2006) guidelines for the safe use of wastewater in agriculture',
   });
   return tips;

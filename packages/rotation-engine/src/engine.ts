@@ -13,7 +13,8 @@ import type {
 } from '@project-eden/contracts';
 import { FeatureRegistry } from './registry.ts';
 import { RELEASE } from './data/tanore_replay_data.ts';
-import { LOC, placeFor, withPlace } from './data/location.ts';
+import { LOC, NO_SOIL_CARD, placeFor, withPlace } from './data/location.ts';
+import { rotationDose } from './data/lookup.ts';
 import { AMAN_CATALOG, RABI_CATALOG } from './data/crop_catalog.ts';
 import type { AmanCatalogEntry } from './data/crop_catalog.ts';
 import type { AmanRecord, MonthDay, RabiRecord } from './data/release_types.ts';
@@ -108,6 +109,17 @@ export class UnsupportedUnionError extends Error {
 /** Weight of a score the farmer gave no priority for, so the stated priorities decide the ranking. */
 const UNSTATED_PRIORITY_WEIGHT = 0.05;
 /** One bigha of 33 decimals, in hectares. */
+
+const roundOrNull = (value: number | null): number | null => (value === null ? null : Math.round(value));
+
+/** IPM tips that lean on the SRDI card ("do not go above the SRDI urea dose") only where the place has one. */
+function withoutSoilCardTips<T extends { en: string; source?: string }>(tips: T[]): T[] {
+  if (LOC.srdi) return tips;
+  return tips
+    .filter(tip => !/SRDI/.test(tip.en))
+    .map(tip => (tip.source ? { ...tip, source: tip.source.replace(/;? ?SRDI Talanda card;? ?/, '').trim() } : tip));
+}
+
 const BIGHA_HA = 0.1336;
 const DAY_MS = 86_400_000;
 const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -596,14 +608,16 @@ export class RotationEngine {
             `Prepare the field for ${rabiName.crop.toLowerCase()} before ${enDate(rabi.sowing)}.`,
           ];
     const actionsEnglish = [...monsoonActionsEn, rabiActionEn];
-    const ipmActions: IpmTip[] = [...(IPM_BY_RABI[spec.rabi] ?? []), ...(aman ? IPM_AMAN : []), ...IPM_GENERAL];
+    const ipmActions: IpmTip[] = withoutSoilCardTips([...(IPM_BY_RABI[spec.rabi] ?? []), ...(aman ? IPM_AMAN : []), ...IPM_GENERAL]);
     // The research's environment ledger: rice stands flooded from transplanting to two weeks before harvest
     const relayOverlap = relayDays && aman ? Math.max(0, seasonDay(aman.maturity) - seasonDay(rabi.sowing)) : 0;
     const monsoonDays = aman ? aman.fieldDays : k2 ? k2.record.fieldDays : 0;
+    // the slots' fertilizer doses; null in a slot = no SRDI soil card at this place, so no fertilizer total
+    const doseParts = [aman ? (LOC.srdi?.aman ?? null) : undefined, k2?.record.fertilizer, rabi.fertilizer, k1?.fertilizer];
     const ledger = {
       groundwaterPumpedM3PerHa: rabi.pumpedM3PerHa + (k1?.pumpedM3PerHa ?? 0) + (k2?.record.pumpedM3PerHa ?? 0),
       floodedRiceDays: (aman ? aman.fieldDays - 14 : 0) + (rabiName.isRice ? rabi.fieldDays - 14 : 0) + (k1 && k1Name?.isRice ? k1.fieldDays - 14 : 0),
-      ureaKgHa: Math.round((aman ? LOC.srdi.aman.ureaKgHa : 0) + (k2?.record.fertilizer.ureaKgHa ?? 0) + rabi.fertilizer.ureaKgHa + (k1?.fertilizer.ureaKgHa ?? 0)),
+      ureaKgHa: roundOrNull(rotationDose(doseParts, 'ureaKgHa')),
       legume: rabiName.isLegume || Boolean(k1Name?.isLegume) || Boolean(k2?.catalog.isLegume),
       bareDays: 365 - monsoonDays - rabi.fieldDays - (k1?.fieldDays ?? 0) + relayOverlap,
     };
@@ -648,7 +662,7 @@ export class RotationEngine {
     const k1Bangla = k1Name ? ` → ${k1Name.varietyBangla}` : '';
     const k1English = k1 && spec.kharif1 ? ` -> ${varietyEnglish(spec.kharif1, k1)}` : '';
     const fieldFree = mon.ready ?? k1Late;
-    const tspKgHa = (aman ? LOC.srdi.aman.tspKgHa : 0) + (k2?.record.fertilizer.tspKgHa ?? 0) + rabi.fertilizer.tspKgHa + (k1?.fertilizer.tspKgHa ?? 0);
+    const tspKgHa = rotationDose(doseParts, 'tspKgHa');
     const riceCrops = (aman ? 1 : 0) + (rabiName.isRice ? 1 : 0) + (k1Name?.isRice ? 1 : 0);
     const option: CandidateRotation = {
       id: spec.id,
@@ -955,7 +969,7 @@ export class RotationEngine {
     const perBigha = (kgHa: number) => bnDecimal(kgHa * BIGHA_HA);
     const deadlineText = rabi.sowingWindow ? ` (শেষ সময় ${bnDate(rabi.sowingWindow[1])})` : '';
     const savedM3 = boro.pumpedM3PerHa - rabi.pumpedM3PerHa;
-    const doseSource = (dose as { source?: string }).source?.startsWith('BARI') ? 'BARI হাতবই' : 'SRDI তালন্দ কার্ড';
+    const doseSource = (dose as { source?: string } | null)?.source?.startsWith('BARI') ? 'BARI হাতবই' : 'SRDI তালন্দ কার্ড';
     const k1 = best.kharif1 ? cropSlot(best.kharif1) : undefined;
 
     const altSlot = alt ? cropSlot(alt.rabi) : undefined;
@@ -1005,7 +1019,10 @@ export class RotationEngine {
         variety: rabiName.varietyBangla,
         windowBangla: `${sowWord(rabiName)}: ~${bnDate(rabi.sowing)}${deadlineText} • কাটা: ~${bnDate(rabi.harvest)}`,
         notesBangla: `সেচ লাগে প্রায় ${bnDigits(rabi.netIrrigationMm)} মিমি${rabiName.isLegume ? '; ডাল ফসল মাটিতে নাইট্রোজেন যোগ করে' : ''}`,
-        fertilizerBangla: `প্রতি বিঘায় (৩৩ শতক) ইউরিয়া ${perBigha(dose.ureaKgHa)}, টিএসপি ${perBigha(dose.tspKgHa)}, এমওপি ${perBigha(dose.mopKgHa)} কেজি (${doseSource})`,
+        fertilizerBangla: dose
+          ? `প্রতি বিঘায় (৩৩ শতক) ইউরিয়া ${perBigha(dose.ureaKgHa)}, টিএসপি ${perBigha(dose.tspKgHa)}, এমওপি ${perBigha(dose.mopKgHa)} কেজি (${doseSource})`
+          : NO_SOIL_CARD.bn,
+        ...(dose ? {} : { fertilizerEnglish: NO_SOIL_CARD.en }), // the pilot's card is unchanged; elsewhere the English line too
       },
       alternative: altRabi && altName && alt
         ? {
@@ -1018,7 +1035,7 @@ export class RotationEngine {
           }
         : { name: 'তথ্য পাওয়া যায়নি', categoryBangla: '', sowingBangla: '', yieldBangla: '', noteBangla: '', marketPriceBangla: 'তথ্য পাওয়া যায়নি' },
       narrativeBangla: opening + k1Text,
-      provenanceBangla: `তথ্যসূত্র: নাসা POWER ও GPM IMERG দিয়ে ${bnDigits(aman?.totalSeasons ?? 25)} মৌসুমের পানির হিসাব, SRDI তালন্দ কার্ড, BRRI/BARI সময়সূচি। রিলিজ ${RELEASE.id}।`,
+      provenanceBangla: `তথ্যসূত্র: নাসা POWER ও GPM IMERG দিয়ে ${bnDigits(aman?.totalSeasons ?? 25)} মৌসুমের পানির হিসাব, ${LOC.srdi ? 'SRDI তালন্দ কার্ড, ' : ''}BRRI/BARI সময়সূচি। রিলিজ ${RELEASE.id}।`,
       audioScriptBangla: '',
       audioDurationSeconds: 0,
     };
@@ -1093,7 +1110,7 @@ export class RotationEngine {
       const { record, catalog } = cropSlot(key);
       const facts = replayFacts(choiceIdOf(key))!;
       const heat = record.heat ? `, ${record.heat.hotDays} of ${record.heat.windowDays} days above ${record.heat.thresholdC} C at ${record.heat.stage}${facts.heat?.assumed ? ' (assumed limit)' : ''}` : '';
-      return `${catalog.crop} sown ${enDate(record.sowing)} (crop-choice replay, ${choiceReplay().seasons}): net irrigation ~${record.netIrrigationMm} mm (p10-p90 ${record.netIrrigationRangeMm[0]}-${record.netIrrigationRangeMm[1]})${heat}; fertilizer from the ${(record.fertilizer as { source?: string }).source ?? 'SRDI Talanda card'}.`;
+      return `${catalog.crop} sown ${enDate(record.sowing)} (crop-choice replay, ${choiceReplay().seasons}): net irrigation ~${record.netIrrigationMm} mm (p10-p90 ${record.netIrrigationRangeMm[0]}-${record.netIrrigationRangeMm[1]})${heat}${record.fertilizer ? `; fertilizer from the ${(record.fertilizer as { source?: string }).source ?? 'SRDI Talanda card'}` : '; no fertilizer advice (no SRDI soil card for this area)'}.`;
     };
     const saaoNotes = [
       aman
@@ -1112,7 +1129,7 @@ export class RotationEngine {
     const stale: AdviceJSON['stale_or_missing_inputs'] = [
       { dataset: 'DAM farm-gate prices and farmer cost survey', issue: 'Not collected yet; income uses illustrative team estimates', affectedDimension: 'income' },
       { dataset: 'Farmer interviews in Talanda', issue: 'Priority weights are defaults until interviews', affectedDimension: 'all' },
-      { dataset: 'Flood model for Barind land', issue: 'Not modelled; land-type assumption from the SRDI card', affectedDimension: 'flood' },
+      { dataset: 'Flood model for Barind land', issue: LOC.srdi ? 'Not modelled; land-type assumption from the SRDI card' : 'Not modelled; land type is the one chosen, not from a soil card', affectedDimension: 'flood' },
     ];
     if (useChoice) {
       stale.push({ dataset: 'Heat limits for crops outside crop_parameters.csv', issue: 'Literature values, marked as assumed in the crop-choice replay', affectedDimension: 'heat' });

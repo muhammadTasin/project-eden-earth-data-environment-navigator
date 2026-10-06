@@ -1,5 +1,5 @@
 import type { IEvidenceDimensionPlugin, EvaluationContext, DimensionScoreResult } from '@project-eden/contracts';
-import { amanOrNull, rabiOf, kharif1Of, kharif2Of, clampScore } from '../data/lookup.ts';
+import { amanOrNull, rabiOf, kharif1Of, kharif2Of, clampScore, rotationDose } from '../data/lookup.ts';
 import { LOC } from '../data/location.ts';
 import { RESISTANT_VARIETIES } from '../data/ipm_catalog.ts';
 import { bnDigits, seasonDay } from '../bn.ts';
@@ -29,15 +29,16 @@ export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
     // each extra rice crop keeps them fed.
     const riceCrops = (amanSlot ? 1 : 0) + (rabiName.hostGroup === 'rice' ? 1 : 0) + (k1?.catalog.hostGroup === 'rice' ? 1 : 0);
     const hostBreak = riceCrops <= 1;
-    const rotationUrea = Math.round((amanSlot ? LOC.srdi.aman.ureaKgHa : 0) + (k2?.record.fertilizer.ureaKgHa ?? 0)
-      + rabi.fertilizer.ureaKgHa + (k1?.record.fertilizer.ureaKgHa ?? 0));
+    // null where the place has no SRDI soil card: then there is no nitrogen term in the score and no urea number in the text
+    const ureaExact = rotationDose([amanSlot ? (LOC.srdi?.aman ?? null) : undefined, k2?.record.fertilizer, rabi.fertilizer, k1?.record.fertilizer], 'ureaKgHa');
+    const rotationUrea = ureaExact === null ? null : Math.round(ureaExact);
     const resistance = RESISTANT_VARIETIES[crop.variety];
     const deadline = rabi.sowingWindow?.[1];
     const sownOnTime = !deadline || seasonDay(rabi.sowing) <= seasonDay(deadline);
 
     let score = riceCrops === 0 ? 0.9 : hostBreak ? 0.85 : riceCrops === 2 ? 0.4 : 0.3;
     if (rabiName.isLegume || k1?.catalog.isLegume || k2?.catalog.isLegume) score += 0.05;
-    score -= (Math.max(0, rotationUrea - 300) / 1000) * 0.3;
+    if (rotationUrea !== null) score -= (Math.max(0, rotationUrea - 300) / 1000) * 0.3;
     if (resistance) score += 0.05;
     if (!sownOnTime) score -= 0.15;
     const pestScore = clampScore(score, 0.1, 0.95);
@@ -50,7 +51,7 @@ export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
           : hostBreak
             ? 'বছরে একবারই ধান: ধানের পোকার চক্র ভাঙে।'
             : 'ধানের পর আবার ধান: মাজরা পোকা ও বাদামি গাছফড়িং সারা বছর খাবার পায়।',
-      `পুরো চক্রে ইউরিয়া ${bnDigits(rotationUrea)} কেজি/হেক্টর (SRDI)।`,
+      rotationUrea === null ? '' : `পুরো চক্রে ইউরিয়া ${bnDigits(rotationUrea)} কেজি/হেক্টর (SRDI)।`,
       resistance ? `${rabiName.varietyBangla} ${resistance.bn}।` : '',
       sownOnTime ? '' : 'দেরিতে বোনায় পোকা ও রোগের চাপ বাড়ে।',
     ];
@@ -58,7 +59,7 @@ export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
       riceCrops === 0
         ? 'No rice in the year: stem borers and planthoppers find no host.'
         : hostBreak ? `${rabiName.crop} after ${amanSlot ? 'Aman' : 'rice'} breaks the rice-pest cycle.` : 'Rice after rice keeps stem borers and planthoppers fed all year.',
-      `Rotation urea ${rotationUrea} kg/ha (SRDI).`,
+      rotationUrea === null ? '' : `Rotation urea ${rotationUrea} kg/ha (SRDI).`,
       resistance ? `${crop.variety} is ${resistance.en}.` : '',
       sownOnTime ? '' : 'Late sowing raises pest and disease pressure.',
     ];
@@ -77,7 +78,7 @@ export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
         sownOnTime,
       },
       provenance: {
-        source: 'Rotation IPM rules (team) from BRRI/BARI IPM guidance, SRDI Talanda card, BWMRI/BRRI variety pages; no field pest counts yet',
+        source: `Rotation IPM rules (team) from BRRI/BARI IPM guidance, ${LOC.srdi ? 'SRDI Talanda card, ' : ''}BWMRI/BRRI variety pages; no field pest counts yet`,
         timePeriod: 'rules; pest sightings come from SAAO field observations',
         spatialResolution: 'Rotation level',
         measuredOrModeled: 'assumed',

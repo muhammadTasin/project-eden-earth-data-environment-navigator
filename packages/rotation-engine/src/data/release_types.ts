@@ -62,7 +62,8 @@ export interface RabiRecord {
   fieldDays: number; // sowing to harvest, both days counted
   cropWaterUseMm: number;
   heat: HeatExposure | null;
-  fertilizer: FertilizerDose;
+  /** The dose from the SRDI card; null at a place with no soil card (every place except the pilot), where no fertilizer amount is given. */
+  fertilizer: FertilizerDose | null;
   districtYieldTPerHa: number | null;
 }
 

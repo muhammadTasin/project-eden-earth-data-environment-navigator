@@ -1,5 +1,6 @@
 import type { EvaluationContext } from '@project-eden/contracts';
 import { LOC } from './location.ts';
+import type { FertilizerDose } from './release_types.ts';
 import { AMAN_CATALOG } from './crop_catalog.ts';
 import { catalogFor, recordFor } from './crop_choice.ts';
 
@@ -60,4 +61,13 @@ export function kharif1Of(context: EvaluationContext) {
 
 export function clampScore(value: number, low: number, high: number): number {
   return Math.max(low, Math.min(high, Number(value.toFixed(2))));
+}
+
+/**
+ * One nutrient summed over the slots of a rotation. A slot with no dose (null) means there is no soil card here, so the total is null
+ * and callers show "no fertilizer advice" instead of a number. An absent slot (undefined) adds nothing.
+ */
+export function rotationDose(parts: Array<FertilizerDose | null | undefined>, key: 'ureaKgHa' | 'tspKgHa'): number | null {
+  if (parts.some(part => part === null)) return null;
+  return parts.reduce((total, part) => total + (part?.[key] ?? 0), 0);
 }

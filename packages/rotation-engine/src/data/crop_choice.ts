@@ -223,7 +223,7 @@ export function recordFor(key: string): RabiRecord | undefined {
     heat: crop.heat
       ? { stage: crop.heat.stage, stageBangla: crop.heat.stageBangla, thresholdC: crop.heat.thresholdC, windowDays: crop.heat.windowDays, hotDays: row[6] ?? 0 }
       : null,
-    fertilizer: crop.fertilizer,
+    fertilizer: LOC.srdi ? crop.fertilizer : null, // the crop doses are SRDI Talanda card (or BARI) numbers: only where there is a soil card
     districtYieldTPerHa: null,
   };
 }

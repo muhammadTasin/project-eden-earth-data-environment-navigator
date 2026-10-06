@@ -1,5 +1,6 @@
 import type { IEvidenceDimensionPlugin, EvaluationContext, DimensionScoreResult } from '@project-eden/contracts';
 import { kharif1Of, kharif2Of } from '../data/lookup.ts';
+import { LOC } from '../data/location.ts';
 import { bnDigits, seasonDay } from '../bn.ts';
 import { heavyRainDays, waterloggedDays, yearDay } from '../data/crop_choice.ts';
 
@@ -48,10 +49,10 @@ export class FloodDimensionPlugin implements IEvidenceDimensionPlugin {
       score: floodScore,
       confidence: 'low',
       summaryBangla: isUpland
-        ? `${context.landType === 'high' ? 'উঁচু' : 'মাঝারি উঁচু'} জমি (SRDI শ্রেণি): রবি ফসলের সময় বন্যার ঝুঁকি কম ধরা হয়েছে; নদীর বন্যা এখনো মডেল করা হয়নি।${k2Bangla}`
+        ? `${context.landType === 'high' ? 'উঁচু' : 'মাঝারি উঁচু'} জমি ${LOC.srdi ? '(SRDI শ্রেণি)' : '(আপনার বাছাই করা ধরন, মাটির কার্ড ছাড়া)'}: রবি ফসলের সময় বন্যার ঝুঁকি কম ধরা হয়েছে; নদীর বন্যা এখনো মডেল করা হয়নি।${k2Bangla}`
         : `নিচু জমি: বর্ষার শেষে জলাবদ্ধতার ঝুঁকি ধরা হয়েছে; নদীর বন্যা এখনো মডেল করা হয়নি।${k1Bangla}${k2Bangla}`,
       summaryEnglish: isUpland
-        ? `${context.landType === 'high' ? 'High' : 'Medium-high'} land (SRDI class): low flood exposure for Rabi crops is assumed; river floods are not modelled yet.${k2English}`
+        ? `${context.landType === 'high' ? 'High' : 'Medium-high'} land ${LOC.srdi ? '(SRDI class)' : '(the type you chose; no soil card here)'}: low flood exposure for Rabi crops is assumed; river floods are not modelled yet.${k2English}`
         : `Lower land: late-monsoon waterlogging risk is assumed; river floods are not modelled yet.${k1English}${k2English}`,
       metrics: {
         landTypeClass: context.landType,
@@ -61,8 +62,8 @@ export class FloodDimensionPlugin implements IEvidenceDimensionPlugin {
       },
       provenance: {
         source: k2
-          ? 'SRDI land-type class; NASA POWER topsoil wetness (MERRA-2) and GPM IMERG rain in the replayed seasons of the crop (waterlogging, not a river-flood model)'
-          : 'Land-type class from the SRDI Talanda union card (assumption, not a flood model)',
+          ? `${LOC.srdi ? 'SRDI land-type class' : 'Land type as chosen (no SRDI soil card here)'}; NASA POWER topsoil wetness (MERRA-2) and GPM IMERG rain in the replayed seasons of the crop (waterlogging, not a river-flood model)`
+          : LOC.srdi ? 'Land-type class from the SRDI Talanda union card (assumption, not a flood model)' : 'Land type as chosen; no SRDI soil card for this area (assumption, not a flood model)',
         timePeriod: k2 ? '2001-2024 monsoons' : 'static',
         spatialResolution: k2 ? 'Land-type class; 0.5 degree soil wetness at the district point' : 'Union land-type class',
         measuredOrModeled: k2 ? 'modeled' : 'assumed',
