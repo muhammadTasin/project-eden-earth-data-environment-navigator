@@ -125,7 +125,7 @@
             <span class="role-tag tag-demo" data-i18n="entry.demoOnly">শুধু ডেমো</span>
           </div>
         </div>
-        <p class="entry-notice" data-i18n="entry.farmer.notice">এসএমএস যুক্ত নেই; কোনো কোড পাঠানো হয়নি এবং কোনো মোবাইল নম্বর যাচাই হয়নি।</p>
+        <p class="entry-notice" data-i18n="entry.farmer.notice">ডেমো, সিমুলেটেড: এসএমএস যুক্ত নেই; কোনো কোড পাঠানো হয়নি এবং কোনো মোবাইল নম্বর যাচাই হয়নি।</p>
         <p class="entry-explain" data-i18n="entry.farmer.explain">এই ডেমোতে আপনি নমুনা কৃষক (F01) হিসেবে প্রবেশ করবেন। ফোন নম্বর বা ওটিপি লাগে না।</p>
         <button class="btn btn-primary btn-block" type="button" id="entryFarmerBtn" onclick="farmerDemoSignIn()">
           <span class="material-symbols-outlined" aria-hidden="true">login</span>
@@ -453,7 +453,7 @@
           <select id="liveUpazila" aria-label="Upazila"></select>
         </div>
         <ul class="warning-list" id="liveFacts"></ul>
-        <p class="warning-note" data-i18n="live.note">উৎস: নাসা POWER (প্রতিদিন, ৫০ কিমি গ্রিড, ~৩ দিন পিছিয়ে) ও GPM IMERG (১০ কিমি, ১–২ দিন পিছিয়ে)। শুকনো/ভেজা তুলনা ২০১৬–২০২৫ সালের একই সময়ের সাথে; SMAP দিয়ে যাচাইয়ের আগ পর্যন্ত এটি অস্থায়ী।</p>
+        <p class="warning-note" data-i18n="live.note">উৎস: নাসা POWER (প্রতিদিন, ৫০ কিমি গ্রিড, ~৩ দিন পিছিয়ে) ও GPM IMERG (১০ কিমি, ১–২ দিন পিছিয়ে)। শুকনো/ভেজা তুলনা ২০১৬–২০২৫ সালের একই সময়ের সাথে; SMAP দিয়ে যাচাইয়ের আগ পর্যন্ত এটি অস্থায়ী। সংরক্ষিত কপি: প্রতি সকালে একটি GitHub কাজ ফাইলটি বানিয়ে commit করে; সার্ভার এর জন্য NASA-কে ডাকে না।</p>
       </div>
       <div class="warnings-heading" id="warningsHeading">
         <h2 data-i18n="warnings.title">আগাম সতর্কতা: নাসার তথ্যে মাঠ ও খামারের ঝুঁকি</h2>
@@ -1045,6 +1045,7 @@
         <div class="card">
           <div class="card-header">
             <h3><span class="material-symbols-outlined" aria-hidden="true">waves</span> <span data-i18n="erosion.title">নদীভাঙন ও নদীর পানির উচ্চতা (BWDB, CEGIS)</span></h3>
+            <p class="muted small" data-i18n="erosion.savedNote">সংরক্ষিত কপি: BWDB/FFWC বার্ষিক প্রতিবেদন (২০১০–২০২১) ও CEGIS সূচক থেকে কোডে বসানো সংখ্যা। এটি সরাসরি বা আজকের জলস্তর নয়, এবং কোনো সরাসরি BWDB সংযোগ নেই।</p>
             <select id="erosionRiverSelect" class="form-control erosion-select" onchange="fetchRiverErosion(this.value)" aria-label="River">
               <option value="jamuna" data-i18n="erosion.jamuna">যমুনা নদী</option>
               <option value="padma" data-i18n="erosion.padma">পদ্মা নদী</option>
@@ -1208,6 +1209,7 @@
             <div class="audio-progress-bar">
               <div id="audioProgress" class="audio-progress-fill"></div>
             </div>
+            <p class="muted small" data-i18n="delivery.audioNote">ভয়েস ব্রাউজারের নিজের বাংলা কণ্ঠ (থাকলে), সার্ভারের কণ্ঠ নয়। না থাকলে শুধু দণ্ডটি চলে, কোনো শব্দ নেই (ডেমো, সিমুলেটেড)।</p>
             <span class="audio-time" id="audioTime">…</span>
           </div>
 
@@ -1265,7 +1267,7 @@
           </div>
 
           <div class="ivr-simulator-box">
-            <h4 data-i18n="delivery.keypadTitle">লাইভ কিপ্যাড রেসপন্স টেস্ট (Simulate Farmer Keypad)</h4>
+            <h4 data-i18n="delivery.keypadTitle">কিপ্যাড রেসপন্স টেস্ট (ডেমো, সিমুলেটেড: কৃষকের বোতাম অনুকরণ করা হয়)</h4>
             <div class="keypad-buttons">
               <button class="btn btn-key" onclick="simulateFarmerKeypad('1')" data-i18n="delivery.key1">১ (পানি)</button>
               <button class="btn btn-key" onclick="simulateFarmerKeypad('2')" data-i18n="delivery.key2">২ (আয়)</button>
@@ -1279,7 +1281,7 @@
           </div>
 
           <button class="btn btn-success btn-block" onclick="dispatchAdviceCall()" data-i18n="delivery.dispatch">
-            🚀 কৃষকের কাছে পরামর্শ পাঠিয়ে দিন (Dispatch Now)
+            🚀 কৃষকের কাছে পরামর্শ পাঠানো অনুকরণ করুন (ডেমো, সিমুলেটেড: কিছুই পাঠানো হয় না)
           </button>
         </div>
       </div>
@@ -1305,6 +1307,7 @@
           <button class="btn btn-success" onclick="callVoiceReply()" data-i18n="voice.call">📞 Awaj দিয়ে কল</button>
           <button class="btn btn-secondary" onclick="callKeypadMenu()" data-i18n="voice.keypad">📟 কিপ্যাড মেনু কল</button>
         </div>
+        <p class="muted small" data-i18n="voice.callNote">কল ডেমো, সিমুলেটেড ড্রাই রান, যদি না সার্ভার আসল কলের জন্য সেট করা থাকে (ডেটা সোর্স কার্ড দেখুন): কাউকে ডাকা হয় না, কোনো SMS যায় না।</p>
         <div id="voiceCallStatus" class="call-log-box"></div>
       </div>
     </section>
@@ -1316,6 +1319,7 @@
       <div class="companion-wrapper">
         <div class="companion-intro card">
           <h2 data-i18n="companion.title">ঐচ্ছিক কৃষক স্মার্টফোন সাথী (Companion App)</h2>
+          <span class="tag tag-yellow" data-i18n="demo.badge">ডেমো, সিমুলেটেড</span>
           <p data-i18n="companion.intro">এটি কৃষকের জন্য বাধ্যতামূলক নয়; যাদের স্মার্টফোন আছে তারা অফলাইনেও সর্বশেষ অনুমোদিত পরামর্শ ও পরবর্তী করণীয় দেখতে পারেন। অ্যান্ড্রয়েড অ্যাপ এই সার্ভারের একই পরামর্শ দেখায়।</p>
           <div class="offline-badge">
             <span class="status-dot"></span> <span data-i18n="companion.offline">সর্বশেষ সিঙ্কের ক্যাশ থেকে অফলাইনে চলে</span>
@@ -1395,13 +1399,19 @@
       <!-- NASA data sources the server can use: read-only (GET /api/v1/manager/data-sources, set/unset flags only; no key is ever shown or entered here) -->
       <div class="card ds-card" id="dataSourcesCard" aria-labelledby="dsTitle">
         <div class="card-header">
-          <h2 id="dsTitle" data-i18n="ds.title">NASA ডেটা সোর্স</h2>
+          <h2 id="dsTitle" data-i18n="ds.title">ডেটা সোর্স ও সংযোগ: কোনটা আসল, কোনটা সংরক্ষিত, কোনটা ডেমো</h2>
           <span class="badge badge-warning ds-badge" id="dsOfflineBadge" hidden>
             <span class="material-symbols-outlined" aria-hidden="true">cloud_off</span>
-            <span data-i18n="ds.offline">অফলাইন মোড চালু</span>
+            <span data-i18n="ds.offline">অফলাইন মোড চালু: NASA POWER জলবায়ু সংরক্ষিত তথ্য থেকে; পূর্বাভাস ও মানচিত্রে এখনো ইন্টারনেট লাগে</span>
           </span>
         </div>
-        <p class="subtitle" data-i18n="ds.subtitle">এই অ্যাপ এখন নাসার কোন কোন তথ্য ব্যবহার করতে পারে, তা এখানে দেখা যায়। শুধু দেখার জন্য: এখানে কোনো চাবি বা পাসওয়ার্ড দেওয়া যায় না।</p>
+        <p class="subtitle" data-i18n="ds.subtitle">প্রতিটি সেবা বা তথ্যের পাশে চারটির একটি চিহ্ন আছে। শুধু দেখার জন্য: এখানে কোনো চাবি বা পাসওয়ার্ড দেওয়া যায় না।</p>
+        <ul class="ds-legend" aria-label="Legend">
+          <li><span class="badge badge-success ds-badge"><span class="material-symbols-outlined" aria-hidden="true">sensors</span><span data-i18n="ds.label.live">সরাসরি</span></span> <span class="muted small" data-i18n="ds.legend.live">আসল তথ্য, চাওয়ার সময় আনা হয়</span></li>
+          <li><span class="badge badge-info ds-badge"><span class="material-symbols-outlined" aria-hidden="true">history</span><span data-i18n="ds.label.saved">সংরক্ষিত কপি</span></span> <span class="muted small" data-i18n="ds.legend.saved">আসল তথ্য, কিন্তু আগে সংরক্ষিত বা বসানো (তারিখসহ)</span></li>
+          <li><span class="badge badge-warning ds-badge"><span class="material-symbols-outlined" aria-hidden="true">science</span><span data-i18n="ds.label.demo">ডেমো, সিমুলেটেড</span></span> <span class="muted small" data-i18n="ds.legend.demo">আসলে কিছু ঘটে না: নমুনা বা অনুকরণ</span></li>
+          <li><span class="badge badge-neutral ds-badge"><span class="material-symbols-outlined" aria-hidden="true">link_off</span><span data-i18n="ds.label.notset">সেট করা নেই</span></span> <span class="muted small" data-i18n="ds.legend.notset">এই সার্ভারে চালু করা হয়নি</span></li>
+        </ul>
 
         <div class="ds-skeleton" id="dsSkeleton" role="status" aria-live="polite">
           <span class="visually-hidden" data-i18n="ds.loading">লোড হচ্ছে…</span>
@@ -1413,46 +1423,7 @@
           <button class="btn btn-sm btn-secondary" type="button" onclick="loadDataSources()" data-i18n="ds.retry">আবার চেষ্টা করুন</button>
         </div>
 
-        <ul class="ds-list" id="dsRows" hidden>
-          <li class="ds-row" data-ds="power">
-            <div class="ds-main">
-              <strong>NASA POWER</strong>
-              <span class="muted small" data-i18n="ds.power.desc">আবহাওয়া, বৃষ্টি, সৌর বিকিরণ</span>
-            </div>
-            <span class="badge ds-badge" data-ds-badge><span class="material-symbols-outlined" aria-hidden="true"></span><span data-ds-badge-text></span></span>
-          </li>
-          <li class="ds-row" data-ds="earthdata">
-            <div class="ds-main">
-              <strong>Earthdata Login</strong>
-              <span class="muted small" data-i18n="ds.edl.desc">SMAP মাটির আর্দ্রতা, IMERG বৃষ্টি, MODIS/VIIRS NDVI</span>
-            </div>
-            <span class="badge ds-badge" data-ds-badge><span class="material-symbols-outlined" aria-hidden="true"></span><span data-ds-badge-text></span></span>
-            <p class="ds-help" data-ds-help hidden><span data-i18n="ds.edl.help">অ্যাডমিন সার্ভারের .env ফাইলে Earthdata ইউজারনেম ও পাসওয়ার্ড বসাবেন, তারপর সার্ভার আবার চালু করবেন। অ্যাকাউন্ট খুলুন:</span> <a class="ds-link" href="https://urs.earthdata.nasa.gov/users/new" target="_blank" rel="noopener noreferrer">https://urs.earthdata.nasa.gov/users/new</a></p>
-          </li>
-          <li class="ds-row" data-ds="nasaKey">
-            <div class="ds-main">
-              <strong data-i18n="ds.nasa.name">NASA API চাবি (ঐচ্ছিক)</strong>
-              <span class="muted small" data-i18n="ds.nasa.desc">ঐচ্ছিক। না থাকলে ডেমো চাবি (DEMO_KEY) চলে।</span>
-            </div>
-            <span class="badge ds-badge" data-ds-badge><span class="material-symbols-outlined" aria-hidden="true"></span><span data-ds-badge-text></span></span>
-            <p class="ds-help" data-ds-help hidden><span data-i18n="ds.nasa.help">অ্যাডমিন সার্ভারের .env ফাইলে নিজের NASA API চাবি বসাবেন, তারপর সার্ভার আবার চালু করবেন। চাবি নিন:</span> <a class="ds-link" href="https://api.nasa.gov" target="_blank" rel="noopener noreferrer">https://api.nasa.gov</a></p>
-          </li>
-          <li class="ds-row" data-ds="ads">
-            <div class="ds-main">
-              <strong data-i18n="ds.ads.name">NASA ADS (ঐচ্ছিক)</strong>
-              <span class="muted small" data-i18n="ds.ads.desc">ঐচ্ছিক। উদ্ধৃতি ও গবেষণাপত্র খোঁজার জন্য।</span>
-            </div>
-            <span class="badge ds-badge" data-ds-badge><span class="material-symbols-outlined" aria-hidden="true"></span><span data-ds-badge-text></span></span>
-            <p class="ds-help" data-ds-help hidden><span data-i18n="ds.ads.help">অ্যাডমিন সার্ভারের .env ফাইলে ADS টোকেন বসাবেন, তারপর সার্ভার আবার চালু করবেন। টোকেন নিন:</span> <a class="ds-link" href="https://ui.adsabs.harvard.edu/user/settings/token" target="_blank" rel="noopener noreferrer">https://ui.adsabs.harvard.edu/user/settings/token</a></p>
-          </li>
-          <li class="ds-row" data-ds="firms">
-            <div class="ds-main">
-              <strong>FIRMS</strong>
-              <span class="muted small" data-i18n="ds.firms.desc">আগুন ও পোড়ানোর তথ্য</span>
-            </div>
-            <span class="badge ds-badge" data-ds-badge><span class="material-symbols-outlined" aria-hidden="true"></span><span data-ds-badge-text></span></span>
-          </li>
-        </ul>
+        <ul class="ds-list" id="dsRows" hidden></ul>
       </div>
 
       <div class="card quality-hero">

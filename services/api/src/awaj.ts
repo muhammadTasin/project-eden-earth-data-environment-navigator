@@ -19,6 +19,12 @@ import { randomUUID } from 'node:crypto';
 
 const BASE = (process.env.AWAJ_BASE_URL || 'https://api.awajdigital.com/api').replace(/\/$/, '');
 
+/** What may be shown to a signed-in manager about the call provider: flags and the mode, never a key, an address with a key, or a number. */
+export function awajPublicStatus() {
+  const cfg = awajConfig();
+  return { provider: 'Awaj Digital', live: cfg.live, tokenSet: cfg.tokenSet, senderSet: Boolean(cfg.sender), voice: cfg.voice, keypadReady: Boolean(cfg.menuVoice || cfg.surveyTemplate), webhookSet: Boolean(cfg.webhookUrl) };
+}
+
 export function awajConfig() {
   const token = process.env.AWAJ_API_TOKEN || '';
   const sender = process.env.AWAJ_SENDER || '';
@@ -45,6 +51,18 @@ export function bdMobile(raw: string): string | null {
 
 function requestId(prefix: string): string {
   return `${prefix}_${randomUUID().replace(/-/g, '')}`.slice(0, 64); // Awaj wants 16-64 characters
+}
+
+/**
+ * The request a dry run (or a refused request) shows to the caller. The caller may not be signed in, so nothing configured on the server
+ * is shown: the sender number becomes a placeholder, the key in the webhook address is hidden and the officer's number is masked.
+ */
+function shown<T>(body: T): T {
+  const text = JSON.stringify(body)
+    .replace(/("sender":")[^"]*(")/, '$1<AWAJ_SENDER>$2')
+    .replace(/([?&]key=)[^&"]*/g, '$1<AWAJ_WEBHOOK_KEY>')
+    .replace(/("transfer_numbers":\[)"(\d{3})\d{4}(\d{4})"/, '$1"$2XXXX$3"');
+  return JSON.parse(text) as T;
 }
 
 async function call(method: 'GET' | 'POST', path: string, body?: unknown) {
@@ -80,8 +98,8 @@ export async function sendTtsCall(opts: { phoneNumbers: string[]; texts: string[
     language_code: 'bn-BD',
     metadata: opts.metadata ?? {},
   };
-  if (!numbers.length) return { dryRun: !cfg.live, error: 'No valid Bangladeshi mobile number (01XXXXXXXXX)', request: body };
-  if (!cfg.live) return { dryRun: true, endpoint: `POST ${BASE}/broadcasts/direct-tts`, request: body };
+  if (!numbers.length) return { dryRun: !cfg.live, error: 'No valid Bangladeshi mobile number (01XXXXXXXXX)', request: shown(body) };
+  if (!cfg.live) return { dryRun: true, endpoint: `POST ${BASE}/broadcasts/direct-tts`, request: shown(body) };
   return { dryRun: false, endpoint: `POST ${BASE}/broadcasts/direct-tts`, requestId: body.request_id, response: await call('POST', '/broadcasts/direct-tts', body) };
 }
 
@@ -135,8 +153,8 @@ export async function sendTemplateSurvey(opts: { phoneNumbers: string[]; templat
     metadata: opts.metadata ?? {},
     ...(opts.webhookUrl ? { webhook_url: opts.webhookUrl } : {}),
   };
-  if (!numbers.length) return { dryRun: !cfg.live, error: 'No valid Bangladeshi mobile number (01XXXXXXXXX)', request: body };
-  if (!cfg.live) return { dryRun: true, endpoint: `POST ${BASE}/surveys`, request: body };
+  if (!numbers.length) return { dryRun: !cfg.live, error: 'No valid Bangladeshi mobile number (01XXXXXXXXX)', request: shown(body) };
+  if (!cfg.live) return { dryRun: true, endpoint: `POST ${BASE}/surveys`, request: shown(body) };
   return { dryRun: false, endpoint: `POST ${BASE}/surveys`, response: await call('POST', '/surveys', body) };
 }
 
@@ -174,7 +192,7 @@ export async function sendKeypadSurvey(opts: {
     ...(opts.webhookUrl ? { webhook_url: opts.webhookUrl } : {}),
     config: { retry_count: 1 },
   };
-  if (!numbers.length) return { dryRun: !cfg.live, error: 'No valid Bangladeshi mobile number (01XXXXXXXXX)', request: body };
-  if (!cfg.live) return { dryRun: true, endpoint: `POST ${BASE}/v1/surveys/direct-order`, request: body };
+  if (!numbers.length) return { dryRun: !cfg.live, error: 'No valid Bangladeshi mobile number (01XXXXXXXXX)', request: shown(body) };
+  if (!cfg.live) return { dryRun: true, endpoint: `POST ${BASE}/v1/surveys/direct-order`, request: shown(body) };
   return { dryRun: false, endpoint: `POST ${BASE}/v1/surveys/direct-order`, response: await call('POST', '/v1/surveys/direct-order', body) };
 }

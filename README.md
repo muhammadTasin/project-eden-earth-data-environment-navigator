@@ -26,6 +26,7 @@ The dashboard advises any of the 544 upazilas (pick the district and upazila at 
 npm install
 npm test          # 16 engine tests, 7 cattle tests and every API check
 npm start         # API and SAAO dashboard on http://localhost:4000
+npm run check:integrations   # which outside services are set up and answer (SET/UNSET, PASS/FAIL/SKIPPED; never prints a value); see docs/integrations.md
 npm run call:test -- --to 01XXXXXXXXX --crops sunflower,lentil   # the Bangla call script; a dry run until Awaj is set up
 ```
 

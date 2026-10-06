@@ -70,3 +70,39 @@ export function nasaConfigStatus(): NasaConfigStatus {
     offline: read('OFFLINE') === '1',
   };
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Integrations: which environment variables belong to which outside service. Names only. The status card, the
+// `npm run check:integrations` command and docs/integrations.md all read this one list, and values leave this module only to
+// server code that has to call the provider (never into a report, a log line or a response).
+// ---------------------------------------------------------------------------------------------------------------------
+
+export const INTEGRATION_ENV = {
+  nasaPower: [],
+  openMeteo: ['OPEN_METEO_API_KEY'],
+  supabase: ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'AUTH_EMAIL_DOMAIN'],
+  awaj: ['AWAJ_API_TOKEN', 'AWAJ_SENDER', 'AWAJ_LIVE', 'AWAJ_VOICE', 'AWAJ_MENU_VOICE', 'AWAJ_SURVEY_TEMPLATE', 'AWAJ_OFFICER_NUMBER', 'AWAJ_WEBHOOK_KEY', 'PUBLIC_BASE_URL', 'AWAJ_BASE_URL'],
+  tts: ['TTS_BASE_URL', 'TTS_API_KEY', 'TTS_VOICE'],
+  llm: ['LLM_BASE_URL', 'LLM_MODEL', 'LLM_API_KEY', 'LLM_TIMEOUT_MS'],
+  earthEngine: ['EE_PROJECT', 'GOOGLE_APPLICATION_CREDENTIALS', 'EE_PYTHON', 'EE_WORKER_PATH', 'EE_IMERG_COLLECTION'],
+  earthdata: ['EARTHDATA_USERNAME', 'EARTHDATA_PASSWORD', 'EARTHDATA_TOKEN', 'EDL_USER', 'EDL_PASS'],
+  firms: ['FIRMS_MAP_KEY'],
+  nasaApi: ['NASA_API_KEY'],
+  ads: ['ADS_API_TOKEN'],
+} as const;
+
+export type IntegrationGroup = keyof typeof INTEGRATION_ENV;
+
+/** The trimmed value of a variable, '' when unset. For server code that calls the provider; never put the result in output. */
+export function envValue(name: string): string {
+  return (process.env[name] ?? '').trim();
+}
+
+export function envIsSet(name: string): boolean {
+  return envValue(name) !== '';
+}
+
+/** Every group's variables that are set, by name only (the CLI and the status card print provider-level SET/UNSET, never a value). */
+export function setVariables(group: IntegrationGroup): string[] {
+  return INTEGRATION_ENV[group].filter(envIsSet);
+}

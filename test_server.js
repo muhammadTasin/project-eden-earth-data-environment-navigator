@@ -484,7 +484,15 @@ async function run() {
   const asManager = await fetch(`${BASE}${sources}`, { headers: { Authorization: 'Bearer mgr-token' } });
   check(asManager.status === 200, `a manager must get 200, got ${asManager.status}`);
   const managerText = await asManager.text();
-  check(JSON.stringify(JSON.parse(managerText)) === JSON.stringify({ earthdataLogin: 'set', earthdataToken: 'set', firmsMapKey: 'set', nasaApiKey: 'set', adsApiToken: 'set', offline: true }), `unexpected data-sources body: ${managerText}`);
+  const sourcesBody = JSON.parse(managerText);
+  const { integrations, ...flags } = sourcesBody;
+  check(JSON.stringify(flags) === JSON.stringify({ earthdataLogin: 'set', earthdataToken: 'set', firmsMapKey: 'set', nasaApiKey: 'set', adsApiToken: 'set', offline: true }), `unexpected data-sources flags: ${JSON.stringify(flags)}`);
+  // every integration, with one of four labels and plain sentences in both languages; offline mode makes NASA POWER a saved copy
+  check(Array.isArray(integrations) && integrations.length >= 15, 'the data-sources response lists every integration');
+  check(integrations.every((i) => ['live', 'saved', 'demo', 'notset'].includes(i.label) && i.name.bn && i.name.en && i.reason.bn && i.reason.en && i.usedBy.en && i.reality.bn), 'each integration has a label and bilingual text');
+  check(integrations.find((i) => i.id === 'nasa-power').label === 'saved', 'with OFFLINE=1 NASA POWER is a saved copy, not live');
+  check(integrations.find((i) => i.id === 'awaj').label === 'notset' && integrations.find((i) => i.id === 'demo-features').label === 'demo', 'unset Awaj is "notset" and the demo features say demo');
+  check(!/[A-Z][A-Z0-9]+_[A-Z0-9_]{2,}/.test(JSON.stringify(integrations).replace(/OFFLINE|AWAJ_LIVE|DEMO_MODE|NOT_NEEDED|NOT_APPLICABLE/g, '')), 'the integrations list names no environment variable');
   for (const value of Object.values(FAKE_SECRETS)) check(!managerText.includes(value), 'the data-sources response must never contain a secret value');
   const demoSources = await fetch(`${BASE}${sources}`, { headers: { Authorization: `Bearer ${session.token}` } });
   check(demoSources.status === 200, 'the demo desk session may read the data-sources status in DEMO_MODE');
@@ -635,7 +643,10 @@ async function checkDemoModeOff() {
     check(config.demoMode === false && Object.keys(config).sort().join() === 'demoMode,emailDomain,supabaseAnonKey,supabaseUrl', 'auth config exposes only the URL, the anon key, the email domain and the demo flag');
     // nothing configured: the manager sees "unset" and the demo NASA key
     const unset = await (await fetch(`${base}/api/v1/manager/data-sources`, { headers: { Authorization: 'Bearer mgr-token' } })).json();
-    check(JSON.stringify(unset) === JSON.stringify({ earthdataLogin: 'unset', earthdataToken: 'unset', firmsMapKey: 'unset', nasaApiKey: 'unset', adsApiToken: 'unset', offline: false }), `unexpected unset data-sources body: ${JSON.stringify(unset)}`);
+    const { integrations: unsetIntegrations, ...unsetFlags } = unset;
+    check(JSON.stringify(unsetFlags) === JSON.stringify({ earthdataLogin: 'unset', earthdataToken: 'unset', firmsMapKey: 'unset', nasaApiKey: 'unset', adsApiToken: 'unset', offline: false }), `unexpected unset data-sources flags: ${JSON.stringify(unsetFlags)}`);
+    const unsetLabel = (id) => unsetIntegrations.find((i) => i.id === id).label;
+    check(unsetLabel('nasa-power') === 'live' && unsetLabel('awaj') === 'notset' && unsetLabel('tts') === 'notset' && unsetLabel('llm') === 'notset', 'online and unset: POWER is live; Awaj, TTS and the LLM are not set up');
     console.log('✓ Without DEMO_MODE the demo officer credentials do not work at all');
   } finally {
     proc.kill();

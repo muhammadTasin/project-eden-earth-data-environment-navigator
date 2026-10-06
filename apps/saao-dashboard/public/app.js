@@ -1253,7 +1253,7 @@ function renderAudioButton() {
     idle: tr('বাংলা ভয়েস শুনুন (Audio Preview)', 'Play the Bangla voice (audio preview)'),
     playing: tr('ভয়েস প্লে হচ্ছে...', 'Playing...'),
     done: tr('পুনরায় শুনুন (Replay)', 'Replay'),
-    novoice: tr('এই ব্রাউজারে বাংলা ভয়েস নেই', 'No Bangla voice in this browser'),
+    novoice: tr('এই ব্রাউজারে বাংলা ভয়েস নেই (ডেমো, সিমুলেটেড: শুধু দণ্ড চলছে, শব্দ নেই)', 'No Bangla voice in this browser (demo, simulated: only the bar moves, no sound)'),
   };
   setText('audioPlayText', labels[audioState]);
   setText('audioPlayIcon', audioState === 'playing' ? '⏸' : '▶');
@@ -1301,7 +1301,7 @@ window.toggleAudioPreview = function() {
 // Dispatch Advice Call (simulation only, nothing is sent)
 window.dispatchAdviceCall = function() {
   const t = () => new Date().toLocaleTimeString(lang === 'en' ? 'en-GB' : 'bn-BD');
-  const sim = tr('[সিমুলেশন]', '[simulation]');
+  const sim = tr('[ডেমো, সিমুলেটেড]', '[demo, simulated]');
   setHtml('liveCallLog', `
     <span class="log-line">[${t()}] ${sim} ${tr('আউটগোয়িং IVR কল শুরু হচ্ছে', 'Outgoing IVR call starting')}: 01712-XXXXXX</span>
     <span class="log-line">[${t()}] ${sim} ${tr('টেলকো গেটওয়ে: কল রিং হচ্ছে...', 'Telco gateway: ringing...')}</span>
@@ -1356,8 +1356,9 @@ function renderCompanion(advice) {
 // ---------------------------------------------------------------------------
 
 const STATUS = {
-  operational: ['সক্রিয়', 'Live', 'badge-success'],
-  'cross-checked': ['যাচাইসহ সক্রিয়', 'Live, cross-checked', 'badge-info'],
+  // these are dated research datasets built into the release, not live feeds
+  operational: ['সংরক্ষিত কপি (রিলিজে বসানো)', 'Saved copy (built into the release)', 'badge-info'],
+  'cross-checked': ['সংরক্ষিত কপি, যাচাইসহ', 'Saved copy, cross-checked', 'badge-info'],
   missing: ['বাকি', 'Pending', 'badge-warning'],
 };
 
@@ -1532,18 +1533,15 @@ window.loadDataSources = async function() {
   renderDataSources();
 };
 
-/** One row: a status badge (icon + text, never colour alone) and, when something is not set up, the help line with the sign-up link. */
-function setDataSourceRow(key, cls, icon, bn, en, showHelp) {
-  const row = document.querySelector(`.ds-row[data-ds="${key}"]`);
-  if (!row) return;
-  const badge = row.querySelector('[data-ds-badge]');
-  badge.className = `badge ds-badge ${cls}`;
-  badge.querySelector('.material-symbols-outlined').textContent = icon;
-  badge.querySelector('[data-ds-badge-text]').textContent = tr(bn, en);
-  const help = row.querySelector('[data-ds-help]');
-  if (help) help.hidden = !showHelp;
-}
+/** The four labels: always an icon AND words, never colour alone. */
+const DS_LABELS = {
+  live: { icon: 'sensors', cls: 'badge-success', bn: 'সরাসরি', en: 'Live' },
+  saved: { icon: 'history', cls: 'badge-info', bn: 'সংরক্ষিত কপি', en: 'Saved copy' },
+  demo: { icon: 'science', cls: 'badge-warning', bn: 'ডেমো, সিমুলেটেড', en: 'Demo, simulated' },
+  notset: { icon: 'link_off', cls: 'badge-neutral', bn: 'সেট করা নেই', en: 'Not set up' },
+};
 
+/** Every integration with its label, what uses it and what is really behind it (the server's own words, in both languages). */
 function renderDataSources() {
   if (!$('dataSourcesCard')) return;
   const { state, data, error } = dataSources;
@@ -1553,18 +1551,29 @@ function renderDataSources() {
   $('dsOfflineBadge').hidden = !(state === 'ok' && data.offline === true);
   if (state === 'error') {
     setText('dsErrorText', error === 'offline'
-      ? tr('আপনি অফলাইনে আছেন। সংযোগ দেখে আবার চেষ্টা করুন।', 'You appear to be offline. Check your connection and try again.')
-      : tr('ডেটা সোর্সের অবস্থা আনা যায়নি। আবার চেষ্টা করুন।', 'Could not load the data source status. Please try again.'));
+      ? tr('আপনি অফলাইনে আছেন। সংযোগ দেখে আবার চেষ্টা করুন।', 'You appear to be offline. Check the connection and try again.')
+      : tr('ডেটা সোর্সের অবস্থা আনা যায়নি। আবার চেষ্টা করুন।', 'Could not load the data source status. Try again.'));
   }
   if (state !== 'ok') return;
-  setDataSourceRow('power', 'badge-success', 'check_circle', 'চাবি লাগে না, সব সময় পাওয়া যায়', 'No key needed, always available', false);
-  const edl = data.earthdataLogin === 'set';
-  setDataSourceRow('earthdata', edl ? 'badge-success' : 'badge-warning', edl ? 'check_circle' : 'error', edl ? 'সংযুক্ত' : 'সেট করা নেই', edl ? 'Connected' : 'Not set up', !edl);
-  const nasa = data.nasaApiKey === 'set';
-  setDataSourceRow('nasaKey', nasa ? 'badge-success' : 'badge-neutral', nasa ? 'check_circle' : 'info', nasa ? 'সংযুক্ত' : 'ডেমো চাবি ব্যবহার হচ্ছে', nasa ? 'Connected' : 'Using demo key', !nasa);
-  const ads = data.adsApiToken === 'set';
-  setDataSourceRow('ads', ads ? 'badge-success' : 'badge-neutral', ads ? 'check_circle' : 'error', ads ? 'সংযুক্ত' : 'সেট করা নেই', ads ? 'Connected' : 'Not set up', !ads);
-  setDataSourceRow('firms', 'badge-neutral', 'info', 'এই চ্যালেঞ্জে লাগে না', 'Not needed for this challenge', false);
+  const say = (text) => escapeHtml(tr(text.bn, text.en));
+  setHtml('dsRows', (data.integrations || []).map(item => {
+    const label = DS_LABELS[item.label] || DS_LABELS.notset;
+    const link = item.label === 'notset' && item.signupUrl
+      ? ` <a class="ds-link" href="${escapeHtml(item.signupUrl)}" target="_blank" rel="noopener noreferrer">${tr('অ্যাকাউন্ট বা চাবি নিন', 'Get an account or key')}</a>`
+      : '';
+    const askAdmin = item.label === 'notset' && item.keyNeeded !== 'not_applicable' && item.keyNeeded !== 'none'
+      ? ` ${tr('অ্যাডমিন সার্ভারের .env ফাইলে বসিয়ে সার্ভার আবার চালু করবেন।', 'The admin adds it to the server’s .env file and restarts the server.')}` : '';
+    return `
+      <li class="ds-row" data-ds="${escapeHtml(item.id)}" data-label="${escapeHtml(item.label)}">
+        <div class="ds-main">
+          <strong>${say(item.name)}</strong>
+          <span class="muted small"><strong>${tr('কীসে লাগে', 'Used for')}:</strong> ${say(item.usedBy)}</span>
+          <span class="muted small"><strong>${tr('আসলে কী', 'What is real')}:</strong> ${say(item.reality)}</span>
+        </div>
+        <span class="badge ${label.cls} ds-badge"><span class="material-symbols-outlined" aria-hidden="true">${label.icon}</span><span>${escapeHtml(tr(label.bn, label.en))}</span></span>
+        <p class="ds-help">${say(item.reason)}${askAdmin}${link}</p>
+      </li>`;
+  }).join(''));
 }
 
 function renderQuality(data) {
@@ -2024,7 +2033,7 @@ window.callVoiceReply = async function() {
     if (!res.ok) throw new Error(data.error);
     const call = data.call;
     setHtml('voiceCallStatus', `<span class="log-line">${escapeHtml(call.dryRun
-      ? tr(`পরীক্ষামূলক (ড্রাই রান): ${call.request.phone_numbers[0]} নম্বরে Awaj-এ এই অনুরোধ যেত; আসল কলের জন্য সার্ভারে AWAJ_API_TOKEN, AWAJ_SENDER ও AWAJ_LIVE=1 দিন।`, `Dry run: this request would go to Awaj for ${call.request.phone_numbers[0]}; set AWAJ_API_TOKEN, AWAJ_SENDER and AWAJ_LIVE=1 on the server for a real call.`)
+      ? tr(`ডেমো, সিমুলেটেড (ড্রাই রান): ${call.request.phone_numbers[0]} নম্বরে Awaj-এ এই অনুরোধ যেত; আসল কলের জন্য সার্ভারে AWAJ_API_TOKEN, AWAJ_SENDER ও AWAJ_LIVE=1 দিন।`, `Demo, simulated (dry run): this request would go to Awaj for ${call.request.phone_numbers[0]}; set AWAJ_API_TOKEN, AWAJ_SENDER and AWAJ_LIVE=1 on the server for a real call.`)
       : tr(`Awaj কল পাঠানো হয়েছে (HTTP ${call.response.status})।`, `Sent to Awaj (HTTP ${call.response.status}).`))}</span>`);
   } catch (err) {
     setHtml('voiceCallStatus', `<span class="log-line">${escapeHtml(err.message || 'Error')}</span>`);
@@ -2043,7 +2052,7 @@ window.callKeypadMenu = async function() {
     if (!res.ok) throw new Error(data.error);
     const lines = [
       data.call.dryRun
-        ? tr(`পরীক্ষামূলক (ড্রাই রান): ${data.call.request.phone_numbers.join(', ')} নম্বরে কিপ্যাড মেনু কল যেত।`, `Dry run: a keypad menu call would go to ${data.call.request.phone_numbers.join(', ')}.`)
+        ? tr(`ডেমো, সিমুলেটেড (ড্রাই রান): ${data.call.request.phone_numbers.join(', ')} নম্বরে কিপ্যাড মেনু কল যেত।`, `Demo, simulated (dry run): a keypad menu call would go to ${data.call.request.phone_numbers.join(', ')}.`)
         : tr(`কিপ্যাড মেনু কল পাঠানো হয়েছে (HTTP ${data.call.response.status})।`, `Keypad menu call sent (HTTP ${data.call.response.status}).`),
       tr(`কৃষক শুনবেন: ${data.menu}`, `The farmer hears: ${data.menu}`),
       ...(data.needs || []).map(n => tr(`বাকি: ${n}`, `Still needed: ${n}`)),

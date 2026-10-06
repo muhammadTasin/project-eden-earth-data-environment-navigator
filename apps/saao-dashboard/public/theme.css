@@ -729,3 +729,10 @@ body.weather-only .portal-tabs { display: none; }
   .banner-stat { flex: 1 1 100%; }
 }
 .warnings-row { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
+
+/* Data sources card: the legend of the four labels (always an icon and words, never colour alone) */
+.ds-legend { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 8px; }
+.ds-legend li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.ds-main .small { overflow-wrap: anywhere; }
+.ds-row[data-label="demo"] .ds-help, .ds-row[data-label="notset"] .ds-help { color: var(--ink-2); }
+.ds-main .small strong { font-size: inherit; font-weight: 600; color: var(--ink-2); }

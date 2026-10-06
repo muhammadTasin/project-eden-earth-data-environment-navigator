@@ -15,6 +15,7 @@ import { bnDate, bnDateOf, bnDigits, bnOf, enDate } from '../../../packages/rota
 import * as desk from './officer_desk.ts';
 import { authConfig, requireManager } from './auth.ts';
 import { nasaConfigStatus } from './config.ts';
+import { integrationStatuses } from './integrations.ts';
 import { managerArea, managerClimate } from './manager_climate.ts';
 import { normalizeSite } from './sites.ts';
 import { DualGateNarrationValidator } from '../../../packages/narration-core/src/dual_gate_validator.ts';
@@ -31,7 +32,7 @@ import { mapLayers } from './map_layers.ts';
 import { askAiAssistant } from './ai_assistant.ts';
 import { cropMenu } from '../../../packages/rotation-engine/src/data/crop_choice.ts';
 import { cropsFromKeys, keypadMenu, replyFor, requestFromWords, understand } from './voice.ts';
-import { awajConfig, bdMobile, sendKeypadSurvey, sendTemplateSurvey, sendTtsCall } from './awaj.ts';
+import { awajConfig, awajPublicStatus, bdMobile, sendKeypadSurvey, sendTemplateSurvey, sendTtsCall } from './awaj.ts';
 import { createFarmAoi } from './cattle/aoi.ts';
 import { cattleRepository } from './cattle/repository.ts';
 import { backgroundJobManager } from './cattle/jobs.ts';
@@ -912,7 +913,8 @@ const server = http.createServer(async (req, res) => {
     // ---- Which NASA data sources the server can use (manager only; set/unset flags, never a key, token or password) ----
     if (pathname === '/api/v1/manager/data-sources' && req.method === 'GET') {
       await requireManager(req);
-      return sendJSON(res, 200, nasaConfigStatus());
+      // the NASA flags as before, plus every integration with one of four labels (live, saved, demo, notset): names and sentences, never a value
+      return sendJSON(res, 200, { ...nasaConfigStatus(), integrations: integrationStatuses() });
     }
     if (pathname === '/api/v1/manager/climate' && req.method === 'GET') {
       return sendJSON(res, 200, await managerClimate(req));
@@ -951,7 +953,7 @@ const server = http.createServer(async (req, res) => {
         return sendJSON(res, 200, request);
       }
       if (pathname === '/api/v1/officer/calls' && req.method === 'GET') {
-        return sendJSON(res, 200, { calls: CALL_LOG.filter(c => c.site === normalizeSite(officer.site)), provider: awajConfig() });
+        return sendJSON(res, 200, { calls: CALL_LOG.filter(c => c.site === normalizeSite(officer.site)), provider: awajPublicStatus() });
       }
       if (pathname === '/api/v1/officer/knowledge' && req.method === 'GET') {
         return sendJSON(res, 200, normalizeSite(officer.site) === PILOT_SITE ? knowledgePack() : noKnowledgePack());
