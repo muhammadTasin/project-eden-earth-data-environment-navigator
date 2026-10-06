@@ -16,7 +16,7 @@
  * One server serves the website and the Android app (docs/api-contract.md).
  */
 
-import { authConfig, normalizeUserId, supabaseClient, toAuthEmail } from './auth-client.js';
+import { authConfig, normalizeUserId, resolveUserId, supabaseClient, toAuthEmail } from './auth-client.js';
 
 const ROLES = {
   visitor: { home: 'screen-overview', screens: ['screen-overview', 'screen-weather'] },
@@ -176,15 +176,17 @@ export function initPortals(ctx) {
   window.entryOfficerSignIn = async function(event) {
     event?.preventDefault();
     setEntryError('entryOfficerError', '');
-    const userId = normalizeUserId($('entryOfficerUserId')?.value);
+    const typed = normalizeUserId($('entryOfficerUserId')?.value);
     const password = $('entryOfficerPassword')?.value || '';
-    if (!userId || !password) {
+    if (!typed || !password) {
       setEntryError('entryOfficerError', tr('ইউজার আইডি ও পাসওয়ার্ড দুটোই দিন।', 'Enter both your user ID and password.'));
       return;
     }
     const wrong = tr('ইউজার আইডি বা পাসওয়ার্ড সঠিক নয়।', 'The user ID or password is incorrect.');
-    // one generic message for every credential problem: never say which of the two was wrong
-    if (/[@\s]/.test(userId)) {
+    // an email with this server's own domain is accepted as its user ID; any other "@" form or a space gets the one generic message,
+    // which never says which of the two was wrong
+    const userId = resolveUserId(typed, (await authConfig())?.emailDomain);
+    if (!userId) {
       setEntryError('entryOfficerError', wrong);
       return;
     }

@@ -19,6 +19,7 @@ const DEFAULT_CACHE_DIR = path.resolve(__dirname, '../.data/power-climate-cache'
 const DEFAULT_FIXTURE_PATH = path.resolve(__dirname, '../fixtures/power-climate-fixture.json');
 const REQUEST_TIMEOUT_MS = 12_000;
 const MS_PER_DAY = 86_400_000;
+const REFRESH_MIN_MS = 60_000;
 
 export interface RawPowerResponse {
   header?: { fill_value?: number };
@@ -67,6 +68,10 @@ export interface PowerClimateResult {
   dataDateRange: ClimateDateRange;
   last30Days: ClimateDateRange;
   dataSource: ClimateDataSource;
+  /** OFFLINE=1 is on: the data below is stored data and no download was tried. */
+  offline: boolean;
+  /** Online, a download was tried and failed, so the stored data above is what is shown. */
+  liveFetchFailed: boolean;
   /** When the POWER data in use was downloaded (ISO). For a fixture, when the fixture was built. */
   fetchedAt: string;
   generatedAt: string;
@@ -79,6 +84,8 @@ export interface PowerClientOptions {
   fixturePath?: string;
   now?: Date;
   timeoutMs?: number;
+  /** Download again even if today's copy is saved (the dashboard's refresh button). Ignored for 60 s after a download, and offline. */
+  forceRefresh?: boolean;
 }
 
 function isoDate(date: Date): string {
@@ -417,12 +424,16 @@ export async function getPowerClimate(site: ManagerSite, options: PowerClientOpt
   const key = cacheKey(site, range);
   // Online only: today's exact entry. Its file name contains the date range, so it changes every day (OFFLINE=1 does not use it).
   const exactCandidate = config.offline ? null : await readEnvelope(path.join(cacheDir, `${key}.json`));
-  const exact = exactCandidate && compatibleEnvelope(exactCandidate, site)
+  const exactToday = exactCandidate && compatibleEnvelope(exactCandidate, site)
     && exactCandidate.requestedRange.from === range.from && exactCandidate.requestedRange.to === range.to
     ? exactCandidate : null;
+  // a refresh skips today's saved copy, unless that copy was downloaded in the last minute (no hammering NASA)
+  const justFetched = exactToday ? (options.now ?? new Date()).getTime() - Date.parse(exactToday.fetchedAt) < REFRESH_MIN_MS : false;
+  const exact = options.forceRefresh && !justFetched ? null : exactToday;
   const fallbackCandidates = await cacheCandidates(cacheDir, fixturePath, site);
   let envelope: PowerEnvelope | null = null;
   let dataSource: ClimateDataSource = 'cache';
+  let liveFetchFailed = false;
 
   if (config.offline) {
     // OFFLINE=1: never touch the network. Newest cache entry for this site (whatever day it was fetched), then the committed fixture.
@@ -460,6 +471,7 @@ export async function getPowerClimate(site: ManagerSite, options: PowerClientOpt
       await saveCache(cacheDir, key, envelope);
       dataSource = 'live';
     } catch {
+      liveFetchFailed = true;
       const fallback = fallbackCandidates[0];
       envelope = fallback?.envelope ?? null;
       if (!envelope) throw new ApiError('provider_unavailable', 'NASA POWER could not be reached and no compatible cached data is available');
@@ -478,6 +490,8 @@ export async function getPowerClimate(site: ManagerSite, options: PowerClientOpt
     dataDateRange: { from: allDates[0], to: endDate },
     last30Days: { from: addDays(endDate, -29), to: endDate },
     dataSource,
+    offline: config.offline,
+    liveFetchFailed,
     fetchedAt: envelope.fetchedAt,
     generatedAt: (options.now ?? new Date()).toISOString(),
   };

@@ -46,6 +46,10 @@ if (demoEnabled() && !demoAccessCode()) {
   console.warn('DEMO_MODE=true but EDEN_OFFICER_CODE is not set: the demo officer login stays disabled.');
 }
 
+/** Desk records written before sites existed belong to the pilot site. */
+const DEFAULT_SITE = 'talanda';
+const siteOfFarmer = (farmer: FarmerRecord): string => farmer.site ?? DEFAULT_SITE;
+
 /** An officer as the desk sees them: a demo account or a Supabase user (site comes from app_metadata.site). */
 export interface Officer {
   id: string;
@@ -91,6 +95,7 @@ function seedStore(): Store {
     currentAmanCrop,
     irrigation,
     sample: true,
+    site: DEFAULT_SITE,
   });
   return {
     farmers: [
@@ -137,11 +142,21 @@ function save(): void {
 }
 
 /** Restore the sample data (used by tests and before a demo recording). */
-export function resetDesk(): void {
+export function resetDesk(site?: string): void {
   const fresh = seedStore();
-  store.farmers = fresh.farmers;
-  store.observations = fresh.observations;
-  store.callbacks = fresh.callbacks;
+  if (site === undefined) {
+    store.farmers = fresh.farmers;
+    store.observations = fresh.observations;
+    store.callbacks = fresh.callbacks;
+  } else {
+    // only this site's records are replaced by the seed; other sites' desks are never touched
+    const mine = new Set(store.farmers.filter(f => siteOfFarmer(f) === site).map(f => f.id));
+    const seeded = fresh.farmers.filter(f => siteOfFarmer(f) === site);
+    const seededIds = new Set(seeded.map(f => f.id));
+    store.farmers = [...store.farmers.filter(f => !mine.has(f.id)), ...seeded];
+    store.observations = [...store.observations.filter(o => !mine.has(o.farmerId)), ...fresh.observations.filter(o => seededIds.has(o.farmerId))];
+    store.callbacks = [...store.callbacks.filter(c => !mine.has(c.farmerId)), ...fresh.callbacks.filter(c => seededIds.has(c.farmerId))];
+  }
   save();
 }
 
@@ -266,12 +281,15 @@ export function latestObservation(farmerId: string): FieldObservation | undefine
     .sort((a, b) => b.date.localeCompare(a.date))[0];
 }
 
-export function farmers(): FarmerRecord[] {
-  return store.farmers;
+/** The farmers of one site; with no site, all of them (farmer-facing code that has no officer). A manager without a site sees none. */
+export function farmers(site?: string | null): FarmerRecord[] {
+  return site === undefined ? store.farmers : store.farmers.filter(f => site !== null && siteOfFarmer(f) === site);
 }
 
-export function callbacks(): CallbackRequest[] {
-  return store.callbacks;
+export function callbacks(site?: string | null): CallbackRequest[] {
+  if (site === undefined) return store.callbacks;
+  const ids = new Set(farmers(site).map(f => f.id));
+  return store.callbacks.filter(c => ids.has(c.farmerId));
 }
 
 /**
@@ -313,8 +331,9 @@ export function requestCallback(farmerId: string, channel: CallbackRequest['chan
   return request;
 }
 
-export function resolveCallback(callbackId: string): CallbackRequest | null {
-  const request = store.callbacks.find(c => c.id === callbackId);
+/** Resolves a call-back. With `site`, only a call-back of that site's farmers can be resolved (another site's id is "not found"). */
+export function resolveCallback(callbackId: string, site?: string | null): CallbackRequest | null {
+  const request = callbacks(site).find(c => c.id === callbackId);
   if (!request) return null;
   request.status = 'done';
   save();
@@ -322,9 +341,9 @@ export function resolveCallback(callbackId: string): CallbackRequest | null {
 }
 
 /** Validates and stores an officer's field observation; returns an error message instead when invalid. */
-export function addObservation(officerId: string, body: any): { observation?: FieldObservation; error?: string } {
+export function addObservation(officerId: string, body: any, site?: string | null): { observation?: FieldObservation; error?: string } {
   const farmer = farmerById(String(body.farmerId ?? ''));
-  if (!farmer) return { error: 'Unknown farmer' };
+  if (!farmer || (site !== undefined && (site === null || siteOfFarmer(farmer) !== site))) return { error: 'Unknown farmer' };
   if (!LAND_TYPES.includes(body.landType)) return { error: 'landType must be one of ' + LAND_TYPES.join(', ') };
   if (!LOC.aman[body.currentAmanCrop]) return { error: 'currentAmanCrop must be a variety in the research release' };
   if (!IRRIGATION.includes(body.irrigation)) return { error: 'irrigation must be one of ' + IRRIGATION.join(', ') };
@@ -358,8 +377,8 @@ export function addObservation(officerId: string, body: any): { observation?: Fi
 }
 
 /** Farmers ranked by how much they need the officer now, with the reasons in Bangla and English. */
-export function queue(): OfficerQueueItem[] {
-  return store.farmers
+export function queue(site?: string | null): OfficerQueueItem[] {
+  return farmers(site)
     .map(farmer => {
       const obs = latestObservation(farmer.id);
       const reasons: OfficerQueueItem['reasons'] = [];

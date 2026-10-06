@@ -15,7 +15,7 @@ import { bnDate, bnDateOf, bnDigits, bnOf, enDate } from '../../../packages/rota
 import * as desk from './officer_desk.ts';
 import { authConfig, requireManager } from './auth.ts';
 import { nasaConfigStatus } from './config.ts';
-import { managerClimate } from './manager_climate.ts';
+import { managerArea, managerClimate } from './manager_climate.ts';
 import { DualGateNarrationValidator } from '../../../packages/narration-core/src/dual_gate_validator.ts';
 import { TemplateNarrator } from '../../../packages/narration-core/src/template_narrator.ts';
 import { getNasaWeather, lastNasaSuccessAt } from './weather.ts';
@@ -172,7 +172,8 @@ function voiceAnswer(body: any) {
 /** Recent phone-channel events (Awaj survey answers and the call-backs they triggered), newest first. */
 const CALL_LOG: Array<Record<string, unknown>> = [];
 function logCall(event: Record<string, unknown>) {
-  CALL_LOG.unshift({ at: new Date().toISOString(), ...event });
+  // every phone channel today serves the Talanda pilot, so its events belong to the 'talanda' site
+  CALL_LOG.unshift({ at: new Date().toISOString(), site: 'talanda', ...event });
   CALL_LOG.length = Math.min(CALL_LOG.length, 50);
 }
 const maskPhone = (phone: string | null) => (phone ? `${phone.slice(0, 3)}XXXX${phone.slice(-4)}` : null);
@@ -287,8 +288,8 @@ function overviewHere(placeId: string) {
     context: {
       soilTypeBangla: LOC.kind === 'pilot' ? LOC.srdi.soilTypeBangla : null,
       soilTypeEnglish: LOC.kind === 'pilot' ? 'Kharia soil (Barind)' : null,
-      landTypeBangla: LOC.srdi.landTypeBangla,
-      landTypeEnglish: 'medium-high land',
+      landTypeBangla: LOC.kind === 'pilot' ? LOC.srdi.landTypeBangla : null,
+      landTypeEnglish: LOC.kind === 'pilot' ? 'medium-high land' : null,
       bmdStation: LOC.conditions.bmdStation,
       bmdStationBangla: BMD_STATION_BANGLA[LOC.conditions.bmdStation] ?? LOC.conditions.bmdStation,
       bmdStationKm: LOC.conditions.bmdStationKm,
@@ -297,10 +298,11 @@ function overviewHere(placeId: string) {
       rootZoneGldasMm: LOC.conditions.rootZoneGldasMm,
       cattlePerKm2: LOC.conditions.cattlePerKm2,
     },
-    early_warnings: earlyWarnings(),
-    soil_carbon: TANORE_SOIL_CARBON,
-    recent_farmer_contacts: farmerRows(),
-    pest_reports: pestReports(),
+    // These four describe the Tanore pilot (its heat and cattle trends, SMAP carbon, sample farmers and field reports): another place never gets them
+    early_warnings: LOC.kind === 'pilot' ? earlyWarnings() : null,
+    soil_carbon: LOC.kind === 'pilot' ? TANORE_SOIL_CARBON : null,
+    recent_farmer_contacts: LOC.kind === 'pilot' ? farmerRows() : [],
+    pest_reports: LOC.kind === 'pilot' ? pestReports() : [],
   };
 }
 
@@ -354,10 +356,13 @@ function earlyWarnings() {
   };
 }
 
+/** The overview describes the Tanore pilot, so its sample farmers and field reports are the pilot site's (other sites' desks are not shown on it). */
+const PILOT_SITE = 'talanda';
+
 /** Union-level pest sightings from officers' latest field observations (farmer details stay officer-only). */
 function pestReports() {
   const counts = new Map<string, { pest: string; bn: string; en: string; fields: number; highSeverity: number }>();
-  for (const f of desk.farmers()) {
+  for (const f of desk.farmers(PILOT_SITE)) {
     const obs = desk.latestObservation(f.id);
     if (!obs || obs.pestSeen === 'none') continue;
     const entry = counts.get(obs.pestSeen) ?? { pest: obs.pestSeen, ...desk.PEST_NAMES[obs.pestSeen], fields: 0, highSeverity: 0 };
@@ -370,12 +375,12 @@ function pestReports() {
 
 /** Sample farmer rows for the overview, each with its own officer-aware top rotation. */
 function farmerRows() {
-  const openCallbacks = new Set(desk.callbacks().filter(c => c.status === 'open').map(c => c.farmerId));
+  const openCallbacks = new Set(desk.callbacks(PILOT_SITE).filter(c => c.status === 'open').map(c => c.farmerId));
   const short = (o: CandidateRotation) => ({
     bn: `${(o.cropSequence[0].varietyBangla ?? o.cropSequence[0].variety).replace('ব্রি ', '')} → ${o.cropSequence[1].cropBangla ?? o.cropSequence[1].crop}`,
     en: `${o.cropSequence[0].variety.replace('BRRI ', '')} → ${o.cropSequence[1].crop}`,
   });
-  return desk.farmers().map(f => {
+  return desk.farmers(PILOT_SITE).map(f => {
     const advice = adviseWithNarration(planRequest({}), f.id);
     const next = short(advice.options[0]);
     const nowOption = advice.options.find(o => o.id === advice.this_season_option_id);
@@ -457,13 +462,15 @@ function knowledgePack() {
 
 /** Everything the officer desk screen shows in one call. */
 function deskView(officer: desk.Officer) {
-  const queue = desk.queue();
+  // the desk shows only the farmers and call-backs of the manager's own site (app_metadata.site); no site, nothing
+  const site = officer.site ?? null;
+  const queue = desk.queue(site);
   return {
     officer,
     pestNames: desk.PEST_NAMES,
     queue,
-    callbacks: desk.callbacks(),
-    farmers: desk.farmers().map(f => {
+    callbacks: desk.callbacks(site),
+    farmers: desk.farmers(site).map(f => {
       const advice = adviseWithNarration(planRequest({}), f.id);
       const top = advice.options[0];
       return {
@@ -901,6 +908,9 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/v1/manager/climate' && req.method === 'GET') {
       return sendJSON(res, 200, await managerClimate(req));
     }
+    if (pathname === '/api/v1/manager/area' && req.method === 'GET') {
+      return sendJSON(res, 200, await managerArea(req));
+    }
 
     // ---- Krishi officer desk -----------------------------------------------------------------------
     if (pathname === '/api/v1/officers' && req.method === 'GET') {
@@ -921,24 +931,25 @@ const server = http.createServer(async (req, res) => {
       }
       if (pathname === '/api/v1/officer/observations' && req.method === 'POST') {
         const body = await parseBody(req);
-        const result = desk.addObservation(officer.id, body);
+        const result = desk.addObservation(officer.id, body, officer.site ?? null);
         if (result.error) throw new ApiError('invalid_input', result.error);
         return sendJSON(res, 200, { observation: result.observation, advice: adviseWithNarration(planRequest({}), body.farmerId) });
       }
       const resolve = /^\/api\/v1\/officer\/callbacks\/([^/]+)\/resolve$/.exec(pathname);
       if (resolve && req.method === 'POST') {
-        const request = desk.resolveCallback(decodeURIComponent(resolve[1]));
+        const request = desk.resolveCallback(decodeURIComponent(resolve[1]), officer.site ?? null);
         if (!request) throw new ApiError('not_found', 'Unknown call-back request');
         return sendJSON(res, 200, request);
       }
       if (pathname === '/api/v1/officer/calls' && req.method === 'GET') {
-        return sendJSON(res, 200, { calls: CALL_LOG, provider: awajConfig() });
+        return sendJSON(res, 200, { calls: CALL_LOG.filter(c => c.site === officer.site), provider: awajConfig() });
       }
       if (pathname === '/api/v1/officer/knowledge' && req.method === 'GET') {
         return sendJSON(res, 200, knowledgePack());
       }
       if (pathname === '/api/v1/officer/reset' && req.method === 'POST') {
-        desk.resetDesk();
+        if (!officer.site) throw new ApiError('forbidden', 'This manager account has no site in app_metadata');
+        desk.resetDesk(officer.site); // only this manager's own site
         return sendJSON(res, 200, { ok: true });
       }
       throw new ApiError('not_found', 'Unknown officer endpoint');

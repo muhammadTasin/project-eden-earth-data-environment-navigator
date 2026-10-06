@@ -88,6 +88,25 @@ process.env.DEMO_MODE = 'false';
 await assert.rejects(requireManager(request(`Bearer ${demoSession.token}`), verify), (e: any) => e instanceof ApiError && e.status === 401, 'the demo token stops working when demo mode is off');
 console.log('✓ TEST 4 PASSED: the demo login works only behind DEMO_MODE=true.\n');
 
+// Sign-in field: the browser helper that turns what was typed into the User ID (apps/saao-dashboard/public/auth-client.js)
+const { resolveUserId } = await import('./apps/saao-dashboard/public/auth-client.js');
+const domain = 'desk.example.test';
+assert.equal(resolveUserId('sentry', domain), 'sentry', 'a plain User ID is used as it is');
+assert.equal(resolveUserId('  Sentry ', domain), 'sentry', 'trimmed and lower-cased');
+assert.equal(resolveUserId(`sentry@${domain}`, domain), 'sentry', 'an email with the server\'s domain is reduced to its User ID');
+assert.equal(resolveUserId(`Sentry@${domain.toUpperCase()}`, domain), 'sentry', 'the domain is compared without case');
+assert.equal(resolveUserId(`sentry@${domain}`, `@${domain}`), 'sentry', 'a leading @ in the configured domain is ignored');
+assert.equal(resolveUserId('sentry@gmail.com', domain), null, 'any other domain is refused');
+assert.equal(resolveUserId(`sentry@${domain}.evil.test`, domain), null, 'a longer domain is refused');
+assert.equal(resolveUserId(`a@b@${domain}`, domain), null, 'two @ signs are refused');
+assert.equal(resolveUserId(`@${domain}`, domain), null, 'no User ID before the @');
+assert.equal(resolveUserId('sentry@', domain), null);
+assert.equal(resolveUserId(`sentry@${domain}`, ''), null, 'with no domain configured an email cannot be reduced');
+assert.equal(resolveUserId('sen try', domain), null, 'a space is refused');
+assert.equal(resolveUserId('', domain), null);
+assert.equal(resolveUserId(undefined, domain), null);
+console.log('✓ Sign-in field: a plain User ID or an email with the server\'s own domain works; every other form is refused.\n');
+
 console.log('========================================================');
 console.log('  ALL MANAGER AUTHENTICATION TESTS PASSED               ');
 console.log('========================================================\n');

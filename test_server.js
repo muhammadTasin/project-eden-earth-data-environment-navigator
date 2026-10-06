@@ -16,6 +16,11 @@ const OFFICER_CODE = crypto.randomBytes(12).toString('hex');
 // 'mgr-token' is a manager, 'viewer-token' a signed-in user whose app_metadata.role is not manager, anything else is invalid.
 const FAKE_USERS = {
   'mgr-token': { id: 'u-manager', email: 'sentry@example.test', app_metadata: { role: 'manager', site: 'talanda' }, user_metadata: {} },
+  // JWT-shaped tokens (three parts) for the site-scoped routes: a manager of talanda, a manager of another site, a manager with no site
+  'h.talanda.s': { id: 'u-talanda', email: 'sentry@example.test', app_metadata: { role: 'manager', site: 'talanda' }, user_metadata: {} },
+  'h.other.s': { id: 'u-other', email: 'other@example.test', app_metadata: { role: 'manager', site: 'sun_dharmapasha' }, user_metadata: { site: 'talanda' } },
+  'h.viewer.s': { id: 'u-viewer2', email: 'viewer2@example.test', app_metadata: { role: 'viewer', site: 'talanda' }, user_metadata: { role: 'manager' } },
+  'h.nosite.s': { id: 'u-nosite', email: 'nosite@example.test', app_metadata: { role: 'manager' }, user_metadata: { site: 'talanda' } },
   'viewer-token': { id: 'u-viewer', email: 'viewer@example.test', app_metadata: { role: 'viewer' }, user_metadata: { role: 'manager' } },
 };
 const fakeSupabase = http.createServer((req, res) => {
@@ -477,6 +482,42 @@ async function run() {
   const demoText = await demoSources.text();
   for (const value of Object.values(FAKE_SECRETS)) check(!demoText.includes(value), 'the demo response must never contain a secret value');
   console.log('✓ Data sources: 401 without a token, 403 for a non-manager, 200 for a manager, flags only (no secret)');
+
+  // Site scope over HTTP: a manager sees and changes only their own site's desk; the area parameter accepts known ids only
+  console.log('Testing manager site scope ...');
+  const as = (token) => ({ headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } });
+  const deskOf = async (token) => (await fetch(`${BASE}/api/v1/officer/desk`, as(token))).json();
+  const ownDesk = await deskOf('h.talanda.s');
+  check(ownDesk.farmers.length === 4 && ownDesk.callbacks.some((c) => c.id === 'cb_seed_04'), 'the talanda manager sees the talanda desk');
+  for (const token of ['h.other.s', 'h.nosite.s']) {
+    const other = await deskOf(token);
+    check(other.farmers.length === 0 && other.callbacks.length === 0 && other.queue.length === 0, `${token}: no farmers, call-backs or queue of another site`);
+    const resolve = await fetch(`${BASE}/api/v1/officer/callbacks/cb_seed_04/resolve`, { method: 'POST', ...as(token) });
+    check(resolve.status === 404, `${token}: another site's call-back is not found, got ${resolve.status}`);
+    const observe = await fetch(`${BASE}/api/v1/officer/observations`, { method: 'POST', ...as(token), body: JSON.stringify({ farmerId: 'F01', landType: 'medium_high', currentAmanCrop: 'BRRI dhan71', irrigation: 'rainfed' }) });
+    check(observe.status === 400, `${token}: cannot write an observation for another site's farmer, got ${observe.status}`);
+    const calls = await (await fetch(`${BASE}/api/v1/officer/calls`, as(token))).json();
+    check(calls.calls.length === 0, `${token}: the phone log of another site is not shown`);
+  }
+  check((await fetch(`${BASE}/api/v1/officer/reset`, { method: 'POST', ...as('h.nosite.s') })).status === 403, 'a manager without a site cannot reset');
+  await fetch(`${BASE}/api/v1/officer/reset`, { method: 'POST', ...as('h.other.s') });
+  const afterReset = await deskOf('h.talanda.s');
+  check(afterReset.farmers.length === 4 && afterReset.callbacks.some((c) => c.id === 'cb_seed_04' && c.status === 'open'), 'another site\'s reset leaves the talanda desk alone');
+  const areaOf = async (token) => (await fetch(`${BASE}/api/v1/manager/area`, as(token))).json();
+  const homeArea = await areaOf('h.talanda.s');
+  check(homeArea.siteId === 'talanda' && homeArea.placeId === 'talanda_tanore' && homeArea.nameEnglish === 'Talanda, Tanore', 'the home area comes from app_metadata.site (not user_metadata)');
+  check((await areaOf('h.other.s')).siteId === 'SUN_DHARMAPASHA', 'another manager has another home area, whatever user_metadata says');
+  check((await fetch(`${BASE}/api/v1/manager/area`)).status === 401, 'the home area needs a token');
+  check((await fetch(`${BASE}/api/v1/manager/area`, as('h.viewer.s'))).status === 403, 'the home area is for managers only');
+  for (const area of ['nowhere', 'ADM3_Atlantis', '24.6,88.5', 'ADM3_']) {
+    const bad = await fetch(`${BASE}/api/v1/manager/climate?area=${encodeURIComponent(area)}`, as('h.talanda.s'));
+    check(bad.status === 422, `an unknown area (${area}) must be refused with 422, got ${bad.status}`);
+  }
+  check((await fetch(`${BASE}/api/v1/manager/climate?area=ADM3_ChuadangaSadar`)).status === 401, 'area climate needs a token');
+  const sylhetOverview = await (await fetch(`${BASE}/api/v1/overview?place=ADM3_Godagari`)).json();
+  check(sylhetOverview.early_warnings === null && sylhetOverview.soil_carbon === null && sylhetOverview.recent_farmer_contacts.length === 0 && sylhetOverview.pest_reports.length === 0 && sylhetOverview.context.landTypeBangla === null,
+    'another place never receives the Tanore pilot\'s warnings, carbon, sample farmers or field reports');
+  console.log('✓ Site scope: own desk only, another site cannot read, resolve, write or reset; area ids validated; pilot-only overview parts stay with the pilot');
 
   await checkDemoModeOff();
 

@@ -40,6 +40,7 @@
           <span class="sep">›</span>
           <span class="union active" data-i18n="geo.union">তালন্দ ইউনিয়ন</span>
         </div>
+        <span class="geo-home" id="geoHome" hidden></span>
       </div>
     </div>
 
@@ -148,7 +149,8 @@
         <form class="entry-form" onsubmit="entryOfficerSignIn(event)" novalidate>
           <div class="form-group">
             <label for="entryOfficerUserId" data-i18n="entry.officer.userIdLabel">ইউজার আইডি</label>
-            <input id="entryOfficerUserId" type="text" class="form-control" autocomplete="username" autocapitalize="none" spellcheck="false">
+            <input id="entryOfficerUserId" type="text" class="form-control" autocomplete="username" autocapitalize="none" spellcheck="false" aria-describedby="entryOfficerUserIdHint">
+            <small class="entry-hint" id="entryOfficerUserIdHint" data-i18n="entry.officer.userIdHint">শুধু ইউজার আইডি লিখুন, ইমেইল নয়</small>
           </div>
           <div class="form-group">
             <label for="entryOfficerPassword" data-i18n="entry.officer.passwordLabel">পাসওয়ার্ড</label>
@@ -239,6 +241,12 @@
     <!-- SCREEN 1: SAAO OVERVIEW DASHBOARD          -->
     <!-- ========================================== -->
     <section id="screen-overview" class="screen-section active">
+      <!-- HOW FRESH THE NUMBERS ARE: live downloads and the dated release snapshot, kept apart -->
+      <div class="freshness-strip" id="freshnessStrip" role="region" aria-labelledby="freshTitle">
+        <strong id="freshTitle" data-i18n="fresh.title">ডেটা কতটা নতুন</strong>
+        <span class="fresh-item" id="freshPower"></span>
+        <span class="fresh-item" id="freshSnapshot"></span>
+      </div>
       <div class="overview-grid">
         <!-- LEFT COLUMN: SUMMARY & ACTIONS -->
         <div class="overview-left">
@@ -251,6 +259,10 @@
                 <select id="placeDistrict" aria-label="District"></select>
                 <select id="placeUpazila" aria-label="Upazila"></select>
                 <span class="badge badge-info" id="placeKind"></span>
+              </div>
+              <div class="area-banner" id="areaBanner" role="status" hidden>
+                <span id="areaBannerText"></span>
+                <button class="btn btn-sm btn-primary" type="button" onclick="returnToMyArea()" data-i18n="area.back">আমার এলাকায় ফিরুন</button>
               </div>
               <p data-i18n="overview.lead">বরেন্দ্র অঞ্চলের মাঝারি উঁচু জমিতে ভূগর্ভস্থ পানির চাপ কমাতে, মাটি ভালো রাখতে ও কীটনাশক কমাতে ২৫ মৌসুমের নাসা ডেটার ভিত্তিতে ফসল চক্র বাছাই।</p>
               <div class="banner-actions" data-roles="officer">
@@ -273,9 +285,10 @@
             <div class="stat-card">
               <div class="stat-icon water">💧</div>
               <div class="stat-body">
-                <span class="stat-title" data-i18n="overview.rainTitle">বৃষ্টি, শেষ ৩০ দিন (NASA IMERG)</span>
+                <span class="stat-title"><span data-i18n="overview.rainTitle">বৃষ্টি, শেষ ৩০ দিন</span> · <span data-area-name></span></span>
                 <span class="stat-value" id="statRainValue">…</span>
                 <span class="stat-sub" id="statRainSub"></span>
+                <span class="stat-sub stat-sub-note" id="statRainSub2"></span>
               </div>
             </div>
 
@@ -298,8 +311,47 @@
             </div>
           </div>
 
+          <div class="card climate-card" id="climateTrendCard" aria-labelledby="climateTitle" hidden>
+            <div class="card-header">
+              <h2 id="climateTitle"><span data-i18n="climate.title">জলবায়ুর ধারা (গত ৩০ দিন বনাম স্বাভাবিক)</span> · <span data-area-name></span></h2>
+              <button class="btn btn-sm btn-secondary" type="button" id="climateRefresh" onclick="refreshClimate()"><span class="material-symbols-outlined" aria-hidden="true">refresh</span> <span data-i18n="climate.refresh">রিফ্রেশ</span></button>
+            </div>
+            <p class="subtitle" data-i18n="climate.subtitle">নির্বাচিত এলাকার NASA POWER তথ্য থেকে সাম্প্রতিক বৃষ্টি, গরম, শুকনো সময় ও শিকড়ের মাটির আর্দ্রতা।</p>
+
+            <div class="climate-loading" id="climateLoading" role="status" aria-live="polite">
+              <span data-i18n="climate.loading">জলবায়ুর তথ্য আসছে…</span>
+              <div class="climate-skel-row" aria-hidden="true"></div>
+            </div>
+
+            <div class="climate-error" id="climateError" role="alert" hidden>
+              <p id="climateErrorText"></p>
+              <button class="btn btn-sm btn-secondary" type="button" onclick="loadClimateTrend()" data-i18n="climate.retry">আবার চেষ্টা করুন</button>
+            </div>
+
+            <dl class="climate-indicators" id="climateIndicators" hidden>
+              <div class="climate-indicator">
+                <dt data-i18n="climate.rain">বৃষ্টি বনাম ১০ বছরের স্বাভাবিক</dt>
+                <dd id="climateRainStatus"></dd>
+              </div>
+              <div class="climate-indicator">
+                <dt data-i18n="climate.heat">৩৫°C-এর বেশি গরমের দিন</dt>
+                <dd id="climateHeatStatus"></dd>
+              </div>
+              <div class="climate-indicator">
+                <dt data-i18n="climate.dry">সবচেয়ে দীর্ঘ শুকনো সময়</dt>
+                <dd id="climateDryStatus"></dd>
+              </div>
+              <div class="climate-indicator">
+                <dt data-i18n="climate.soil">শিকড়ের মাটির আর্দ্রতা</dt>
+                <dd id="climateSoilStatus"></dd>
+              </div>
+            </dl>
+            <p class="climate-source" id="climateSourceLine" hidden></p>
+            <p class="climate-source" id="climateRefreshNote" role="status" aria-live="polite" hidden></p>
+          </div>
+
           <!-- RECENT ADVICE LOG -->
-          <div class="card" data-roles="officer">
+          <div class="card private-block" id="ovFarmersCard" data-roles="officer">
             <div class="card-header">
               <h3 data-i18n="overview.farmersTitle">সাম্প্রতিক সুপারিশ ও কৃষক ফলো-আপ (তালন্দ ব্লক)</h3>
               <span class="badge badge-warning" data-i18n="overview.sampleBadge">নমুনা সারি: কৃষক সাক্ষাৎকার বাকি</span>
@@ -347,7 +399,7 @@
                   <span class="label" data-i18n="overview.spec.grid">নাসা গ্রিড:</span>
                   <span class="val" data-i18n="overview.spec.gridValue">IMERG ০.১° (~১০ কিমি), SMAP L4 ৯ কিমি</span>
                 </div>
-                <div class="spec-item">
+                <div class="spec-item private-block">
                   <span class="label" data-i18n="overview.spec.soil">মাটি ও জমি (SRDI):</span>
                   <span class="val" id="specSoil">…</span>
                 </div>
@@ -368,7 +420,7 @@
           </div>
 
           <!-- ACTIVE AGROMET ALERT -->
-          <div class="card alert-card">
+          <div class="card alert-card private-block" id="ovAlertCard">
             <div class="alert-icon">⚠️</div>
             <div class="alert-content">
               <h4 id="alertTitle">…</h4>
@@ -380,7 +432,7 @@
           </div>
 
           <!-- FIELD PEST REPORTS (union level) -->
-          <div class="card">
+          <div class="card private-block" id="ovPestCard">
             <div class="card-header">
               <h3 data-i18n="overview.pestTitle">মাঠের বালাই খবর (কর্মকর্তার পর্যবেক্ষণ)</h3>
               <button class="btn btn-sm btn-secondary" onclick="switchScreen('screen-ipm')" data-i18n="overview.pestMore">কম কীটনাশকের উপায়</button>
@@ -403,11 +455,11 @@
         <ul class="warning-list" id="liveFacts"></ul>
         <p class="warning-note" data-i18n="live.note">উৎস: নাসা POWER (প্রতিদিন, ৫০ কিমি গ্রিড, ~৩ দিন পিছিয়ে) ও GPM IMERG (১০ কিমি, ১–২ দিন পিছিয়ে)। শুকনো/ভেজা তুলনা ২০১৬–২০২৫ সালের একই সময়ের সাথে; SMAP দিয়ে যাচাইয়ের আগ পর্যন্ত এটি অস্থায়ী।</p>
       </div>
-      <div class="warnings-heading">
+      <div class="warnings-heading" id="warningsHeading">
         <h2 data-i18n="warnings.title">আগাম সতর্কতা: নাসার তথ্যে মাঠ ও খামারের ঝুঁকি</h2>
         <p class="subtitle" data-i18n="warnings.subtitle">ফসল চক্রের বাইরেও একই উপগ্রহ তথ্য কৃষককে আগে থেকে সাবধান করে।</p>
       </div>
-      <div class="warnings-row">
+      <div class="warnings-row" id="warningsRow">
         <div class="card warning-card">
           <div class="card-header">
             <h3 data-i18n="warnings.haorTitle">হাওরে আকস্মিক বন্যা (ধর্মপাশা পাইলট)</h3>
@@ -1339,42 +1391,6 @@
     <!-- SCREEN 10: DATA QUALITY AND COVERAGE       -->
     <!-- ========================================== -->
     <section id="screen-quality" class="screen-section">
-      <div class="card climate-card" id="climateTrendCard" aria-labelledby="climateTitle" hidden>
-        <div class="card-header">
-          <h2 id="climateTitle" data-i18n="climate.title">জলবায়ুর ধারা (গত ৩০ দিন বনাম স্বাভাবিক)</h2>
-        </div>
-        <p class="subtitle" data-i18n="climate.subtitle">আপনার ব্লকের NASA POWER তথ্য থেকে সাম্প্রতিক বৃষ্টি, গরম, শুকনো সময় ও শিকড়ের মাটির আর্দ্রতা।</p>
-
-        <div class="climate-loading" id="climateLoading" role="status" aria-live="polite">
-          <span data-i18n="climate.loading">জলবায়ুর তথ্য আসছে…</span>
-          <div class="climate-skel-row" aria-hidden="true"></div>
-        </div>
-
-        <div class="climate-error" id="climateError" role="alert" hidden>
-          <p id="climateErrorText"></p>
-          <button class="btn btn-sm btn-secondary" type="button" onclick="loadClimateTrend()" data-i18n="climate.retry">আবার চেষ্টা করুন</button>
-        </div>
-
-        <dl class="climate-indicators" id="climateIndicators" hidden>
-          <div class="climate-indicator">
-            <dt data-i18n="climate.rain">বৃষ্টি বনাম ১০ বছরের স্বাভাবিক</dt>
-            <dd id="climateRainStatus"></dd>
-          </div>
-          <div class="climate-indicator">
-            <dt data-i18n="climate.heat">৩৫°C-এর বেশি গরমের দিন</dt>
-            <dd id="climateHeatStatus"></dd>
-          </div>
-          <div class="climate-indicator">
-            <dt data-i18n="climate.dry">সবচেয়ে দীর্ঘ শুকনো সময়</dt>
-            <dd id="climateDryStatus"></dd>
-          </div>
-          <div class="climate-indicator">
-            <dt data-i18n="climate.soil">শিকড়ের মাটির আর্দ্রতা</dt>
-            <dd id="climateSoilStatus"></dd>
-          </div>
-        </dl>
-        <p class="climate-source" id="climateSourceLine" hidden></p>
-      </div>
 
       <!-- NASA data sources the server can use: read-only (GET /api/v1/manager/data-sources, set/unset flags only; no key is ever shown or entered here) -->
       <div class="card ds-card" id="dataSourcesCard" aria-labelledby="dsTitle">

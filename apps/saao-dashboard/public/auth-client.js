@@ -45,6 +45,23 @@ export function normalizeUserId(userId) {
 }
 
 /**
+ * The User ID to sign in with, from what was typed in the field. A plain ID is returned as it is. If the person typed a full
+ * email, the part after "@" is dropped, but only when it equals the server's AUTH_EMAIL_DOMAIN; any other "@" form, or a space,
+ * gives null (the caller shows the one generic error, which never says which part was wrong).
+ */
+export function resolveUserId(raw, emailDomain) {
+  const typed = normalizeUserId(raw);
+  if (!typed || /\s/.test(typed)) return null;
+  const at = typed.indexOf('@');
+  if (at === -1) return typed;
+  const local = typed.slice(0, at);
+  const domain = typed.slice(at + 1);
+  const expected = String(emailDomain ?? '').trim().toLowerCase().replace(/^@/, '');
+  if (!local || !expected || domain.includes('@') || domain !== expected) return null;
+  return local;
+}
+
+/**
  * The only place that builds an account email: `<userId>@<AUTH_EMAIL_DOMAIN>` (the domain comes from the server's config).
  * Returns null when the User ID is empty or the server has no AUTH_EMAIL_DOMAIN.
  */

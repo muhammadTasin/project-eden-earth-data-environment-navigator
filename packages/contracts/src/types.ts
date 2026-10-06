@@ -285,6 +285,8 @@ export interface FarmerRecord {
   currentAmanCrop: string;
   irrigation: FieldObservation['irrigation'];
   sample: boolean;
+  /** The manager site (app_metadata.site) this farmer belongs to; records written before sites existed count as 'talanda'. */
+  site?: string;
 }
 
 export interface CallbackRequest {

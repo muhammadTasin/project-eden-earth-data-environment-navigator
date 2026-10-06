@@ -18,6 +18,8 @@ let currentDataRelease = null;
 let selectedOptionId = null;
 let officers = [];
 let officerSession = null; // { source: 'supabase' | 'demo', officer, token (demo only) }
+let homeArea = null; // the manager's own area from the verified token site: { siteId, placeId, nameBangla, nameEnglish, district }
+let homeAreaApplied = false; // the page switched to the manager's own area once after sign-in
 let demoMode = false; // the server runs with DEMO_MODE=true: the demo officer login is offered
 let officerDesk = null;
 let officerKnowledge = null;
@@ -175,22 +177,7 @@ async function loadOverview() {
 function renderOverview(o) {
   setText('releaseTag', `${tr('রিলিজ', 'Release')}: ${o.data_release.version}`);
 
-  const rain = o.local_satellite_conditions.rain_last_30_days;
-  if (rain) {
-    const pct = rain.pctOfNormal;
-    setText('statRainValue', `${num(Math.round(rain.imergLateMm))} ${tr('মিমি', 'mm')}`);
-    setText('statRainSub', tr(
-      `${rain.verdictBangla}: স্বাভাবিকের ${num(pct.imergLate)}% (IMERG Late), ${num(pct.imergAdjusted)}% (সমন্বিত), ${num(pct.merra2)}% (MERRA-2); ${isoDate(rain.to)} পর্যন্ত`,
-      `${rain.verdict.charAt(0).toUpperCase()}${rain.verdict.slice(1)}: ${pct.imergLate}% of normal (IMERG Late), ${pct.imergAdjusted}% (corrected), ${pct.merra2}% (MERRA-2); to ${isoDate(rain.to)}`,
-    ));
-  } else if (currentPlaceLive) {
-    const p = currentPlaceLive.power;
-    setText('statRainValue', `${num(Math.round(p.rain30))} ${tr('মিমি', 'mm')}`);
-    setText('statRainSub', tr(`দৈনিক নাসা POWER: স্বাভাবিকের ${num(p.rain30PctOfNormal ?? '—')}%; ${isoDate(p.date)} পর্যন্ত`, `Daily NASA POWER: ${p.rain30PctOfNormal ?? '—'}% of normal; to ${isoDate(p.date)}`));
-  } else {
-    setText('statRainValue', '—');
-    setText('statRainSub', tr('দৈনিক নাসা হালনাগাদ এখনো চলেনি', 'The daily NASA update has not run yet'));
-  }
+  renderRainStat(o);
 
   const smap = o.local_satellite_conditions.smap;
   if (!smap) {
@@ -240,7 +227,7 @@ function renderOverview(o) {
     verified: ['badge-success', 'কর্মকর্তা যাচাইকৃত', 'Officer-verified'],
     pending: ['badge-neutral', 'মাঠ যাচাই বাকি', 'Field check pending'],
   };
-  setHtml('recentFarmersTable', o.recent_farmer_contacts.map(f => {
+  setHtml('recentFarmersTable', (o.recent_farmer_contacts || []).map(f => {
     const [cls, bn, en] = status[f.status] || status.pending;
     return `
     <tr>
@@ -257,7 +244,182 @@ function renderOverview(o) {
   setHtml('ipmField', reports);
   setText('policyRelease', o.data_release.version);
   if (o.early_warnings) renderWarnings(o.early_warnings, o.aman_replay);
+  applyAreaScope();
 }
+
+// ---------------------------------------------------------------------------
+// Which area the page describes, and which parts belong only to the manager's own area
+// ---------------------------------------------------------------------------
+
+/** The dashboard names the Tanore pilot 'talanda_tanore' and its upazila row 'ADM3_Tanore': one place. */
+const samePlace = (a, b) => (a === 'ADM3_Tanore' ? PILOT_PLACE : a) === (b === 'ADM3_Tanore' ? PILOT_PLACE : b);
+
+/** The place the numbers on the page describe, as "Upazila, District" (the overview scope the server answered with). */
+function placeLabel() {
+  const scope = currentOverview?.scope;
+  if (!scope || scope.place_kind !== 'upazila') return tr('তানোর, রাজশাহী', 'Tanore, Rajshahi');
+  return `${scope.upazila}, ${scope.district}`;
+}
+
+function homeAreaLabel() {
+  if (!homeArea) return '';
+  if (samePlace(homeArea.placeId, PILOT_PLACE)) return tr('তানোর, রাজশাহী', 'Tanore, Rajshahi');
+  return tr(`${homeArea.nameBangla}${homeArea.district ? `, ${homeArea.district}` : ''}`, `${homeArea.nameEnglish}`);
+}
+
+/** A signed-in manager looking at an area other than their own (their own = the site in their verified token). */
+function isAwayFromHome() {
+  return Boolean(officerSession && homeArea && !samePlace(currentPlace, homeArea.placeId));
+}
+
+/** The climate answer, only when it was fetched for the place now on screen. */
+function climateForThisPlace() {
+  return climateTrend.state === 'ok' && climateTrend.place === currentPlace ? climateTrend.data : null;
+}
+
+const dateTime = (iso) => new Date(iso).toLocaleString(lang === 'en' ? 'en-GB' : 'bn-BD', { dateStyle: 'medium', timeStyle: 'short' });
+const dateRangeText = (from, to) => `${isoDate(from)} – ${isoDate(to)}`;
+
+/** One primary 30-day rainfall figure (NASA POWER, with its source and dates); the release snapshot is a labelled second line. */
+function renderRainStat(o) {
+  const snap = o.local_satellite_conditions.rain_last_30_days; // exists for the Tanore pilot only
+  const power = climateForThisPlace()?.indicators?.rainfall;
+  const area = placeLabel();
+  const snapLine = snap ? tr(
+    `স্ন্যাপশট, লাইভ নয় (${dateRangeText(snap.from, snap.to)}): ${num(Math.round(snap.imergLateMm))} মিমি, স্বাভাবিকের ${num(snap.pctOfNormal.imergLate)}% (IMERG Late), ${num(snap.pctOfNormal.imergAdjusted)}% (সমন্বিত), ${num(snap.pctOfNormal.merra2)}% (MERRA-2); ${snap.verdictBangla}`,
+    `Snapshot, not live (${dateRangeText(snap.from, snap.to)}): ${Math.round(snap.imergLateMm)} mm, ${snap.pctOfNormal.imergLate}% of normal (IMERG Late), ${snap.pctOfNormal.imergAdjusted}% (corrected), ${snap.pctOfNormal.merra2}% (MERRA-2); ${snap.verdict}`,
+  ) : '';
+  if (power && power.totalMm !== null && power.totalMm !== undefined) {
+    const pct = power.anomalyPercent === null || power.anomalyPercent === undefined ? null : Math.round(100 + power.anomalyPercent);
+    setText('statRainValue', `${num(Math.round(power.totalMm))} ${tr('মিমি', 'mm')}`);
+    setText('statRainSub', tr(
+      `NASA POWER, ${area}, ${dateRangeText(power.dateRange.from, power.dateRange.to)}${pct === null ? '' : `: ১০ বছরের স্বাভাবিক ${num(Math.round(power.normalMm))} মিমির ${num(pct)}%`}`,
+      `NASA POWER, ${area}, ${dateRangeText(power.dateRange.from, power.dateRange.to)}${pct === null ? '' : `: ${pct}% of the 10-year normal of ${Math.round(power.normalMm)} mm`}`,
+    ));
+    setText('statRainSub2', snapLine);
+  } else if (snap) {
+    setText('statRainValue', `${num(Math.round(snap.imergLateMm))} ${tr('মিমি', 'mm')}`);
+    setText('statRainSub', snapLine);
+    setText('statRainSub2', '');
+  } else if (currentPlaceLive) {
+    const p = currentPlaceLive.power;
+    setText('statRainValue', `${num(Math.round(p.rain30))} ${tr('মিমি', 'mm')}`);
+    setText('statRainSub', tr(
+      `দৈনিক হালনাগাদ ফাইল (NASA POWER), ${area}: স্বাভাবিকের ${num(p.rain30PctOfNormal ?? '—')}%; ${isoDate(p.date)} পর্যন্ত`,
+      `Daily update file (NASA POWER), ${area}: ${p.rain30PctOfNormal ?? '—'}% of normal; to ${isoDate(p.date)}`));
+    setText('statRainSub2', '');
+  } else {
+    setText('statRainValue', '—');
+    setText('statRainSub', tr('দৈনিক নাসা হালনাগাদ এখনো চলেনি', 'The daily NASA update has not run yet'));
+    setText('statRainSub2', '');
+  }
+}
+
+/** "How fresh is this data": the live NASA POWER download and the dated release snapshot, never mixed up. */
+function renderFreshness() {
+  const o = currentOverview;
+  if (!o) return;
+  const area = placeLabel();
+  let power;
+  if (!officerSession) {
+    power = tr('NASA POWER আবহাওয়া: ম্যানেজার হিসেবে প্রবেশ করলে দেখা যাবে', 'NASA POWER weather: shown after a manager signs in');
+  } else if (climateTrend.state === 'error') {
+    power = tr(`NASA POWER আবহাওয়া (${area}): এখন পাওয়া যায়নি`, `NASA POWER weather (${area}): not available now`);
+  } else if (!climateForThisPlace()) {
+    power = tr(`NASA POWER আবহাওয়া (${area}): আসছে…`, `NASA POWER weather (${area}): loading…`);
+  } else {
+    const c = climateForThisPlace();
+    const source = c.dataSource === 'live' ? tr('সরাসরি ডাউনলোড', 'live download')
+      : c.dataSource === 'fixture' ? tr('নমুনা ফাইল', 'sample file') : tr('সংরক্ষিত কপি', 'saved copy');
+    power = tr(
+      `NASA POWER আবহাওয়া (${area}): ${isoDate(c.dataDateRange.to)} পর্যন্ত · ${source} · ডাউনলোড ${dateTime(c.fetchedAt)}`,
+      `NASA POWER weather (${area}): to ${isoDate(c.dataDateRange.to)} · ${source} · downloaded ${dateTime(c.fetchedAt)}`);
+  }
+  const smap = o.local_satellite_conditions.smap;
+  const rain = o.local_satellite_conditions.rain_last_30_days;
+  const snapshot = o.scope.place_kind === 'upazila' || !smap
+    ? tr('স্যাটেলাইট রিলিজ স্ন্যাপশট: শুধু তানোর পাইলটের জন্য; এই এলাকায় আছে ২০০১–২০২৫ সালের জেলা রিপ্লে (ইতিহাস, লাইভ নয়)',
+      'Satellite release snapshot: for the Tanore pilot only; this area has the 2001–2025 district replay (history, not live)')
+    : tr(
+      `স্যাটেলাইট রিলিজ স্ন্যাপশট ${o.data_release.version} (লাইভ নয়): SMAP ${isoDate(smap.date)}${rain ? `, বৃষ্টি ${isoDate(rain.to)}` : ''} পর্যন্ত`,
+      `Satellite release snapshot ${o.data_release.version} (not live): SMAP to ${isoDate(smap.date)}${rain ? `, rain to ${isoDate(rain.to)}` : ''}`);
+  setText('freshPower', power);
+  setText('freshSnapshot', snapshot);
+}
+
+/**
+ * Applies "which area is this" to the page: area names on card titles, the manager's own area in the header, the comparison banner,
+ * and the parts that belong only to the manager's own area (farmers, call-backs, observations, SRDI card, alerts, officer notes),
+ * which are replaced by a plain note while another area is selected.
+ */
+function applyAreaScope() {
+  const away = isAwayFromHome();
+  const label = placeLabel();
+  document.querySelectorAll('[data-area-name]').forEach(el => { el.textContent = label; });
+
+  const geoHome = $('geoHome');
+  if (geoHome) {
+    geoHome.hidden = !(officerSession && homeArea);
+    geoHome.textContent = `${tr('আপনার এলাকা', 'Your area')}: ${homeAreaLabel()}`;
+  }
+  document.querySelector('.location-badge')?.classList.toggle('geo-away', away);
+  const banner = $('areaBanner');
+  if (banner) {
+    banner.hidden = !away;
+    setText('areaBannerText', tr(`তুলনা, আপনার এলাকা নয়: ${label}। আপনার এলাকা: ${homeAreaLabel()}। কৃষক, কল-ব্যাক, মাঠ পর্যবেক্ষণ, মাটির কার্ড ও সতর্কতা শুধু আপনার এলাকার জন্য।`,
+      `Comparison, not your area: ${label}. Your area: ${homeAreaLabel()}. Farmers, call-backs, field observations, the soil card and alerts are only for your own area.`));
+  }
+  for (const id of ['screen-officer', 'screen-delivery']) $(id)?.classList.add('private-block');
+  document.querySelectorAll('.private-block').forEach(block => {
+    block.classList.toggle('is-away', away);
+    let note = block.querySelector(':scope > .private-away-note');
+    if (away && !note) {
+      note = document.createElement('p');
+      note.className = 'private-away-note';
+      block.append(note);
+    }
+    if (note) {
+      note.hidden = !away;
+      note.textContent = tr('এই এলাকার জন্য কর্মকর্তার তথ্য নেই', 'No officer data for this area');
+    }
+  });
+  const hasWarnings = Boolean(currentOverview?.early_warnings);
+  if ($('warningsHeading')) $('warningsHeading').hidden = !hasWarnings;
+  if ($('warningsRow')) $('warningsRow').hidden = !hasWarnings;
+  renderFreshness();
+}
+
+/** The manager's own area comes from the verified token (GET /api/v1/manager/area); the demo officer is the Talanda site. */
+async function loadHomeArea() {
+  homeArea = null;
+  if (!officerSession) return;
+  if (officerSession.source === 'demo') {
+    if (officerSession.officer?.site === 'talanda') homeArea = { siteId: 'talanda', placeId: PILOT_PLACE, nameBangla: 'তালন্দ, তানোর', nameEnglish: 'Talanda, Tanore', district: 'Rajshahi' };
+  } else {
+    try {
+      const res = await fetch('/api/v1/manager/area', { headers: { Authorization: `Bearer ${await officerToken()}` } });
+      homeArea = res.ok ? await res.json() : null;
+    } catch {
+      homeArea = null;
+    }
+  }
+  // right after sign-in the page opens on the manager's own area, whatever area was picked before
+  if (homeArea && !homeAreaApplied) {
+    homeAreaApplied = true;
+    if (!samePlace(currentPlace, homeArea.placeId)) {
+      syncPlaceSelects(homeArea.placeId);
+      await choosePlace(homeArea.placeId, { skipClimate: true });
+    }
+  }
+  applyAreaScope();
+}
+
+window.returnToMyArea = async function() {
+  if (!homeArea) return;
+  syncPlaceSelects(homeArea.placeId);
+  await choosePlace(homeArea.placeId);
+};
+
 
 // "3 of 5" -> "৫টির ৩টি" in Bangla, unchanged in English
 const ofText = (s) => {
@@ -785,6 +947,9 @@ window.officerSignIn = async function(event) {
 
 window.officerSignOut = async function() {
   officerSession = null;
+  homeArea = null;
+  homeAreaApplied = false;
+  climateTrend = { state: 'loading', data: null, error: null, place: null };
   officerDesk = null;
   officerKnowledge = null;
   officerNotice = null;
@@ -795,6 +960,7 @@ window.officerSignOut = async function() {
   }
   renderOfficer();
   renderClimateTrend();
+  applyAreaScope();
   renderProfile();
   await supabaseSignOut();
 };
@@ -814,6 +980,7 @@ async function loadOfficerDesk() {
   renderOfficer();
   renderProfile();
   if (!$('obsFarmer').dataset.chosen) window.prefillObservation(officerDesk.queue[0]?.farmerId);
+  await loadHomeArea();
   window.loadDataSources();
   window.loadClimateTrend();
   return 'ok';
@@ -1181,31 +1348,54 @@ async function loadDataQualityTable() {
 // Manager: site-scoped NASA POWER climate summary
 // ---------------------------------------------------------------------------
 
-let climateTrend = { state: 'loading', data: null, error: null };
+let climateTrend = { state: 'loading', data: null, error: null, place: null, refreshed: false, busy: false };
+let climateRequest = 0;
 
-window.loadClimateTrend = async function() {
+/**
+ * Loads the NASA POWER summary for the area on screen (the manager's own area by default; any other area is public NASA data,
+ * labelled as a comparison). { refresh: true } downloads again instead of using today's saved copy.
+ */
+window.loadClimateTrend = async function(options = {}) {
+  const refresh = options.refresh === true;
   if (!officerSession) {
-    climateTrend = { state: 'loading', data: null, error: null };
+    climateTrend = { state: 'loading', data: null, error: null, place: null, refreshed: false, busy: false };
     renderClimateTrend();
     return;
   }
   if (officerSession.source === 'demo') {
-    climateTrend = { state: 'error', data: null, error: 'supabase' };
+    climateTrend = { state: 'error', data: null, error: 'supabase', place: currentPlace, refreshed: false, busy: false };
     renderClimateTrend();
     return;
   }
-  climateTrend = { state: 'loading', data: null, error: null };
+  const place = currentPlace;
+  const request = ++climateRequest;
+  const keep = refresh && climateForThisPlace(); // a refresh keeps the numbers on screen while it works
+  climateTrend = keep
+    ? { ...climateTrend, busy: true }
+    : { state: 'loading', data: null, error: null, place, refreshed: false, busy: false };
   renderClimateTrend();
+  let next;
   try {
     const token = await officerToken();
-    const res = await fetch('/api/v1/manager/climate', { headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    climateTrend = { state: 'ok', data: await res.json(), error: null };
+    const res = await fetch(`/api/v1/manager/climate?area=${encodeURIComponent(place)}${refresh ? '&refresh=1' : ''}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) {
+      next = { state: 'ok', data: await res.json(), error: null, place, refreshed: refresh, busy: false };
+    } else {
+      const body = await res.json().catch(() => null);
+      const offlineNoData = res.status === 404 && /OFFLINE=1/.test(body?.error?.message ?? '');
+      next = { state: 'error', data: null, error: offlineNoData ? 'offline_area' : 'server', place, refreshed: false, busy: false };
+    }
   } catch {
-    climateTrend = { state: 'error', data: null, error: 'server' };
+    next = { state: 'error', data: null, error: 'server', place, refreshed: false, busy: false };
   }
+  if (request !== climateRequest) return; // another area was picked meanwhile
+  climateTrend = next;
   renderClimateTrend();
+  if (currentOverview) renderRainStat(currentOverview);
+  renderFreshness();
 };
+
+window.refreshClimate = () => window.loadClimateTrend({ refresh: true });
 
 function climateNumber(value, digits = 1) {
   if (value === null || value === undefined || !Number.isFinite(Number(value))) return tr('পর্যাপ্ত তথ্য নেই', 'Not enough data');
@@ -1228,8 +1418,12 @@ function renderClimateTrend() {
   $('climateError').hidden = state !== 'error';
   $('climateIndicators').hidden = state !== 'ok';
   $('climateSourceLine').hidden = state !== 'ok';
+  $('climateRefreshNote').hidden = state !== 'ok';
+  if ($('climateRefresh')) $('climateRefresh').disabled = climateTrend.busy || state === 'loading';
   if (state === 'error') {
-    setText('climateErrorText', error === 'supabase'
+    setText('climateErrorText', error === 'offline_area'
+      ? tr('এই এলাকার আবহাওয়ার তথ্য অফলাইনে পাওয়া যাচ্ছে না। অনলাইনে একবার দেখলে তথ্য সংরক্ষিত হবে।', 'This area’s weather is not available offline. View it once while online and it will be saved.')
+      : error === 'supabase'
       ? tr('এই সাইটের জলবায়ুর তথ্য দেখতে আসল Supabase manager account দিয়ে প্রবেশ করুন।', 'Sign in with a real Supabase manager account to view this site’s climate data.')
       : tr('জলবায়ুর তথ্য আনা যায়নি। সার্ভার ও নেটওয়ার্ক দেখুন; OFFLINE=1 হলে আগে একবার অনলাইনে POWER তথ্য ক্যাশ করুন।', 'Could not load climate data. Check the server and network; with OFFLINE=1, first fetch POWER data once while online to cache it.'));
     return;
@@ -1266,15 +1460,28 @@ function renderClimateTrend() {
   setText('climateSoilStatus', rootZoneWetness.value === null
     ? tr('শিকড়ের মাটির যথেষ্ট তথ্য নেই।', 'Not enough root-zone soil records.')
     : tr(`গত ১৪ দিনের গড় ${climateNumber(rootZoneWetness.value, 2)} (০ শুকনো, ১ সম্পৃক্ত)।`, `14-day average: ${climateNumber(rootZoneWetness.value, 2)} (0 dry, 1 saturated).`));
-  if (data.dataSource === 'cache' || data.dataSource === 'fixture') {
-    // Stored data (OFFLINE=1, or NASA unreachable): say so plainly so nobody mistakes it for a live reading.
-    const range = `${climateDate(data.dataDateRange?.from)}–${climateDate(data.dataDateRange?.to)}`;
-    setText('climateSourceLine', tr(`নমুনা তথ্য, NASA POWER, ${range}`, `Sample data from NASA POWER, ${range}`));
-  } else {
+  const range = dateRangeText(data.dataDateRange?.from, data.dataDateRange?.to);
+  const downloaded = dateTime(data.fetchedAt);
+  if (data.dataSource === 'live') {
     setText('climateSourceLine', tr(
-      `তথ্যসূত্র: NASA POWER · ${climateDate(data.last30Days?.from)}–${climateDate(data.last30Days?.to)} · সরাসরি আনা`,
-      `Data source: NASA POWER · ${climateDate(data.last30Days?.from)}–${climateDate(data.last30Days?.to)} · Live`));
+      `তথ্যসূত্র: NASA POWER, ${data.area.nameEnglish}, ${range}, সরাসরি ডাউনলোড`,
+      `Data source: NASA POWER, ${data.area.nameEnglish}, ${range}, live download`));
+  } else if (data.dataSource === 'cache' && !data.offline && !data.liveFetchFailed) {
+    // today's copy, saved when it was downloaded: not sample data
+    setText('climateSourceLine', tr(
+      `NASA POWER-এর সংরক্ষিত কপি, ${data.area.nameEnglish}, ${range} (ডাউনলোড ${downloaded})`,
+      `Saved copy of NASA POWER, ${data.area.nameEnglish}, ${range} (downloaded ${downloaded})`));
+  } else {
+    // stored data served offline or after a failed download: say plainly that it is not live
+    setText('climateSourceLine', tr(`নমুনা তথ্য, NASA POWER, ${range}`, `Sample data from NASA POWER, ${range}`));
   }
+  setText('climateRefreshNote', data.offline
+    ? tr(`অফলাইন মোড: সংরক্ষিত তথ্য ব্যবহার হচ্ছে, নতুন ডাউনলোড হয়নি (তথ্য ডাউনলোড হয়েছিল ${downloaded})।`, `Offline mode: using saved data, nothing was downloaded (data downloaded ${downloaded}).`)
+    : data.liveFetchFailed
+      ? tr(`রিফ্রেশ করা যায়নি; সংরক্ষিত তথ্য দেখানো হচ্ছে (ডাউনলোড ${downloaded})।`, `Could not refresh; showing saved data (downloaded ${downloaded}).`)
+      : climateTrend.refreshed
+        ? tr(`এইমাত্র হালনাগাদ: ${downloaded}`, `Just refreshed: ${downloaded}`)
+        : tr(`তথ্য ডাউনলোড: ${downloaded}`, `Data downloaded: ${downloaded}`));
 }
 
 // ---------------------------------------------------------------------------
@@ -1550,15 +1757,21 @@ function fillPlaceUpazilas() {
     .map(u => `<option value="${escapeHtml(u.id === 'ADM3_Tanore' ? PILOT_PLACE : u.id)}">${escapeHtml(u.id === 'ADM3_Tanore' ? `${u.name} (Talanda pilot)` : u.name)}</option>`).join('');
 }
 
-async function choosePlace(id) {
+async function choosePlace(id, options = {}) {
   currentPlace = id;
   try { localStorage.setItem('eden.place', id); } catch { /* the choice lasts for this page only */ }
-  bdMap?.setPlace(id);
+  try {
+    bdMap?.setPlace(id);
+  } catch {
+    // the map has no size while the role picker or another screen is showing; it centres on the place when it is shown
+  }
   await loadOverview();
   await loadCropMenu();
   if (typeof window.runPlannerCalculation === 'function') await window.runPlannerCalculation({ switchScreenAfter: false });
   renderAll();
   applyPlaceText();
+  applyAreaScope();
+  if (officerSession && !options.skipClimate) window.loadClimateTrend();
   portals?.refresh();
   if (liveRows && $('liveDistrict')) {
     const row = liveRows.find(r => r.id === (id === PILOT_PLACE ? 'ADM3_Tanore' : id));
@@ -1586,19 +1799,24 @@ async function loadPlaces() {
 const setLanguageBeforePlace = window.setLanguage;
 window.setLanguage = function(next) { setLanguageBeforePlace(next); applyPlaceText(); bdMap?.refreshLanguage(); portals?.refresh(); };
 
-// A click on the map picks an upazila the same way the place list does
-function chooseFromMap(id) {
-  const placeId = id === 'ADM3_Tanore' ? PILOT_PLACE : id;
-  const row = placeIndex?.find(u => u.id === id);
+// Keeps the two place lists in step with the place chosen elsewhere (the map, "back to my area")
+function syncPlaceSelects(placeId) {
+  const row = placeIndex?.find(u => u.id === (placeId === PILOT_PLACE ? 'ADM3_Tanore' : placeId));
   if (row && $('placeDistrict')) {
     $('placeDistrict').value = row.district;
     fillPlaceUpazilas();
     $('placeUpazila').value = placeId;
   }
+}
+
+// A click on the map picks an upazila the same way the place list does
+function chooseFromMap(id) {
+  const placeId = id === 'ADM3_Tanore' ? PILOT_PLACE : id;
+  syncPlaceSelects(placeId);
   choosePlace(placeId);
 }
 document.addEventListener('DOMContentLoaded', () => {
-  bdMap = initBdMap({ tr, num, escapeHtml, choose: chooseFromMap, currentId: () => currentPlace });
+  bdMap = initBdMap({ tr, num, isoDate, escapeHtml, choose: chooseFromMap, currentId: () => currentPlace });
 });
 document.addEventListener('DOMContentLoaded', loadPlaces);
 

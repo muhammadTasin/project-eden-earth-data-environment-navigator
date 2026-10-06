@@ -684,3 +684,48 @@ body.weather-only .portal-tabs { display: none; }
   .ds-badge { justify-self: end; }
   .ds-help { grid-column: 1 / -1; }
 }
+
+.entry-hint { display: block; margin-top: 4px; font-size: 0.8125rem; color: var(--text-muted, #5f6b5f); }
+
+/* Which area the page describes: the manager's own area in the header, a comparison banner, the data-freshness strip */
+.location-badge { flex-wrap: wrap; max-width: 100%; }
+.geo-home { flex-basis: 100%; font-size: 12px; font-weight: 600; color: var(--paddy-deep); overflow-wrap: anywhere; }
+.geo-home[hidden] { display: none; }
+.location-badge.geo-away { background: var(--amber-soft); border-color: var(--amber); }
+@media (max-width: 640px) {
+  /* the area on screen is the page's most important label, so the header badge stays on a phone (styles.css hides it) */
+  .location-badge { display: flex; flex: 1 1 100%; padding: 6px 10px; font-size: 12px; }
+}
+.area-banner {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px 0;
+  padding: 8px 12px; background: var(--amber-soft); color: var(--ink); border-left: 4px solid var(--amber-deep); font-size: 13px; line-height: 1.5;
+}
+.area-banner[hidden] { display: none; }
+.area-banner span { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }
+.freshness-strip {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; margin: 0 0 14px; padding: 8px 12px;
+  background: var(--face); box-shadow: var(--sunken); color: var(--text); font-size: 12.5px; line-height: 1.5;
+}
+.freshness-strip strong { color: var(--ink); }
+.fresh-item { flex: 1 1 280px; min-width: 0; overflow-wrap: anywhere; }
+.stat-sub-note { display: block; margin-top: 4px; }
+.stat-sub-note:empty { display: none; }
+.stat-body { min-width: 0; }
+.stat-sub, .stat-title { overflow-wrap: anywhere; }
+
+/* Parts that belong only to the manager's own area: while another area is shown they give way to a plain note */
+.private-block.is-away:not(.spec-item) > :not(.card-header):not(.private-away-note) { display: none !important; }
+.spec-item.private-block.is-away > .val { display: none; }
+.private-away-note { margin: 8px 0 0; color: var(--muted-ink); font-size: 13px; }
+.private-away-note[hidden] { display: none; }
+
+/* Phone width: a grid column may shrink below its content, so the overview never scrolls sideways */
+.overview-left, .overview-right, .banner-content, .stat-card { min-width: 0; }
+@media (max-width: 992px) {
+  .overview-grid, .stats-row { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .banner-card { flex-wrap: wrap; gap: 12px; }
+  .banner-stat { flex: 1 1 100%; }
+}
+.warnings-row { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }

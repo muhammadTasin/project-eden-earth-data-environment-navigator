@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "start": "node --env-file-if-exists=.env --experimental-strip-types services/api/src/server.ts",
-    "test": "node --experimental-strip-types test_pipeline.ts && node --experimental-strip-types test_cattle.ts && node --experimental-strip-types test_auth.ts && node --experimental-strip-types test_config.ts && node --experimental-strip-types test_power.ts && node test_server.js",
+    "test": "node --experimental-strip-types test_pipeline.ts && node --experimental-strip-types test_cattle.ts && node --experimental-strip-types test_auth.ts && node --experimental-strip-types test_config.ts && node --experimental-strip-types test_power.ts && node --experimental-strip-types test_scope.ts && node test_server.js",
     "call:test": "node --env-file-if-exists=.env --experimental-strip-types services/api/src/call_cli.ts"
   },
   "author": "muhammadTasin",
