@@ -20,7 +20,7 @@ const DEFAULT_FIXTURE_PATH = path.resolve(__dirname, '../fixtures/power-climate-
 const REQUEST_TIMEOUT_MS = 12_000;
 const MS_PER_DAY = 86_400_000;
 
-interface RawPowerResponse {
+export interface RawPowerResponse {
   header?: { fill_value?: number };
   properties?: { parameter?: Record<string, Record<string, number | string>> };
 }
@@ -67,6 +67,8 @@ export interface PowerClimateResult {
   dataDateRange: ClimateDateRange;
   last30Days: ClimateDateRange;
   dataSource: ClimateDataSource;
+  /** When the POWER data in use was downloaded (ISO). For a fixture, when the fixture was built. */
+  fetchedAt: string;
   generatedAt: string;
   site: { id: string; nameBangla: string; nameEnglish: string };
 }
@@ -262,26 +264,113 @@ async function readEnvelope(filePath: string): Promise<PowerEnvelope | null> {
   }
 }
 
-function compatibleEnvelope(envelope: PowerEnvelope, site: ManagerSite, range: ClimateDateRange): boolean {
+/** Same site, same coordinates and the same 8 parameters. The date range is deliberately not compared: an old entry is still the best offline answer. */
+function compatibleEnvelope(envelope: PowerEnvelope, site: ManagerSite): boolean {
   return envelope.siteId === site.id && envelope.lat === site.lat && envelope.lon === site.lon
-    && envelope.parameters.join(',') === POWER_PARAMETERS.join(',')
-    && envelope.requestedRange.from <= range.from && envelope.requestedRange.to >= range.from;
+    && envelope.parameters.join(',') === POWER_PARAMETERS.join(',');
 }
 
-async function cacheCandidates(cacheDir: string, fixturePath: string, site: ManagerSite, range: ClimateDateRange) {
+/** The committed fixture stores each parameter as one array of daily values starting at `from` (-999 = missing), which is far smaller than NASA's one-key-per-date JSON. */
+export interface CompactPowerSite {
+  lat: number;
+  lon: number;
+  from: string;
+  to: string;
+  values: Record<PowerParameter, number[]>;
+}
+
+export interface CompactPowerFixture {
+  version: 1;
+  parameters: PowerParameter[];
+  generatedAt: string;
+  sites: Record<string, CompactPowerSite>;
+}
+
+/** Turns a POWER response into the compact fixture form: values rounded to 2 decimals, -999 kept for missing days. */
+export function compactPowerResponse(response: RawPowerResponse, lat: number, lon: number): CompactPowerSite {
+  const parameterData = response?.properties?.parameter;
+  if (!isRecord(parameterData)) throw new Error('NASA POWER response did not contain daily parameters');
+  const days = new Set<string>();
+  for (const parameter of POWER_PARAMETERS) {
+    for (const rawDate of Object.keys(isRecord(parameterData[parameter]) ? parameterData[parameter] as object : {})) {
+      if (/^\d{8}$/.test(rawDate)) days.add(rawDate);
+    }
+  }
+  const sorted = [...days].sort();
+  if (!sorted.length) throw new Error('NASA POWER response contained no daily values');
+  const toIso = (raw: string) => `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
+  const from = toIso(sorted[0]);
+  const to = toIso(sorted[sorted.length - 1]);
+  const length = Math.round((parseIsoDate(to).getTime() - parseIsoDate(from).getTime()) / MS_PER_DAY) + 1;
+  const values = {} as Record<PowerParameter, number[]>;
+  for (const parameter of POWER_PARAMETERS) {
+    const byDate = isRecord(parameterData[parameter]) ? parameterData[parameter] as Record<string, number | string> : {};
+    values[parameter] = Array.from({ length }, (_, index) => {
+      const raw = Number(byDate[addDays(from, index).replaceAll('-', '')]);
+      return Number.isFinite(raw) && raw !== -999 ? Math.round(raw * 100) / 100 : -999;
+    });
+  }
+  return { lat, lon, from, to, values };
+}
+
+function isCompactFixture(value: unknown): value is CompactPowerFixture {
+  return isRecord(value) && value.version === 1 && typeof value.generatedAt === 'string' && isRecord(value.sites)
+    && Array.isArray(value.parameters) && value.parameters.join(',') === POWER_PARAMETERS.join(',');
+}
+
+let fixtureMemo: { filePath: string; mtimeMs: number; fixture: CompactPowerFixture | null } | null = null;
+
+async function readFixture(fixturePath: string): Promise<CompactPowerFixture | null> {
+  try {
+    const { mtimeMs } = await fs.stat(fixturePath);
+    if (fixtureMemo?.filePath === fixturePath && fixtureMemo.mtimeMs === mtimeMs) return fixtureMemo.fixture;
+    const parsed: unknown = JSON.parse(await fs.readFile(fixturePath, 'utf8'));
+    const fixture = isCompactFixture(parsed) ? parsed : null;
+    fixtureMemo = { filePath: fixturePath, mtimeMs, fixture };
+    return fixture;
+  } catch {
+    return null;
+  }
+}
+
+/** The fixture entry for this site as an envelope in the same shape a cached live response has, so the indicator code is shared. */
+async function fixtureEnvelope(fixturePath: string, site: ManagerSite): Promise<PowerEnvelope | null> {
+  const fixture = await readFixture(fixturePath);
+  const entry = fixture?.sites[site.id];
+  if (!fixture || !entry || entry.lat !== site.lat || entry.lon !== site.lon || !isRecord(entry.values)) return null;
+  const parameter: Record<string, Record<string, number>> = {};
+  for (const name of POWER_PARAMETERS) {
+    const series = entry.values[name];
+    if (!Array.isArray(series)) return null;
+    parameter[name] = Object.fromEntries(series.map((value, index) => [addDays(entry.from, index).replaceAll('-', ''), value]));
+  }
+  return {
+    version: 1,
+    siteId: site.id,
+    lat: site.lat,
+    lon: site.lon,
+    parameters: [...POWER_PARAMETERS],
+    requestedRange: { from: entry.from, to: entry.to },
+    fetchedAt: fixture.generatedAt,
+    response: { header: { fill_value: -999 }, properties: { parameter } },
+  };
+}
+
+/** Stored POWER data for this site, best first: the newest cache entry (any date range), then the committed fixture. */
+async function cacheCandidates(cacheDir: string, fixturePath: string, site: ManagerSite) {
   const cached: Array<{ envelope: PowerEnvelope; source: 'cache' | 'fixture' }> = [];
   try {
     const names = await fs.readdir(cacheDir);
     for (const name of names.filter(name => name.endsWith('.json'))) {
       const envelope = await readEnvelope(path.join(cacheDir, name));
-      if (envelope && compatibleEnvelope(envelope, site, range)) cached.push({ envelope, source: 'cache' });
+      if (envelope && compatibleEnvelope(envelope, site)) cached.push({ envelope, source: 'cache' });
     }
   } catch {
     // A missing cache directory is expected on a first run.
   }
   cached.sort((a, b) => b.envelope.fetchedAt.localeCompare(a.envelope.fetchedAt));
-  const fixture = await readEnvelope(fixturePath);
-  if (fixture && compatibleEnvelope(fixture, site, range)) cached.push({ envelope: fixture, source: 'fixture' });
+  const fixture = await fixtureEnvelope(fixturePath, site);
+  if (fixture) cached.push({ envelope: fixture, source: 'fixture' });
   return cached;
 }
 
@@ -293,7 +382,7 @@ async function saveCache(cacheDir: string, key: string, envelope: PowerEnvelope)
   await fs.rename(temporary, target);
 }
 
-async function fetchPower(url: URL, fetchImpl: typeof fetch, timeoutMs: number): Promise<RawPowerResponse> {
+export async function fetchPower(url: URL, fetchImpl: typeof fetch, timeoutMs: number): Promise<RawPowerResponse> {
   let lastError: unknown;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const controller = new AbortController();
@@ -326,22 +415,23 @@ export async function getPowerClimate(site: ManagerSite, options: PowerClientOpt
   const fixturePath = options.fixturePath ?? DEFAULT_FIXTURE_PATH;
   const fetchImpl = options.fetchImpl ?? fetch;
   const key = cacheKey(site, range);
-  const exactPath = path.join(cacheDir, `${key}.json`);
-  const exactCandidate = await readEnvelope(exactPath);
-  const exact = exactCandidate && compatibleEnvelope(exactCandidate, site, range)
+  // Online only: today's exact entry. Its file name contains the date range, so it changes every day (OFFLINE=1 does not use it).
+  const exactCandidate = config.offline ? null : await readEnvelope(path.join(cacheDir, `${key}.json`));
+  const exact = exactCandidate && compatibleEnvelope(exactCandidate, site)
     && exactCandidate.requestedRange.from === range.from && exactCandidate.requestedRange.to === range.to
     ? exactCandidate : null;
-  const fallbackCandidates = await cacheCandidates(cacheDir, fixturePath, site, range);
+  const fallbackCandidates = await cacheCandidates(cacheDir, fixturePath, site);
   let envelope: PowerEnvelope | null = null;
   let dataSource: ClimateDataSource = 'cache';
 
   if (config.offline) {
+    // OFFLINE=1: never touch the network. Newest cache entry for this site (whatever day it was fetched), then the committed fixture.
     const fallback = fallbackCandidates[0];
-    envelope = exact ?? fallback?.envelope ?? null;
+    envelope = fallback?.envelope ?? null;
     if (!envelope) {
-      throw new ApiError('no_data', `OFFLINE=1 is set, but no NASA POWER cache or fixture is available for ${site.id}. Run once online to populate the local cache.`);
+      throw new ApiError('no_data', `OFFLINE=1 is set, but there is no NASA POWER cache or fixture for site "${site.id}". Run once online to populate the local cache, or rebuild the fixture with services/api/scripts/build_power_fixture.ts.`);
     }
-    dataSource = exact ? 'cache' : fallback?.source ?? 'cache';
+    dataSource = fallback.source;
   } else if (exact) {
     envelope = exact;
     dataSource = 'cache';
@@ -388,6 +478,7 @@ export async function getPowerClimate(site: ManagerSite, options: PowerClientOpt
     dataDateRange: { from: allDates[0], to: endDate },
     last30Days: { from: addDays(endDate, -29), to: endDate },
     dataSource,
+    fetchedAt: envelope.fetchedAt,
     generatedAt: (options.now ?? new Date()).toISOString(),
   };
 }

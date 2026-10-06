@@ -4,8 +4,9 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { ApiError } from './services/api/src/errors.ts';
-import { computeClimateIndicators, getPowerClimate, parsePowerDailyResponse, POWER_PARAMETERS } from './services/api/src/power.ts';
-import type { DailyRows } from './services/api/src/power.ts';
+import { compactPowerResponse, computeClimateIndicators, getPowerClimate, parsePowerDailyResponse, POWER_PARAMETERS } from './services/api/src/power.ts';
+import type { CompactPowerFixture, DailyRows } from './services/api/src/power.ts';
+import { MANAGER_SITES } from './services/api/src/sites.ts';
 import { managerClimate } from './services/api/src/manager_climate.ts';
 
 const DAY = 86_400_000;
@@ -66,9 +67,11 @@ function req(authorization?: string): http.IncomingMessage {
 const managerToken = 'header.manager.signature';
 const viewerToken = 'header.viewer.signature';
 const noSiteToken = 'header.nosite.signature';
+const unknownSiteToken = 'header.unknownsite.signature';
 const users: Record<string, any> = {
   [managerToken]: { id: 'manager-1', email: 'field@example.test', app_metadata: { role: 'manager', site: 'talanda' }, user_metadata: { site: 'dharmapasha' } },
   [viewerToken]: { id: 'viewer-1', email: 'viewer@example.test', app_metadata: { role: 'viewer', site: 'talanda' } },
+  [unknownSiteToken]: { id: 'manager-3', email: 'manager3@example.test', app_metadata: { role: 'manager', site: 'atlantis' } },
   [noSiteToken]: { id: 'manager-2', email: 'manager2@example.test', app_metadata: { role: 'manager' }, user_metadata: { site: 'talanda' } },
 };
 const verify = async (token: string) => users[token] ?? null;
@@ -157,35 +160,82 @@ await assert.rejects(getPowerClimate({ id: 'talanda', nameBangla: 'তালন�
 assert.equal(timeoutAttempts, 2, 'the timed-out POWER request is retried once');
 console.log('✓ POWER timeout: the request is bounded and retries once.');
 
-// Offline mode reads a matching on-disk cache and never calls fetch; a cache miss has a clear error and no network call.
+// OFFLINE=1: newest cache entry for the site (any date range), then the committed fixture, then a clear no_data error. Never a fetch.
+const talanda = { id: 'talanda', nameBangla: 'তালন্দ', nameEnglish: 'Talanda', lat: 24.62, lon: 88.56 };
 process.env.OFFLINE = '1';
+const offlineFetch: typeof fetch = async () => { requestCount += 1; throw new Error('network must not be used offline'); };
+const requestsBefore = requestCount;
+
 const offlineSummary = await managerClimate(req(`Bearer ${managerToken}`), {
   verify,
-  power: { cacheDir, fixturePath, now: fixedNow, fetchImpl: async () => { requestCount += 1; throw new Error('network must not be used offline'); } },
+  power: { cacheDir, fixturePath, now: fixedNow, fetchImpl: offlineFetch },
 });
 assert.equal(offlineSummary.dataSource, 'cache');
-assert.equal(requestCount, 2, 'OFFLINE=1 performs no fetch');
-const cacheFile = (await fs.readdir(cacheDir)).find(name => name.endsWith('.json'))!;
-await fs.copyFile(path.join(cacheDir, cacheFile), fixturePath);
-const fixtureSummary = await getPowerClimate({ id: 'talanda', nameBangla: 'তালন্দ', nameEnglish: 'Talanda', lat: 24.62, lon: 88.56 }, {
-  cacheDir: path.join(scratch, 'fixture-cache'),
-  fixturePath,
-  now: fixedNow,
-  fetchImpl: async () => { requestCount += 1; throw new Error('network must not be used offline'); },
-});
-assert.equal(fixtureSummary.dataSource, 'fixture');
-assert.equal(requestCount, 2, 'OFFLINE=1 fixture read performs no fetch');
-const missingCacheDir = path.join(scratch, 'empty-cache');
-await assert.rejects(getPowerClimate({ id: 'talanda', nameBangla: 'তালন্দ', nameEnglish: 'Talanda', lat: 24.62, lon: 88.56 }, {
-  cacheDir: missingCacheDir,
-  fixturePath: path.join(scratch, 'absent-fixture.json'),
-  now: fixedNow,
-  fetchImpl: async () => { requestCount += 1; throw new Error('network must not be used offline'); },
-}), (error: any) => error instanceof ApiError && error.status === 404 && /OFFLINE=1/.test(error.message));
-assert.equal(requestCount, 2, 'OFFLINE=1 cache miss also performs no fetch');
+assert.equal(offlineSummary.fetchedAt, fixedNow.toISOString(), 'the response says when the data was downloaded');
+assert.equal(offlineSummary.dataDateRange.to, END, 'the response carries the real date range of the data served');
+
+// A cache entry written under another date range (here: "now" is 400 days later) is still used.
+const laterNow = new Date(fixedNow.getTime() + 400 * DAY);
+const oldCacheSummary = await getPowerClimate(talanda, { cacheDir, fixturePath, now: laterNow, fetchImpl: offlineFetch });
+assert.equal(oldCacheSummary.dataSource, 'cache', 'OFFLINE=1 serves an old cache entry whatever today\'s date is');
+assert.equal(oldCacheSummary.dataDateRange.to, END);
+console.log('✓ OFFLINE=1 with a cache entry from another day: served from cache, real date range reported.');
+
+// Fixture in the compact committed format, built from the same rows.
+const fixtureSite = compactPowerResponse(toPowerResponse(makeWindowRows()), talanda.lat, talanda.lon);
+const fixtureFile: CompactPowerFixture = { version: 1, parameters: [...POWER_PARAMETERS], generatedAt: '2026-01-02T03:04:05.000Z', sites: { talanda: fixtureSite } };
+await fs.writeFile(fixturePath, JSON.stringify(fixtureFile));
+const emptyCacheDir = path.join(scratch, 'empty-cache');
+const fixtureSummary = await getPowerClimate(talanda, { cacheDir: emptyCacheDir, fixturePath, now: laterNow, fetchImpl: offlineFetch });
+assert.equal(fixtureSummary.dataSource, 'fixture', 'empty cache falls through to the fixture');
+assert.equal(fixtureSummary.fetchedAt, fixtureFile.generatedAt);
+assert.equal(fixtureSummary.dataDateRange.to, END);
+assert.equal(fixtureSummary.indicators.rainfall.totalMm, offlineSummary.indicators.rainfall.totalMm, 'fixture and cache give the same indicators');
+const cachePreferred = await getPowerClimate(talanda, { cacheDir, fixturePath, now: fixedNow, fetchImpl: offlineFetch });
+assert.equal(cachePreferred.dataSource, 'cache', 'a cache entry wins over the fixture');
+console.log('✓ OFFLINE=1 with an empty cache: served from the fixture; cache is preferred when both exist.');
+
+await assert.rejects(getPowerClimate(talanda, { cacheDir: emptyCacheDir, fixturePath: path.join(scratch, 'absent-fixture.json'), now: fixedNow, fetchImpl: offlineFetch }),
+  (error: any) => error instanceof ApiError && error.status === 404 && /OFFLINE=1/.test(error.message) && /talanda/.test(error.message));
+await assert.rejects(getPowerClimate({ ...talanda, id: 'atlantis' }, { cacheDir, fixturePath, now: fixedNow, fetchImpl: offlineFetch }),
+  (error: any) => error instanceof ApiError && error.status === 404 && /atlantis/.test(error.message), 'a site with no cache and no fixture entry is a clear error');
+await assert.rejects(managerClimate(req(`Bearer ${unknownSiteToken}`), { verify, power: { cacheDir, fixturePath, now: fixedNow, fetchImpl: offlineFetch } }),
+  (error: any) => error instanceof ApiError && error.status === 403 && /not configured/.test(error.message), 'an unknown manager site is refused');
+assert.equal(requestCount, requestsBefore, 'OFFLINE=1 never calls fetch');
+console.log('✓ OFFLINE=1: no cache and no fixture, or an unknown site, gives a clear error; fetch was never called.');
+
+// The committed fixture: all sites, only the 8 parameters, 2 decimals, -999 for missing, small.
+const realFixturePath = path.resolve('services/api/fixtures/power-climate-fixture.json');
+const realText = await fs.readFile(realFixturePath, 'utf8');
+assert.ok(realText.length < 2_000_000, `fixture is ${realText.length} bytes`);
+const realFixture: CompactPowerFixture = JSON.parse(realText);
+assert.deepEqual(realFixture.parameters, [...POWER_PARAMETERS]);
+const offlineAtOctober = await getPowerClimate(MANAGER_SITES.talanda, { cacheDir: emptyCacheDir, fixturePath: realFixturePath, now: new Date('2026-10-06T12:00:00.000Z'), fetchImpl: offlineFetch });
+const offlineAtNovember = await getPowerClimate(MANAGER_SITES.talanda, { cacheDir: emptyCacheDir, fixturePath: realFixturePath, now: new Date('2026-11-13T12:00:00.000Z'), fetchImpl: offlineFetch });
+assert.deepEqual(offlineAtOctober.indicators, offlineAtNovember.indicators, 'OFFLINE=1 fixture indicators do not depend on today\'s date');
+assert.deepEqual(offlineAtOctober.last30Days, offlineAtNovember.last30Days, 'OFFLINE=1 fixture window follows the data served');
+const siteIds = [...new Set(Object.values(MANAGER_SITES).map(site => site.id))];
+assert.deepEqual(Object.keys(realFixture.sites).sort(), [...siteIds].sort(), 'the fixture covers every site in sites.ts');
+for (const site of Object.values(MANAGER_SITES)) {
+  const entry = realFixture.sites[site.id];
+  assert.equal(entry.lat, site.lat);
+  assert.equal(entry.lon, site.lon);
+  assert.deepEqual(Object.keys(entry.values), [...POWER_PARAMETERS]);
+  const days = Math.round((Date.parse(entry.to) - Date.parse(entry.from)) / DAY) + 1;
+  assert.ok(days > 365 * 10, `${site.id} has about 11 years of days`);
+  for (const series of Object.values(entry.values)) {
+    assert.equal(series.length, days);
+    assert.ok(series.every(value => Number.isFinite(value) && (value === -999 || Math.round(value * 100) / 100 === value)));
+  }
+  const served = await getPowerClimate(site, { cacheDir: emptyCacheDir, now: laterNow, fetchImpl: offlineFetch });
+  assert.equal(served.dataSource, 'fixture', `${site.id} is served from the committed fixture`);
+  assert.equal(served.dataDateRange.to, served.last30Days.to);
+  assert.notEqual(served.indicators.rainfall.value, null, `${site.id} has a rainfall total`);
+}
+assert.equal(requestCount, requestsBefore, 'OFFLINE=1 never calls fetch');
 delete process.env.OFFLINE;
 await fs.rm(scratch, { recursive: true, force: true });
-console.log('✓ OFFLINE=1: reads cache only, reports a clear cache-miss error, and makes no network calls.\n');
+console.log('✓ Committed fixture: every site, 8 parameters, 2 decimals, under 2 MB, serves OFFLINE=1 with no network.\n');
 
 console.log('========================================================');
 console.log('  ALL NASA POWER CLIMATE TESTS PASSED                   ');

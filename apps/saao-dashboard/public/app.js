@@ -1266,10 +1266,15 @@ function renderClimateTrend() {
   setText('climateSoilStatus', rootZoneWetness.value === null
     ? tr('শিকড়ের মাটির যথেষ্ট তথ্য নেই।', 'Not enough root-zone soil records.')
     : tr(`গত ১৪ দিনের গড় ${climateNumber(rootZoneWetness.value, 2)} (০ শুকনো, ১ সম্পৃক্ত)।`, `14-day average: ${climateNumber(rootZoneWetness.value, 2)} (0 dry, 1 saturated).`));
-  const source = data.dataSource === 'live' ? tr('সরাসরি আনা', 'Live') : data.dataSource === 'fixture' ? tr('নমুনা ফাইল', 'Fixture') : tr('ক্যাশ', 'Cache');
-  setText('climateSourceLine', tr(
-    `তথ্যসূত্র: NASA POWER · ${climateDate(data.last30Days?.from)}–${climateDate(data.last30Days?.to)} · ${source}`,
-    `Data source: NASA POWER · ${climateDate(data.last30Days?.from)}–${climateDate(data.last30Days?.to)} · ${source}`));
+  if (data.dataSource === 'cache' || data.dataSource === 'fixture') {
+    // Stored data (OFFLINE=1, or NASA unreachable): say so plainly so nobody mistakes it for a live reading.
+    const range = `${climateDate(data.dataDateRange?.from)}–${climateDate(data.dataDateRange?.to)}`;
+    setText('climateSourceLine', tr(`নমুনা তথ্য, NASA POWER, ${range}`, `Sample data from NASA POWER, ${range}`));
+  } else {
+    setText('climateSourceLine', tr(
+      `তথ্যসূত্র: NASA POWER · ${climateDate(data.last30Days?.from)}–${climateDate(data.last30Days?.to)} · সরাসরি আনা`,
+      `Data source: NASA POWER · ${climateDate(data.last30Days?.from)}–${climateDate(data.last30Days?.to)} · Live`));
+  }
 }
 
 // ---------------------------------------------------------------------------

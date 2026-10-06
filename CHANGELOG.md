@@ -2,6 +2,12 @@
 
 What changed in Project EDEN, newest first, with who made each change and the branch it came from. Every branch below was merged into `main` on 1 October 2026.
 
+## 6 October 2026 · OFFLINE=1 works on any computer
+
+- Server: `OFFLINE=1` now serves the newest cache entry for the site whatever day it was fetched, then the committed `services/api/fixtures/power-climate-fixture.json` (about 11 years of real POWER daily data for all five pilot sites, 8 parameters, 2 decimals, -999 = missing, under 1 MB), then a clear `no_data` error. It never calls the network. The response says whether `cache` or `fixture` served it, when it was downloaded (`fetchedAt`) and the real date range.
+- Dashboard: the climate card says "Sample data from NASA POWER, <date range>" (Bangla and English) when the data is not live.
+- Rebuild the fixture (online, no key): `node --experimental-strip-types services/api/scripts/build_power_fixture.ts`.
+
 ## 6 October 2026 · Field Shift climate trend for managers
 
 - NASA POWER daily point data now powers a site-scoped climate summary: 30-day rainfall vs the same window's prior-ten-year normal, days above 35°C, longest below-1-mm dry spell and 14-day mean root-zone wetness. POWER fill values (`-999`) are excluded; rainfall comparisons require complete windows.
