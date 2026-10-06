@@ -26,7 +26,9 @@ import java.util.Locale
  */
 class FarmerRepository(
     private val farmDao: FarmDao,
-    private val apiClient: EdenApiClient
+    private val apiClient: EdenApiClient,
+    /** The engine place the advice is for (location/AdvicePlace.kt); the Tanore pilot unless the app wires a lookup. */
+    private val adviceUnion: suspend () -> String = { org.projecteden.farmermobile.data.remote.PILOT_UNION_ID }
 ) {
 
     val farmProfile: Flow<FarmProfileEntity> = farmDao.getFarmProfile().map {
@@ -67,6 +69,7 @@ class FarmerRepository(
         }
 
         return apiClient.fetchAdvice(
+            unionId = adviceUnion(),
             landType = apiLandType,
             waterWeight = wWater,
             incomeWeight = wIncome,

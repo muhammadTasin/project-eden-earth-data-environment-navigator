@@ -92,7 +92,8 @@ class AiAssistantViewModel(application: Application) : AndroidViewModel(applicat
                 }
             } else null
 
-            val plan = apiClient.voiceAnswer(trimmed).getOrNull()
+            val unionId = org.projecteden.farmermobile.location.adviceUnionId(PrefsLocationStore(getApplication()), apiClient)
+            val plan = apiClient.voiceAnswer(trimmed, unionId).getOrNull()
             if (plan != null && plan.namedCrops) {
                 val text = buildString {
                     append(plan.speechBangla)

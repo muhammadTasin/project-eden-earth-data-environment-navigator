@@ -30,6 +30,8 @@ export interface LocalProfile {
   yields: Record<string, [number | null, number]>;
   /** SRDI's May 2009 salinity survey (coastal upazilas only): shares of the cultivated land in classes S1-S5. */
   salinity: { cultivatedHa: number; salineShare: number; strongShare: number; classShares: number[] } | null;
+  /** NASA OPERA radar water, 2025: shares of the upazila under water and when the monsoon water drained (ISO dates). */
+  opera: { dry: number; peak: number; peakDate: string; extra: number; drained80: string | null; drained90: string | null; passes: number } | null;
 }
 
 interface ProfileFile {
@@ -70,6 +72,7 @@ export function localProfile(upazilaId: string, district: string): LocalProfile 
     intensityPct: u.intensityPct ?? null,
     yields: data.districts[district] ?? {},
     salinity: u.salinity ?? null,
+    opera: u.opera ?? null,
   };
 }
 

@@ -130,8 +130,21 @@ function requireWriteToken(req: http.IncomingMessage) {
 function currentConditionsFor(place: ReturnType<typeof placeFor>): PlanOptionsRequest['currentConditions'] {
   if (!place) return undefined;
   const live = liveUpazila({ id: place.kind === 'pilot' ? 'ADM3_Tanore' : place.id });
+  // NASA SMAP's root-zone percentile when it is less than a week old and defined here; NASA POWER otherwise
+  const sm = live?.smap;
+  if (sm && ['dry', 'normal', 'wet'].includes(sm.status) && (live!.ageDays.smap ?? 99) <= 7) {
+    return {
+      date: sm.date,
+      soilStatus: sm.status,
+      soilPercentile: sm.rootzonePctl,
+      sensor: 'SMAP',
+      rain30PctOfNormal: live!.power?.rain30PctOfNormal ?? null,
+      source: 'NASA SMAP L4 root-zone soil moisture percentile, 9 km (research/live/smap_now.py); rain from NASA POWER',
+    };
+  }
   if (!live?.power?.soilStatus) return undefined;
   return {
+    sensor: 'POWER',
     date: live.power.date,
     soilStatus: live.power.soilStatus,
     soilRank: live.power.soilRank ?? null,

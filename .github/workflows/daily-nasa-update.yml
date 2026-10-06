@@ -28,7 +28,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install
-        run: pip install requests pandas numpy pyarrow pillow
+        run: pip install requests pandas numpy pyarrow pillow earthaccess h5py pyproj
 
       - name: GPM IMERG, last 10 days (needs Earthdata secrets)
         continue-on-error: true
@@ -44,11 +44,20 @@ jobs:
       - name: NASA POWER for every upazila, and the summary file
         run: python research/live/daily_update.py
 
+      - name: NASA SMAP L4 root-zone soil moisture for every upazila (needs Earthdata secrets)
+        continue-on-error: true
+        env:
+          EARTHDATA_USERNAME: ${{ secrets.EARTHDATA_USERNAME }}
+          EARTHDATA_PASSWORD: ${{ secrets.EARTHDATA_PASSWORD }}
+        run: |
+          if [ -z "$EARTHDATA_USERNAME" ]; then echo "No Earthdata secrets; SMAP skipped"; exit 0; fi
+          python research/live/smap_now.py
+
       - name: Commit the update
         run: |
           git config user.name "eden-daily-update"
           git config user.email "eden-daily-update@users.noreply.github.com"
-          git add services/api/data/live/upazila_conditions.json
+          git add services/api/data/live/upazila_conditions.json services/api/data/live/smap_upazila.json
           if git diff --cached --quiet; then echo "No change"; exit 0; fi
           git commit -m "Daily NASA update $(date -u +%F)"
           git push

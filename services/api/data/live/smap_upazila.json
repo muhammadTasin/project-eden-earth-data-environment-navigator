@@ -1,0 +1,3824 @@
+{
+ "source": "NASA SMAP L4 (SPL4SMGP v8, 9 km): root-zone soil moisture and its percentile against the model climatology",
+ "granule": "SMAP_L4_SM_gph_20261002T223000_Vv8011_001.h5",
+ "validTime": "2026-10-02T21:00Z",
+ "date": "2026-10-02",
+ "made": "2026-10-06T01:58Z",
+ "cutoffs": "dry at or below the 20th percentile, wet at or above the 80th",
+ "summary": {
+  "dry": 471,
+  "normal": 0,
+  "wet": 0,
+  "unknown": 73
+ },
+ "upazilas": [
+  {
+   "id": "ADM3_Abhaynagar",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.301,
+   "surface": 0.26,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Adabor",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.271,
+   "surface": 0.23,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Adamdighi",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.265,
+   "surface": 0.205,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Aditmari",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.211,
+   "surface": 0.201,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Agailjhara",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.347,
+   "surface": 0.306,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Ajmiriganj",
+   "rootzonePctl": null,
+   "rootzone": 0.288,
+   "surface": 0.317,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Akhaura",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.297,
+   "surface": 0.247,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Akkelpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.275,
+   "surface": 0.221,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Alamdanga",
+   "rootzonePctl": 3.5,
+   "rootzone": 0.281,
+   "surface": 0.258,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Alfadanga",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.324,
+   "surface": 0.262,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Alikadam",
+   "rootzonePctl": null,
+   "rootzone": 0.381,
+   "surface": 0.356,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Amtali",
+   "rootzonePctl": null,
+   "rootzone": 0.51,
+   "surface": 0.486,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Anowara",
+   "rootzonePctl": 2.0,
+   "rootzone": 0.362,
+   "surface": 0.33,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Araihazar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.281,
+   "surface": 0.275,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Ashuganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.322,
+   "surface": 0.275,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Assasuni",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.42,
+   "surface": 0.378,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Atgharia",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.28,
+   "surface": 0.257,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Atpara",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.279,
+   "surface": 0.286,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Atrai",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.232,
+   "surface": 0.186,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Atwari",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.298,
+   "surface": 0.279,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Austagram",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.318,
+   "surface": 0.287,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Babuganj",
+   "rootzonePctl": null,
+   "rootzone": 0.369,
+   "surface": 0.333,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Badalgachhi",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.246,
+   "surface": 0.213,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Badarganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.258,
+   "surface": 0.228,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Badda",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.329,
+   "surface": 0.312,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_BagatiPara",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.285,
+   "surface": 0.252,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_BagerhatSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.384,
+   "surface": 0.36,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bagha",
+   "rootzonePctl": 3.5,
+   "rootzone": 0.233,
+   "surface": 0.187,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_BaghaiChhari",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.374,
+   "surface": 0.351,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_BagherPara",
+   "rootzonePctl": 3.5,
+   "rootzone": 0.301,
+   "surface": 0.258,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Baghmara",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.269,
+   "surface": 0.23,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bahubal",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.323,
+   "surface": 0.331,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bajitpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.293,
+   "surface": 0.254,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bakalia",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.33,
+   "surface": 0.331,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bakerganj",
+   "rootzonePctl": null,
+   "rootzone": 0.348,
+   "surface": 0.301,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Bakshiganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.252,
+   "surface": 0.195,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Balaganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.331,
+   "surface": 0.336,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_BaliaKandi",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.321,
+   "surface": 0.277,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Baliadangi",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.275,
+   "surface": 0.247,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bamna",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.495,
+   "surface": 0.476,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_BanariPara",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.3,
+   "surface": 0.249,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Banchharampur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.267,
+   "surface": 0.26,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bandar",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.263,
+   "surface": 0.233,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_BandarbanSadar",
+   "rootzonePctl": null,
+   "rootzone": 0.375,
+   "surface": 0.345,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Bangshal",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.277,
+   "surface": 0.249,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Baniachong",
+   "rootzonePctl": null,
+   "rootzone": 0.295,
+   "surface": 0.325,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Banshkhali",
+   "rootzonePctl": 6.5,
+   "rootzone": 0.333,
+   "surface": 0.332,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Baraigram",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.287,
+   "surface": 0.252,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_BargunaSadar",
+   "rootzonePctl": null,
+   "rootzone": 0.509,
+   "surface": 0.486,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Barhatta",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.297,
+   "surface": 0.291,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_BarisalSadarKotwali",
+   "rootzonePctl": null,
+   "rootzone": 0.381,
+   "surface": 0.344,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Barkal",
+   "rootzonePctl": null,
+   "rootzone": 0.383,
+   "surface": 0.356,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Barlekha",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.304,
+   "surface": 0.333,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Barura",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.299,
+   "surface": 0.302,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Basail",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.236,
+   "surface": 0.215,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Batiaghata",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.42,
+   "surface": 0.378,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bauphal",
+   "rootzonePctl": null,
+   "rootzone": 0.358,
+   "surface": 0.315,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_BayejidBostami",
+   "rootzonePctl": 2.2,
+   "rootzone": 0.364,
+   "surface": 0.335,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_BeaniBazar",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.296,
+   "surface": 0.332,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Begumganj",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.283,
+   "surface": 0.279,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Belabo",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.286,
+   "surface": 0.271,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_BelaiChhari",
+   "rootzonePctl": null,
+   "rootzone": 0.379,
+   "surface": 0.345,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Belkuchi",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.246,
+   "surface": 0.164,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bera",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.276,
+   "surface": 0.21,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Betagi",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.338,
+   "surface": 0.306,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bhairab",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.304,
+   "surface": 0.266,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bhaluka",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.331,
+   "surface": 0.336,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bhandaria",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.285,
+   "surface": 0.272,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bhanga",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.327,
+   "surface": 0.269,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bhangura",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.222,
+   "surface": 0.173,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bhedarganj",
+   "rootzonePctl": 1.9,
+   "rootzone": 0.363,
+   "surface": 0.336,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bheramara",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.227,
+   "surface": 0.179,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_BholaSadar",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.305,
+   "surface": 0.263,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bholahat",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.207,
+   "surface": 0.182,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bhuapur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.236,
+   "surface": 0.167,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bhurungamari",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.235,
+   "surface": 0.23,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bijoynagar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.298,
+   "surface": 0.241,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_BimanBandar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.324,
+   "surface": 0.305,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Biral",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.255,
+   "surface": 0.227,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Birampur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.261,
+   "surface": 0.234,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Birganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.241,
+   "surface": 0.223,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bishwambarpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.432,
+   "surface": 0.432,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bishwanath",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.31,
+   "surface": 0.335,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Boalia",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.278,
+   "surface": 0.261,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Boalkhali",
+   "rootzonePctl": null,
+   "rootzone": 0.356,
+   "surface": 0.338,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Boalmari",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.329,
+   "surface": 0.282,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Bochaganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.255,
+   "surface": 0.236,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Boda",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.284,
+   "surface": 0.273,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_BograSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.247,
+   "surface": 0.206,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_BrahmanPara",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.297,
+   "surface": 0.288,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_BrahmanbariaSadar",
+   "rootzonePctl": 1.0,
+   "rootzone": 0.324,
+   "surface": 0.265,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Burhanuddin",
+   "rootzonePctl": null,
+   "rootzone": 0.336,
+   "surface": 0.303,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Burichang",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.298,
+   "surface": 0.301,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Cantonment",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.329,
+   "surface": 0.312,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_ChakBazar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.277,
+   "surface": 0.249,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Chakaria",
+   "rootzonePctl": 10.5,
+   "rootzone": 0.335,
+   "surface": 0.344,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Chandanaish",
+   "rootzonePctl": null,
+   "rootzone": 0.358,
+   "surface": 0.336,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Chandgaon",
+   "rootzonePctl": 2.2,
+   "rootzone": 0.364,
+   "surface": 0.335,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Chandina",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.292,
+   "surface": 0.289,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_ChandpurSadar",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.285,
+   "surface": 0.265,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_CharBhadrasan",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.237,
+   "surface": 0.178,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_CharFasson",
+   "rootzonePctl": null,
+   "rootzone": 0.347,
+   "surface": 0.318,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_CharRajibpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.255,
+   "surface": 0.173,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Charghat",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.286,
+   "surface": 0.264,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Chatkhil",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.296,
+   "surface": 0.291,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Chatmohar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.277,
+   "surface": 0.231,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Chauddagram",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.253,
+   "surface": 0.266,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Chaugachha",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.286,
+   "surface": 0.248,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Chauhali",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.282,
+   "surface": 0.212,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Chhagalnaiya",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.255,
+   "surface": 0.252,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Chhatak",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.307,
+   "surface": 0.321,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Chilmari",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.262,
+   "surface": 0.187,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Chirirbandar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.194,
+   "surface": 0.176,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Chitalmari",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.239,
+   "surface": 0.201,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_ChittagongPort",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.33,
+   "surface": 0.331,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_ChuadangaSadar",
+   "rootzonePctl": 3.5,
+   "rootzone": 0.28,
+   "surface": 0.261,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Chunarughat",
+   "rootzonePctl": null,
+   "rootzone": 0.329,
+   "surface": 0.328,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_ComillaAdarshaSadar",
+   "rootzonePctl": 1.7,
+   "rootzone": 0.327,
+   "surface": 0.322,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_ComillaSadarDakshin",
+   "rootzonePctl": 1.2,
+   "rootzone": 0.328,
+   "surface": 0.322,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Companiganj_539746",
+   "rootzonePctl": 0.2,
+   "rootzone": 0.298,
+   "surface": 0.273,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Companiganj_185666",
+   "rootzonePctl": 0.5,
+   "rootzone": 0.344,
+   "surface": 0.338,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_CoxsBazarSadar",
+   "rootzonePctl": 4.5,
+   "rootzone": 0.359,
+   "surface": 0.338,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Dacope",
+   "rootzonePctl": null,
+   "rootzone": 0.472,
+   "surface": 0.453,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Daganbhuiyan",
+   "rootzonePctl": 0.4,
+   "rootzone": 0.314,
+   "surface": 0.294,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_DakshinSunamganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.309,
+   "surface": 0.324,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_DakshinSurma",
+   "rootzonePctl": 0.4,
+   "rootzone": 0.339,
+   "surface": 0.344,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Dakshinkhan",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.324,
+   "surface": 0.305,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Damudya",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.368,
+   "surface": 0.341,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Damurhuda",
+   "rootzonePctl": 3.5,
+   "rootzone": 0.285,
+   "surface": 0.255,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_DarusSalam",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.271,
+   "surface": 0.23,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Dashmina",
+   "rootzonePctl": null,
+   "rootzone": 0.358,
+   "surface": 0.322,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Daudkandi",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.273,
+   "surface": 0.27,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Daulatkhan",
+   "rootzonePctl": null,
+   "rootzone": 0.335,
+   "surface": 0.304,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Daulatpur_839920",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.232,
+   "surface": 0.162,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Daulatpur_050002",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.868,
+   "surface": 0.533,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Daulatpur_326946",
+   "rootzonePctl": 3.5,
+   "rootzone": 0.274,
+   "surface": 0.252,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Debhata",
+   "rootzonePctl": 0.5,
+   "rootzone": 0.408,
+   "surface": 0.356,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Debidwar",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.29,
+   "surface": 0.284,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Debiganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.203,
+   "surface": 0.19,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Delduar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.23,
+   "surface": 0.197,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Demra",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.243,
+   "surface": 0.248,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Derai",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.307,
+   "surface": 0.325,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Dewanganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.225,
+   "surface": 0.159,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Dhamoirhat",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.251,
+   "surface": 0.227,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Dhamrai",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.224,
+   "surface": 0.176,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Dhanbari",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.254,
+   "surface": 0.207,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Dhanmondi",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.271,
+   "surface": 0.238,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Dharampasha",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.309,
+   "surface": 0.318,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Dhobaura",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.315,
+   "surface": 0.304,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Dhunat",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.245,
+   "surface": 0.214,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Dhupchanchia",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.28,
+   "surface": 0.226,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Dighalia",
+   "rootzonePctl": null,
+   "rootzone": 0.87,
+   "surface": 0.534,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Dighinala",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.375,
+   "surface": 0.35,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Dimla",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.214,
+   "surface": 0.202,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_DinajpurSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.259,
+   "surface": 0.219,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Dohar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.213,
+   "surface": 0.192,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Domar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.217,
+   "surface": 0.206,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_DoubleMooring",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.33,
+   "surface": 0.331,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Dowarabazar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.426,
+   "surface": 0.432,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Dumki",
+   "rootzonePctl": null,
+   "rootzone": 0.348,
+   "surface": 0.3,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Dumuria",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.286,
+   "surface": 0.232,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Durgapur_169588",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.455,
+   "surface": 0.441,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Durgapur_796536",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.27,
+   "surface": 0.243,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Fakirhat",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.376,
+   "surface": 0.349,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Faridganj",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.284,
+   "surface": 0.271,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Faridpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.226,
+   "surface": 0.187,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_FaridpurSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.22,
+   "surface": 0.17,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Fatikchhari",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.321,
+   "surface": 0.288,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Fenchuganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.313,
+   "surface": 0.334,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_FeniSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.258,
+   "surface": 0.258,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Fulbari",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.257,
+   "surface": 0.223,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Fulbaria",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.331,
+   "surface": 0.328,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Fulchhari",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.296,
+   "surface": 0.227,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Fulgazi",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.255,
+   "surface": 0.256,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Gabtali",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.273,
+   "surface": 0.226,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Gaffargaon",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.326,
+   "surface": 0.324,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_GaibandhaSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.26,
+   "surface": 0.183,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Galachipa",
+   "rootzonePctl": null,
+   "rootzone": 0.516,
+   "surface": 0.49,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Gangachara",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.19,
+   "surface": 0.19,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Gangni",
+   "rootzonePctl": 3.5,
+   "rootzone": 0.276,
+   "surface": 0.248,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Gauripur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.268,
+   "surface": 0.268,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Gaurnadi",
+   "rootzonePctl": 1.2,
+   "rootzone": 0.357,
+   "surface": 0.326,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Gazaria",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.272,
+   "surface": 0.256,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_GazipurSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.322,
+   "surface": 0.307,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Gendaria",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.277,
+   "surface": 0.249,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Ghatail",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.254,
+   "surface": 0.223,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Ghior",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.226,
+   "surface": 0.183,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Ghoraghat",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.24,
+   "surface": 0.209,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Goalandaghat",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.217,
+   "surface": 0.163,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Gobindaganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.231,
+   "surface": 0.187,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Godagari",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.223,
+   "surface": 0.199,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Golabganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.309,
+   "surface": 0.342,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Gomastapur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.256,
+   "surface": 0.202,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_GopalganjSadar",
+   "rootzonePctl": null,
+   "rootzone": 0.863,
+   "surface": 0.501,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Gopalpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.239,
+   "surface": 0.169,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Gosairhat",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.362,
+   "surface": 0.332,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Gowainghat",
+   "rootzonePctl": 2.0,
+   "rootzone": 0.46,
+   "surface": 0.445,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Gulshan",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.329,
+   "surface": 0.312,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Gurudaspur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.231,
+   "surface": 0.179,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_HabiganjSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.338,
+   "surface": 0.338,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_HaimChar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.275,
+   "surface": 0.264,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Hajiganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.284,
+   "surface": 0.274,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Hakimpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.251,
+   "surface": 0.227,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Halishahar",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.33,
+   "surface": 0.331,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Haluaghat",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.308,
+   "surface": 0.283,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Harinakunda",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.281,
+   "surface": 0.257,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Haripur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.267,
+   "surface": 0.235,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Harirampur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.209,
+   "surface": 0.176,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Hathazari",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.309,
+   "surface": 0.304,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Hatibandha",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.221,
+   "surface": 0.199,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Hatiya",
+   "rootzonePctl": null,
+   "rootzone": 0.333,
+   "surface": 0.294,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Hazaribagh",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.271,
+   "surface": 0.238,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Hizla",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.368,
+   "surface": 0.335,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Homna",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.269,
+   "surface": 0.265,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Hossainpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.314,
+   "surface": 0.275,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Ishwardi",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.285,
+   "surface": 0.268,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Ishwarganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.278,
+   "surface": 0.258,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Islampur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.229,
+   "surface": 0.174,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Itna",
+   "rootzonePctl": null,
+   "rootzone": 0.291,
+   "surface": 0.299,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Jagannathpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.302,
+   "surface": 0.324,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Jaintiapur",
+   "rootzonePctl": null,
+   "rootzone": 0.455,
+   "surface": 0.444,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Jaldhaka",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.199,
+   "surface": 0.204,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Jamalganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.308,
+   "surface": 0.32,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_JamalpurSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.264,
+   "surface": 0.224,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Jatrabari",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.277,
+   "surface": 0.249,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_JhalokatiSadar",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.315,
+   "surface": 0.265,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_JhenaidahSadar",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.278,
+   "surface": 0.263,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Jhenaigati",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.246,
+   "surface": 0.185,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Jhikargachha",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.294,
+   "surface": 0.253,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_JibanNagar",
+   "rootzonePctl": 3.5,
+   "rootzone": 0.283,
+   "surface": 0.264,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_JoypurhatSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.248,
+   "surface": 0.218,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_JuraiChhari",
+   "rootzonePctl": null,
+   "rootzone": 0.389,
+   "surface": 0.357,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Juri",
+   "rootzonePctl": null,
+   "rootzone": 0.485,
+   "surface": 0.478,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Kabirhat",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.256,
+   "surface": 0.256,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kachua_371605",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.293,
+   "surface": 0.287,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kachua_342001",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.255,
+   "surface": 0.233,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kadamtali",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.277,
+   "surface": 0.249,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kafrul",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.329,
+   "surface": 0.312,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kahaloo",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.249,
+   "surface": 0.209,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kaharole",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.249,
+   "surface": 0.232,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_KalaPara",
+   "rootzonePctl": null,
+   "rootzone": 0.504,
+   "surface": 0.484,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Kalabagan",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.277,
+   "surface": 0.249,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kalai",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.241,
+   "surface": 0.211,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kalaroa",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.306,
+   "surface": 0.274,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kalia",
+   "rootzonePctl": null,
+   "rootzone": 0.879,
+   "surface": 0.549,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Kaliakair",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.286,
+   "surface": 0.279,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kaliganj_086039",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.285,
+   "surface": 0.307,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kaliganj_882675",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.283,
+   "surface": 0.262,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kaliganj_663470",
+   "rootzonePctl": null,
+   "rootzone": 0.421,
+   "surface": 0.378,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Kaliganj_098735",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.193,
+   "surface": 0.186,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kalihati",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.231,
+   "surface": 0.195,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kalkini",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.351,
+   "surface": 0.307,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kalmakanda",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.442,
+   "surface": 0.426,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kalukhali",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.24,
+   "surface": 0.187,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kamalganj",
+   "rootzonePctl": null,
+   "rootzone": 0.31,
+   "surface": 0.334,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Kamalnagar",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.275,
+   "surface": 0.264,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kamarkhanda",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.223,
+   "surface": 0.167,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_KamrangirChar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.271,
+   "surface": 0.238,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kanaighat",
+   "rootzonePctl": null,
+   "rootzone": 0.436,
+   "surface": 0.443,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Kanthalia",
+   "rootzonePctl": 0.4,
+   "rootzone": 0.338,
+   "surface": 0.307,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kapasia",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.3,
+   "surface": 0.319,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kaptai",
+   "rootzonePctl": null,
+   "rootzone": 0.342,
+   "surface": 0.342,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Karimganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.323,
+   "surface": 0.307,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kasba",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.302,
+   "surface": 0.274,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kashiani",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.863,
+   "surface": 0.5,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Katiadi",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.298,
+   "surface": 0.27,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kaunia",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.238,
+   "surface": 0.221,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kawkhali",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.272,
+   "surface": 0.244,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_KawkhaliBetbunia",
+   "rootzonePctl": 2.0,
+   "rootzone": 0.378,
+   "surface": 0.352,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kazipur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.248,
+   "surface": 0.157,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kendua",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.284,
+   "surface": 0.287,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Keraniganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.271,
+   "surface": 0.238,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Keshabpur",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.303,
+   "surface": 0.274,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_KhagrachhariSadar",
+   "rootzonePctl": null,
+   "rootzone": 0.376,
+   "surface": 0.353,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Khaliajuri",
+   "rootzonePctl": null,
+   "rootzone": 0.302,
+   "surface": 0.31,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Khalishpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.878,
+   "surface": 0.563,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_KhanJahanAli",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.86,
+   "surface": 0.508,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Khansama",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.182,
+   "surface": 0.176,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Khetlal",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.246,
+   "surface": 0.209,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Khilgaon",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.329,
+   "surface": 0.312,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Khilkhet",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.324,
+   "surface": 0.305,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Khoksa",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.238,
+   "surface": 0.186,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_KhulnaSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.413,
+   "surface": 0.365,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Khulshi",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.33,
+   "surface": 0.331,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kishoreganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.196,
+   "surface": 0.197,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_KishoreganjSadar",
+   "rootzonePctl": null,
+   "rootzone": 0.312,
+   "surface": 0.284,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_KotaliPara",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.331,
+   "surface": 0.275,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kotchandpur",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.281,
+   "surface": 0.27,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kotwali_226647",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.33,
+   "surface": 0.331,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kotwali_832933",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.277,
+   "surface": 0.249,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kotwali_291187",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.302,
+   "surface": 0.263,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Koyra",
+   "rootzonePctl": null,
+   "rootzone": 0.51,
+   "surface": 0.49,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Kulaura",
+   "rootzonePctl": null,
+   "rootzone": 0.335,
+   "surface": 0.356,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_KuliarChar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.297,
+   "surface": 0.276,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kumarkhali",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.233,
+   "surface": 0.188,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_KurigramSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.287,
+   "surface": 0.23,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_KushtiaSadar",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.284,
+   "surface": 0.265,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Kutubdia",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.328,
+   "surface": 0.327,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Lakhai",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.295,
+   "surface": 0.281,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Laksam",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.291,
+   "surface": 0.291,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Lakshmichhari",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.338,
+   "surface": 0.347,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_LakshmipurSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.271,
+   "surface": 0.267,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Lalbagh",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.277,
+   "surface": 0.249,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Lalmohan",
+   "rootzonePctl": null,
+   "rootzone": 0.366,
+   "surface": 0.335,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_LalmonirhatSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.231,
+   "surface": 0.214,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Lalpur",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.287,
+   "surface": 0.261,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Lama",
+   "rootzonePctl": 13.5,
+   "rootzone": 0.384,
+   "surface": 0.359,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Langadu",
+   "rootzonePctl": null,
+   "rootzone": 0.31,
+   "surface": 0.308,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Lohagara_836566",
+   "rootzonePctl": null,
+   "rootzone": 0.364,
+   "surface": 0.343,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Lohagara_691580",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.29,
+   "surface": 0.237,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Lohajang",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.23,
+   "surface": 0.195,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Madan",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.297,
+   "surface": 0.305,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Madarganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.228,
+   "surface": 0.183,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_MadaripurSadar",
+   "rootzonePctl": 1.2,
+   "rootzone": 0.342,
+   "surface": 0.295,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Madhabpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.29,
+   "surface": 0.272,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Madhukhali",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.322,
+   "surface": 0.275,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Madhupur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.259,
+   "surface": 0.216,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_MaguraSadar",
+   "rootzonePctl": 3.5,
+   "rootzone": 0.289,
+   "surface": 0.251,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Mahadebpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.236,
+   "surface": 0.215,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Mahalchhari",
+   "rootzonePctl": null,
+   "rootzone": 0.376,
+   "surface": 0.348,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Maheshkhali",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.327,
+   "surface": 0.323,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Maheshpur",
+   "rootzonePctl": 3.5,
+   "rootzone": 0.286,
+   "surface": 0.258,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Manda",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.214,
+   "surface": 0.176,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Manikchhari",
+   "rootzonePctl": null,
+   "rootzone": 0.37,
+   "surface": 0.343,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_ManikganjSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.223,
+   "surface": 0.171,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Manirampur",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.296,
+   "surface": 0.259,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Manohardi",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.311,
+   "surface": 0.329,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Manoharganj",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.288,
+   "surface": 0.286,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Manpura",
+   "rootzonePctl": null,
+   "rootzone": 0.341,
+   "surface": 0.314,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Mathbaria",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.481,
+   "surface": 0.476,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Matihar",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.278,
+   "surface": 0.261,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Matiranga",
+   "rootzonePctl": null,
+   "rootzone": 0.303,
+   "surface": 0.298,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_MatlabDakshin",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.284,
+   "surface": 0.276,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_MatlabUttar",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.261,
+   "surface": 0.253,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_MaulviBazarSadar",
+   "rootzonePctl": null,
+   "rootzone": 0.336,
+   "surface": 0.353,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Meghna",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.257,
+   "surface": 0.264,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Mehendiganj",
+   "rootzonePctl": null,
+   "rootzone": 0.373,
+   "surface": 0.338,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_MeherpurSadar",
+   "rootzonePctl": 3.5,
+   "rootzone": 0.28,
+   "surface": 0.241,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Melandaha",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.252,
+   "surface": 0.219,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Mirpur_169518",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.271,
+   "surface": 0.23,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Mirpur_956594",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.282,
+   "surface": 0.266,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Mirsharai",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.279,
+   "surface": 0.269,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Mirzaganj",
+   "rootzonePctl": null,
+   "rootzone": 0.343,
+   "surface": 0.303,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Mirzapur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.233,
+   "surface": 0.206,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_MithaPukur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.232,
+   "surface": 0.199,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Mithamain",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.283,
+   "surface": 0.277,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Mohammadpur_517929",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.271,
+   "surface": 0.23,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Mohammadpur_792291",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.319,
+   "surface": 0.256,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Mohanganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.303,
+   "surface": 0.311,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Mohanpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.274,
+   "surface": 0.241,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Mollahat",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.873,
+   "surface": 0.54,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Mongla",
+   "rootzonePctl": null,
+   "rootzone": 0.503,
+   "surface": 0.488,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Morrelganj",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.276,
+   "surface": 0.26,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Motijheel",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.277,
+   "surface": 0.249,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_MujibNagar",
+   "rootzonePctl": 3.5,
+   "rootzone": 0.284,
+   "surface": 0.242,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Muksudpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.845,
+   "surface": 0.462,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Muktagachha",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.268,
+   "surface": 0.233,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Muladi",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.361,
+   "surface": 0.321,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_MunshiganjSadar",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.267,
+   "surface": 0.242,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Muradnagar",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.296,
+   "surface": 0.28,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_MymensinghSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.261,
+   "surface": 0.221,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Nabiganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.302,
+   "surface": 0.338,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Nabinagar",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.284,
+   "surface": 0.247,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Nachole",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.235,
+   "surface": 0.218,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Nagarkanda",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.323,
+   "surface": 0.263,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Nagarpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.22,
+   "surface": 0.172,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Nageshwari",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.3,
+   "surface": 0.236,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Naikhongchhari",
+   "rootzonePctl": null,
+   "rootzone": 0.367,
+   "surface": 0.345,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Nakla",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.268,
+   "surface": 0.236,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Nalchity",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.316,
+   "surface": 0.267,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Nalitabari",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.262,
+   "surface": 0.215,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Nandail",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.284,
+   "surface": 0.254,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Nandigram",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.245,
+   "surface": 0.212,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Nangalkot",
+   "rootzonePctl": 0.6,
+   "rootzone": 0.318,
+   "surface": 0.306,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Naniarchar",
+   "rootzonePctl": null,
+   "rootzone": 0.386,
+   "surface": 0.355,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_NaogaonSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.259,
+   "surface": 0.19,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_NarailSadar",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.291,
+   "surface": 0.238,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_NarayanganjSadar",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.263,
+   "surface": 0.233,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Naria",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.265,
+   "surface": 0.231,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_NarsingdiSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.278,
+   "surface": 0.274,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Nasirnagar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.297,
+   "surface": 0.258,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_NatoreSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.225,
+   "surface": 0.173,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Nawabganj_222310",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.232,
+   "surface": 0.202,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Nawabganj_718336",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.251,
+   "surface": 0.217,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_NawabganjSadar",
+   "rootzonePctl": 3.5,
+   "rootzone": 0.208,
+   "surface": 0.173,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Nazirpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.244,
+   "surface": 0.207,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_NesarabadSwarupkati",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.292,
+   "surface": 0.242,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_NetrokonaSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.28,
+   "surface": 0.289,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_NewMarket",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.277,
+   "surface": 0.249,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Niamatpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.222,
+   "surface": 0.202,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Nikli",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.303,
+   "surface": 0.269,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_NilphamariSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.19,
+   "surface": 0.192,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_NoakhaliSadarSudharam",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.273,
+   "surface": 0.266,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Paba",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.278,
+   "surface": 0.261,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_PabnaSadar",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.309,
+   "surface": 0.27,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Pahartali",
+   "rootzonePctl": 1.7,
+   "rootzone": 0.35,
+   "surface": 0.324,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Paikgachha",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.383,
+   "surface": 0.365,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Pakundia",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.305,
+   "surface": 0.274,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Palash",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.298,
+   "surface": 0.33,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Palashbari",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.222,
+   "surface": 0.175,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Pallabi",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.318,
+   "surface": 0.285,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Paltan",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.277,
+   "surface": 0.249,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_PanchagarhSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.301,
+   "surface": 0.275,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Panchbibi",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.248,
+   "surface": 0.222,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Panchhari",
+   "rootzonePctl": null,
+   "rootzone": 0.37,
+   "surface": 0.35,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Panchlaish",
+   "rootzonePctl": 2.2,
+   "rootzone": 0.364,
+   "surface": 0.335,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Pangsha",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.239,
+   "surface": 0.191,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Parbatipur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.26,
+   "surface": 0.228,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Parshuram",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.254,
+   "surface": 0.257,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Patenga",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.328,
+   "surface": 0.328,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Patgram",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.242,
+   "surface": 0.25,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Patharghata",
+   "rootzonePctl": null,
+   "rootzone": 0.482,
+   "surface": 0.475,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Patiya",
+   "rootzonePctl": null,
+   "rootzone": 0.367,
+   "surface": 0.345,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Patnitala",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.245,
+   "surface": 0.222,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_PatuakhaliSadar",
+   "rootzonePctl": null,
+   "rootzone": 0.333,
+   "surface": 0.293,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Pekua",
+   "rootzonePctl": 3.7,
+   "rootzone": 0.359,
+   "surface": 0.321,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Phulbari",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.299,
+   "surface": 0.249,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Phulpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.264,
+   "surface": 0.263,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Phultala",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.86,
+   "surface": 0.508,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Pirgachha",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.23,
+   "surface": 0.202,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Pirganj_117283",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.232,
+   "surface": 0.193,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Pirganj_912558",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.256,
+   "surface": 0.232,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_PirojpurSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.255,
+   "surface": 0.235,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Porsha",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.225,
+   "surface": 0.196,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Purbadhala",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.276,
+   "surface": 0.295,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Puthia",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.277,
+   "surface": 0.249,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Rajapur",
+   "rootzonePctl": 0.8,
+   "rootzone": 0.321,
+   "surface": 0.284,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Rajarhat",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.282,
+   "surface": 0.235,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Rajasthali",
+   "rootzonePctl": null,
+   "rootzone": 0.348,
+   "surface": 0.347,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_RajbariSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.224,
+   "surface": 0.177,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Rajnagar",
+   "rootzonePctl": null,
+   "rootzone": 0.328,
+   "surface": 0.347,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Rajoir",
+   "rootzonePctl": 0.8,
+   "rootzone": 0.839,
+   "surface": 0.464,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Rajpara",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.303,
+   "surface": 0.258,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Ramganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.293,
+   "surface": 0.285,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Ramgarh",
+   "rootzonePctl": null,
+   "rootzone": 0.377,
+   "surface": 0.352,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Ramgati",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.287,
+   "surface": 0.28,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Ramna",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.329,
+   "surface": 0.312,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Rampal",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.435,
+   "surface": 0.401,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Rampura",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.329,
+   "surface": 0.312,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Ramu",
+   "rootzonePctl": 12.5,
+   "rootzone": 0.365,
+   "surface": 0.344,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_RangamatiSadar",
+   "rootzonePctl": null,
+   "rootzone": 0.341,
+   "surface": 0.326,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_RangpurSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.186,
+   "surface": 0.184,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Rangunia",
+   "rootzonePctl": null,
+   "rootzone": 0.354,
+   "surface": 0.335,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Raninagar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.23,
+   "surface": 0.194,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Ranisankail",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.265,
+   "surface": 0.237,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Raozan",
+   "rootzonePctl": 2.2,
+   "rootzone": 0.356,
+   "surface": 0.326,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Raumari",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.267,
+   "surface": 0.19,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Rowangchhari",
+   "rootzonePctl": null,
+   "rootzone": 0.376,
+   "surface": 0.348,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Royganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.238,
+   "surface": 0.2,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Roypur",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.234,
+   "surface": 0.234,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Roypura",
+   "rootzonePctl": 0.5,
+   "rootzone": 0.307,
+   "surface": 0.269,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Ruma",
+   "rootzonePctl": null,
+   "rootzone": 0.379,
+   "surface": 0.352,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Rupganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.298,
+   "surface": 0.31,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Rupsa",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.377,
+   "surface": 0.344,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sabujbagh",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.277,
+   "surface": 0.249,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sadarpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.243,
+   "surface": 0.186,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sadullapur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.226,
+   "surface": 0.186,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Saghatta",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.259,
+   "surface": 0.186,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Saidpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.189,
+   "surface": 0.185,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sakhipur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.31,
+   "surface": 0.312,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Saltha",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.327,
+   "surface": 0.278,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sandwip",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.268,
+   "surface": 0.257,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Santhia",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.274,
+   "surface": 0.259,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sapahar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.227,
+   "surface": 0.192,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sarail",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.321,
+   "surface": 0.273,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sarankhola",
+   "rootzonePctl": null,
+   "rootzone": 0.483,
+   "surface": 0.479,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Sariakandi",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.254,
+   "surface": 0.188,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sarishabari",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.247,
+   "surface": 0.191,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Satkania",
+   "rootzonePctl": null,
+   "rootzone": 0.356,
+   "surface": 0.335,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_SatkhiraSadar",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.42,
+   "surface": 0.374,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Saturia",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.222,
+   "surface": 0.171,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Savar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.318,
+   "surface": 0.285,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Senbagh",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.295,
+   "surface": 0.293,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Serajdikhan",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.239,
+   "surface": 0.228,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_ShahAli",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.271,
+   "surface": 0.23,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_ShahMakhdum",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.278,
+   "surface": 0.261,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Shahbagh",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.277,
+   "surface": 0.249,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Shahjadpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.25,
+   "surface": 0.173,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Shahrasti",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.297,
+   "surface": 0.291,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Shailkupa",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.28,
+   "surface": 0.25,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Shajahanpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.249,
+   "surface": 0.22,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Shalikha",
+   "rootzonePctl": 3.5,
+   "rootzone": 0.289,
+   "surface": 0.242,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_ShariatpurSadar",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.358,
+   "surface": 0.327,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sharsha",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.297,
+   "surface": 0.257,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_SherebanglaNagar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.329,
+   "surface": 0.312,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sherpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.251,
+   "surface": 0.224,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_SherpurSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.247,
+   "surface": 0.207,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_ShibChar",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.331,
+   "surface": 0.279,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Shibalaya",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.234,
+   "surface": 0.165,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Shibganj_340057",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.238,
+   "surface": 0.197,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Shibganj_581700",
+   "rootzonePctl": 4.5,
+   "rootzone": 0.216,
+   "surface": 0.192,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Shibpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.282,
+   "surface": 0.283,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Shyamnagar",
+   "rootzonePctl": null,
+   "rootzone": 0.489,
+   "surface": 0.467,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Shyampur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.277,
+   "surface": 0.249,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Singair",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.229,
+   "surface": 0.195,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Singra",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.246,
+   "surface": 0.203,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_SirajganjSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.25,
+   "surface": 0.161,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sitakunda",
+   "rootzonePctl": 1.7,
+   "rootzone": 0.343,
+   "surface": 0.355,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sonadanga",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.413,
+   "surface": 0.365,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sonagazi",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.298,
+   "surface": 0.285,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sonaimuri",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.296,
+   "surface": 0.289,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sonargaon",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.264,
+   "surface": 0.249,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sonatola",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.263,
+   "surface": 0.202,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sreebardi",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.242,
+   "surface": 0.189,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sreemangal",
+   "rootzonePctl": null,
+   "rootzone": 0.331,
+   "surface": 0.346,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Sreenagar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.21,
+   "surface": 0.188,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sreepur_171075",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.336,
+   "surface": 0.323,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sreepur_021808",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.315,
+   "surface": 0.254,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Subarnachar",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.281,
+   "surface": 0.276,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sujanagar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.23,
+   "surface": 0.181,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sulla",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.302,
+   "surface": 0.312,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_SunamganjSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.311,
+   "surface": 0.317,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sundarganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.236,
+   "surface": 0.199,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Sutrapur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.277,
+   "surface": 0.249,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_SylhetSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.31,
+   "surface": 0.332,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Tahirpur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.424,
+   "surface": 0.429,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Tala",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.313,
+   "surface": 0.287,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_TangailSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.205,
+   "surface": 0.156,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Tanore",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.301,
+   "surface": 0.261,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Taraganj",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.191,
+   "surface": 0.191,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Tarail",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.283,
+   "surface": 0.28,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Tarash",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.237,
+   "surface": 0.2,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Tazumuddin",
+   "rootzonePctl": null,
+   "rootzone": 0.364,
+   "surface": 0.333,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Tejgaon",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.329,
+   "surface": 0.312,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_TejgaonIndArea",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.329,
+   "surface": 0.312,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Teknaf",
+   "rootzonePctl": 5.8,
+   "rootzone": 0.353,
+   "surface": 0.36,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Tentulia",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.314,
+   "surface": 0.278,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Terokhada",
+   "rootzonePctl": null,
+   "rootzone": 0.876,
+   "surface": 0.548,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_ThakurgaonSadar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.255,
+   "surface": 0.23,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Thanchi",
+   "rootzonePctl": null,
+   "rootzone": 0.38,
+   "surface": 0.352,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Titas",
+   "rootzonePctl": 1.5,
+   "rootzone": 0.248,
+   "surface": 0.246,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Tongibari",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.248,
+   "surface": 0.244,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Trishal",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.279,
+   "surface": 0.244,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_TungiPara",
+   "rootzonePctl": null,
+   "rootzone": 0.88,
+   "surface": 0.557,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Turag",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.318,
+   "surface": 0.285,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Ukhia",
+   "rootzonePctl": 11.0,
+   "rootzone": 0.369,
+   "surface": 0.349,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Ulipur",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.279,
+   "surface": 0.225,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_UllahPara",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.23,
+   "surface": 0.184,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_UttarKhan",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.324,
+   "surface": 0.305,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Uttara",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.324,
+   "surface": 0.305,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Wazirpur",
+   "rootzonePctl": 0.8,
+   "rootzone": 0.354,
+   "surface": 0.32,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Zakiganj",
+   "rootzonePctl": null,
+   "rootzone": 0.43,
+   "surface": 0.439,
+   "status": "unknown"
+  },
+  {
+   "id": "ADM3_Zanjira",
+   "rootzonePctl": 2.5,
+   "rootzone": 0.191,
+   "surface": 0.189,
+   "status": "dry"
+  },
+  {
+   "id": "ADM3_Zianagar",
+   "rootzonePctl": 0.0,
+   "rootzone": 0.28,
+   "surface": 0.267,
+   "status": "dry"
+  }
+ ]
+}

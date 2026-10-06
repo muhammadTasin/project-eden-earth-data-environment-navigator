@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FILE = process.env.EDEN_LIVE_FILE || path.resolve(__dirname, '../data/live/upazila_conditions.json');
+/** NASA SMAP L4 root-zone soil moisture per upazila, written by research/live/smap_now.py. */
+const SMAP_FILE = process.env.EDEN_SMAP_FILE || path.resolve(__dirname, '../data/live/smap_upazila.json');
 
 interface LiveFile {
   summary: Record<string, any>;
@@ -26,6 +28,26 @@ function load(): LiveFile | null {
   }
 }
 
+let smapCache: { mtime: number; byId: Map<string, Record<string, any>>; date: string; validTime: string; source: string } | null = null;
+function smap() {
+  try {
+    const mtime = fs.statSync(SMAP_FILE).mtimeMs;
+    if (!smapCache || smapCache.mtime !== mtime) {
+      const d = JSON.parse(fs.readFileSync(SMAP_FILE, 'utf8'));
+      smapCache = { mtime, byId: new Map(d.upazilas.map((u: any) => [u.id, u])), date: d.date, validTime: d.validTime, source: d.source };
+    }
+    return smapCache;
+  } catch {
+    return null;
+  }
+}
+/** One upazila's SMAP reading with its date, or null. */
+function smapFor(id: string) {
+  const s = smap();
+  const r = s?.byId.get(id);
+  return r ? { date: s!.date, validTime: s!.validTime, rootzonePctl: r.rootzonePctl, rootzone: r.rootzone, surface: r.surface, status: r.status } : null;
+}
+
 const daysSince = (iso: string | null | undefined) =>
   iso ? Math.floor((Date.now() - Date.parse(`${iso}T00:00:00Z`)) / 86_400_000) : null;
 
@@ -35,7 +57,10 @@ export function liveStatus() {
   if (!d) return null;
   return {
     ...d.summary,
-    sources: d.summary.sources.map((s: any) => ({ ...s, ageDays: daysSince(s.latestDate) })),
+    sources: [
+      ...d.summary.sources.map((s: any) => ({ ...s, ageDays: daysSince(s.latestDate) })),
+      ...(smap() ? [{ name: 'NASA SMAP L4 root-zone soil moisture', latestDate: smap()!.date, ageDays: daysSince(smap()!.date), note: smap()!.source }] : []),
+    ],
   };
 }
 
@@ -48,6 +73,7 @@ export function liveUpazilas(district?: string) {
     id: u.id, name: u.name, district: u.district,
     soilStatus: u.power.soilStatus, rainStatus: u.power.rainStatus, rain30PctOfNormal: u.power.rain30PctOfNormal,
     rain7: u.imerg?.rain7 ?? u.power.rain7, tmax: u.power.tmax, hotDays7: u.power.hotDays7,
+    smapStatus: smapFor(u.id)?.status ?? null, smapPctl: smapFor(u.id)?.rootzonePctl ?? null,
   }));
 }
 
@@ -63,9 +89,11 @@ export function liveUpazila(q: { id?: string | null; name?: string | null; lat?:
       ((x.lat - q.lat!) ** 2 + ((x.lon - q.lon!) * k) ** 2) < ((best.lat - q.lat!) ** 2 + ((best.lon - q.lon!) * k) ** 2) ? x : best);
   }
   if (!u) return null;
+  const sm = smapFor(u.id);
   return {
     ...u,
-    ageDays: { power: daysSince(u.power.date), imerg: daysSince(u.imerg?.date) },
+    smap: sm,
+    ageDays: { power: daysSince(u.power.date), imerg: daysSince(u.imerg?.date), smap: daysSince(sm?.date) },
     method: d.summary.method,
     generatedAt: d.summary.generatedAt,
   };

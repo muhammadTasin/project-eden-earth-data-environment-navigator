@@ -297,7 +297,8 @@ The latest SMAP soil-moisture values come from the downloaded cache (`research/d
 - Soil salinity comes from SRDI's May 2009 survey by upazila, not the farmer's field, and four crops' salt tolerance is assumed. Rain-only yields leave out water a shallow water table feeds up to the roots, so they are a lower bound (lentil about a third of a watered crop's yield); the irrigation figures still count the replay's 50 mm of stored soil water.
 - Kharif-1 irrigation assumes no soil water left by the winter crop, so it is an upper estimate; heat limits for crops outside `crop_parameters.csv` are literature values marked as assumed. Onion, garlic, groundnut and vegetables are not replayed yet.
 - Speech-to-text runs in the browser (Chrome) and on Android phones with Google's recogniser; phone-call speech needs a recording first (see the phone section).
-- Monsoon upland crops are judged by land type, NASA soil-wetness waterlogging and heavy-rain days; river floods are not modelled. NASA's MODIS flood map cannot fill that gap here (about 98% cloud over Bangladesh on 15 August 2021, and the 20 June 2022 Sylhet flood hidden), so the next step is NASA OPERA's radar water maps (DSWx-S1), which see through cloud.
+- Monsoon upland crops are judged by land type, NASA soil-wetness waterlogging and heavy-rain days. NASA OPERA's radar water maps (DSWx-S1, which see through the cloud that hides MODIS) set when low and very low land is free to plough. This uses one season (2025), and only where the monsoon water covered at least a tenth of the upazila; elsewhere the radar's "water" is mostly flooded paddy. The risk of river floods to standing crops is not scored yet.
+- Today's dry-start check uses NASA SMAP L4's root-zone percentile, read straight from the newest 3-hourly file (`research/live/smap_now.py`). SMAP leaves the percentile blank in 73 haor, coastal and hill upazilas, which fall back to NASA POWER's reading.
 - The pesticide numbers are PEST-CHEMGRIDS model estimates for 2020, not farm measurements.
 - The pest score is rule-based until officers log pest counts.
 - Floods are not modelled for Barind land. The haor warning shows the 25-season hindcast and the season status; a live trigger needs a daily IMERG Early feed and river-gauge confirmation. Rotation advice is not modelled for the haor.
@@ -306,7 +307,7 @@ The latest SMAP soil-moisture values come from the downloaded cache (`research/d
 - Sign-in uses a shared officer code, a demo farmer PIN, in-memory sessions and a JSON file store; a real deployment needs proper accounts and a database. The role picker only decides what the screen shows; the API checks its own tokens.
 - The cattle module keeps farm outlines and jobs in a local JSON file (not production-durable), and its Earth Engine worker has not been run against a real Earth Engine account; until it is set up, satellite inputs are reported as unavailable and jobs end as partial.
 - Two upazila lists live side by side for now: the 544 geoBoundaries units the advice and the map use, and the 500 Open Admin Data units the weather pickers use.
-- The Android app's API address works in the emulator only.
+- The Android app's API address works in the emulator only. The app advises the upazila nearest the location saved on its weather screen, or the Tanore pilot when none is saved.
 
 ## Branches
 

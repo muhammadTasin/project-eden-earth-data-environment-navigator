@@ -330,6 +330,11 @@ async function runTests() {
     || !['flash_flood', 'deep_flooding'].every(h => haor.local_context!.hazards.includes(h))) {
     throw new Error('Haor low land gets a Boro cut before the flash floods in most springs, with both hazards named');
   }
+  // NASA OPERA radar: haor low land is free when 80% of the 2025 monsoon water had drained (11 Dec), not on a fixed date
+  const haorContext = JSON.stringify(haor.local_context);
+  if (!haorContext.includes('NASA OPERA radar (2025)') || !haorContext.includes('free from ~11 Dec')) {
+    throw new Error('Haor low land takes its free date from the OPERA radar drain date');
+  }
   const higher = at('ADM3_Khaliajuri', { landType: 'medium_high', landTypeAssumed: false });
   if (!higher.options.every(o => o.cropSequence[0].seasonType === 'Aman') || higher.local_context!.landTypeAssumed) {
     throw new Error('When the farmer says the field is higher, Aman comes back');
@@ -360,6 +365,13 @@ async function runTests() {
   if (lentilOct.dimensionDetails.water.metrics.dryStartExtraMm !== 50 || !lentilOct.approvedActionIds.includes('action_dry_start')
     || !october.local_context!.hazards.includes('dry_start') || lentilMar.dimensionDetails.water.metrics.dryStartExtraMm !== undefined) {
     throw new Error('A dry soil before the winter sowing adds 50 mm and a sowing step; in March it does not');
+  }
+  // NASA SMAP's root-zone percentile, when it is the reading, is named with its percentile
+  const smapDry = at('ADM3_FaridpurSadar', { currentConditions: { date: '2026-10-02', soilStatus: 'dry', soilPercentile: 0.4, sensor: 'SMAP', rain30PctOfNormal: 57, source: 'test' }, today: '2026-10-05' });
+  const smapNote = JSON.stringify(smapDry.local_context);
+  const smapWater = JSON.stringify(smapDry.options.find(o => winterOf(o).crop === 'Lentil')!.dimensionDetails.water);
+  if (!smapNote.includes('SMAP satellite') || !smapNote.includes('0th percentile') || smapNote.includes("reading (POWER") || !smapWater.includes('(NASA SMAP)')) {
+    throw new Error(`A SMAP reading is named as SMAP with its percentile (got: ${smapNote.slice(0, 160)})`);
   }
   // NASA GLDAS groundwater: irrigation weighs more where the aquifer falls fastest (Barind), never less on the coast
   const barindWeight = at('ADM3_Nachole').options[0].dimensionDetails.water.metrics.groundwaterWeight as number;

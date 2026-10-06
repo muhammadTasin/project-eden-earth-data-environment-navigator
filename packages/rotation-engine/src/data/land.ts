@@ -7,6 +7,10 @@
  * and the field is free only when the water leaves. BRRI's haor guidance puts Boro seedbeds on 25 October-7 November
  * with 30-40-day seedlings (BRRI dhan102 and dhan118 factsheets, research/crops/brri_rice_varieties.csv), so low land
  * is taken as free from 1 December and very low land from 15 December.
+ *
+ * Where NASA's OPERA radar saw the monsoon water cover at least a tenth of the upazila in 2025, low land is free when
+ * 80% of that water had drained and very low land when 90% had (research/explore/opera_water.py), kept between
+ * 1 November and 31 January. Elsewhere the radar's "monsoon water" is mostly flooded paddy, so the defaults stay.
  */
 import type { LandType } from '@project-eden/contracts';
 import type { MonthDay } from './release_types.ts';
@@ -20,13 +24,26 @@ export interface LandRules {
   ready: MonthDay | null; // when the water leaves a field that stood under it all monsoon; null on land that drains
 }
 
+/** The OPERA share of the upazila the monsoon water must cover before its drain date stands for the land's. */
+export const OPERA_MIN_EXTRA = 0.1;
+
+/** When NASA OPERA radar saw this upazila's low (or very low) land drain in 2025, or null to keep the default. */
+export function radarReady(landType: LandType): MonthDay | null {
+  const w = LOC.local.opera;
+  const iso = landType === 'very_low' ? w?.drained90 : landType === 'low' ? w?.drained80 : null;
+  if (!w || !iso || w.extra < OPERA_MIN_EXTRA) return null;
+  const md = iso.slice(5) as MonthDay;
+  const day = seasonDay(md);
+  return day < seasonDay('11-01') ? '11-01' : day > seasonDay('01-31') ? '01-31' : md;
+}
+
 export function landRules(landType: LandType): LandRules {
   const deep = landType === 'low' || landType === 'very_low';
   return {
     aman: !deep,
     kharif2: landType === 'high',
     kharif1: !deep,
-    ready: landType === 'very_low' ? '12-15' : landType === 'low' ? '12-01' : null,
+    ready: radarReady(landType) ?? (landType === 'very_low' ? '12-15' : landType === 'low' ? '12-01' : null),
   };
 }
 

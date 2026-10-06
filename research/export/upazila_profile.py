@@ -260,17 +260,31 @@ def salinity() -> tuple[dict, dict]:
     return per, crops
 
 
+def opera_water() -> dict:
+    """NASA OPERA DSWx-S1 radar water per upazila, 2025 season (research/explore/opera_water.py)."""
+    path = RESEARCH / "floods" / "opera_water_upazila.csv"
+    if not path.exists():
+        return {}
+    w = pd.read_csv(path, dtype={"drained80": str, "drained90": str}, keep_default_na=False)
+    return {r.site_id: {"dry": float(r.dry_share), "peak": float(r.peak_share), "peakDate": r.peak_date,
+                        "extra": float(r.extra_share), "drained80": r.drained80 or None, "drained90": r.drained90 or None,
+                        "passes": int(r.passes)} for r in w.itertuples()}
+
+
 def main() -> None:
     sites = pd.read_csv(RESEARCH / "sites" / "upazilas.csv")
     top, bff, intensity, report = patterns(sites)
     land = land_types(sites, bff)
     district_yields, national = yields()
     saline, tolerance = salinity()
+    water = opera_water()
     ups = {}
     for s in sites.itertuples():
         entry = {"land": land.get(s.site_id)}
         if s.site_id in saline:
             entry["salinity"] = saline[s.site_id]
+        if s.site_id in water:
+            entry["opera"] = water[s.site_id]
         if s.site_id in top:
             entry["patterns"] = top[s.site_id]
             entry["boroFallowFallowPct"] = bff[s.site_id]
@@ -285,6 +299,8 @@ def main() -> None:
             "yields": "BBS district crop tables 2022-23 to 2024-25 (Yearbook of Agricultural Statistics 2025)",
             "salinity": "SRDI (2010) Saline Soils of Bangladesh, Appendix 2: soil salinity classes surveyed in May 2009",
             "saltTolerance": "FAO Irrigation and Drainage Paper 61 (2002), Annex 1 Table A1.1 (Maas and Grattan 1999)",
+            "opera": ("NASA OPERA DSWx-S1 surface water from Copernicus Sentinel-1 radar, 2025 season: dry-season and "
+                      "monsoon-peak water share, and when 80% and 90% of the monsoon water had drained"),
         },
         "salinityClassesDsM": [3.0, 6.0, 10.0, 14.0, 18.0],  # S1-S5: 2-4, 4.1-8, 8.1-12, 12.1-16, above 16 dS/m
         "saltTolerance": tolerance,

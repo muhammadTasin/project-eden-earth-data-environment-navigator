@@ -13,6 +13,9 @@ import org.projecteden.farmermobile.data.remote.ApiErrorKind
 import org.projecteden.farmermobile.data.remote.ApiException
 import org.projecteden.farmermobile.data.remote.ApiParsers
 import org.projecteden.farmermobile.data.remote.EdenApiClient
+import org.projecteden.farmermobile.data.remote.PILOT_UNION_ID
+import org.projecteden.farmermobile.location.StoredLocation
+import org.projecteden.farmermobile.location.adviceUnionId
 import java.net.InetSocketAddress
 
 /** Runs the real client against a JDK HTTP server that speaks the API contract (docs/api-contract.md). */
@@ -75,6 +78,26 @@ class ApiClientAndParserTest {
         val c = ApiParsers.locations("""{"version":"v","districts":[{"id":"D","nameEn":"Dhaka","nameBn":"ঢাকা","upazilas":[{"id":"U","nameEn":"Savar","nameBn":"সাভার","lat":23.8,"lon":90.2,"approximate":true}]}]}""")
         assertEquals(1, c.upazilaCount)
         assertEquals("Savar", c.findUpazila("U")!!.second.nameEn)
+    }
+
+    @Test fun theNearestAdvicePlaceIsAskedByCoordinates() = runTest {
+        body = """{"id":"ADM3_Khaliajuri","name":"Khaliajuri","district":"Netrakona","lat":24.7,"lon":91.1}"""
+        val place = EdenApiClient(base).nearestAdvicePlace(24.69, 91.12).getOrThrow()
+        assertEquals("ADM3_Khaliajuri", place.id)
+        assertEquals("Netrakona", place.district)
+        assertEquals(listOf("/api/v1/live/upazila?lat=24.69000&lon=91.12000"), requests)
+    }
+
+    @Test fun adviceGoesToTheSavedPlaceElseThePilot() = runTest {
+        val api = EdenApiClient(base)
+        assertEquals(PILOT_UNION_ID, adviceUnionId(MemoryStore(null), api))
+        body = """{"id":"ADM3_Khaliajuri","name":"Khaliajuri","district":"Netrakona"}"""
+        assertEquals("ADM3_Khaliajuri", adviceUnionId(MemoryStore(StoredLocation.GpsChoice(24.69, 91.12)), api))
+        body = """{"id":"ADM3_Tanore","name":"Tanore","district":"Rajshahi"}"""
+        assertEquals(PILOT_UNION_ID, adviceUnionId(MemoryStore(StoredLocation.UpazilaChoice("x", 24.62, 88.56)), api))
+        status = 404
+        body = """{"error":"Upazila not found"}"""
+        assertEquals(PILOT_UNION_ID, adviceUnionId(MemoryStore(StoredLocation.GpsChoice(24.0, 90.0)), api))
     }
 
     @Test fun clientSendsTheRequestedCoordinatesToTheConfiguredServer() = runTest {

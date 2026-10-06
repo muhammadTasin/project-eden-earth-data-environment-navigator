@@ -43,7 +43,8 @@ export class WaterDimensionPlugin implements IEvidenceDimensionPlugin {
     const rescueShare = aman ? aman.rescueSeasons / aman.totalSeasons : 0;
     const gw = groundwaterWeight();
     const deep = context.landType === 'low' || context.landType === 'very_low'; // haor and beel land: often river or beel water
-    const current = LOC.conditions.current as { dryStart?: boolean; date?: string } | null | undefined;
+    const current = LOC.conditions.current as { dryStart?: boolean; date?: string; sensor?: string } | null | undefined;
+    const sensor = current?.sensor === 'SMAP' ? 'SMAP' : 'POWER';
     const dryStart = Boolean(current?.dryStart) && !rabiName.isRice;
     const rabiMm = rabi.netIrrigationMm + (dryStart ? DRY_START_MM : 0);
     // On rain and stored soil water alone (FAO-56 root-zone balance, research/explore/rainfed_yield.py)
@@ -63,10 +64,10 @@ export class WaterDimensionPlugin implements IEvidenceDimensionPlugin {
       ? ` On rain and stored soil water alone ${rabiName.crop.toLowerCase()} makes about ${Math.round(rabiRain.typical * 100)}% of a fully watered crop's yield in a typical winter, ${Math.round(rabiRain.dryYear * 100)}% in a dry one (FAO-56 root-zone water balance on NASA weather, FAO-33 yield response${rabiRain.kyAssumed ? ', response factor assumed' : ''}; more where a shallow water table feeds the roots).`
       : '';
     const dryBangla = dryStart
-      ? ` এখন মাটি স্বাভাবিকের চেয়ে শুকনো (নাসা POWER): আমনের পর জমিতে যে ${bnDigits(DRY_START_MM)} মিমি রস ধরা হয় তা না-ও থাকতে পারে, তাই এ বছর প্রায় ${bnDigits(rabiMm)} মিমি সেচ ধরা হয়েছে।`
+      ? ` এখন মাটি স্বাভাবিকের চেয়ে শুকনো (নাসা ${sensor}): আমনের পর জমিতে যে ${bnDigits(DRY_START_MM)} মিমি রস ধরা হয় তা না-ও থাকতে পারে, তাই এ বছর প্রায় ${bnDigits(rabiMm)} মিমি সেচ ধরা হয়েছে।`
       : '';
     const dryEnglish = dryStart
-      ? ` The soil is drier than usual now (NASA POWER): the ${DRY_START_MM} mm of soil water the replay counts on after Aman may not be there, so about ${rabiMm} mm is counted this year.`
+      ? ` The soil is drier than usual now (NASA ${sensor}): the ${DRY_START_MM} mm of soil water the replay counts on after Aman may not be there, so about ${rabiMm} mm is counted this year.`
       : '';
     const gwBangla = gw.weight >= 1.1
       ? ` নাসার GRACE-GLDAS তথ্যে এখানে ভূগর্ভস্থ পানি বছরে ${bnDecimal(gw.fallMmPerYear)} মিমি নামছে, বেশিরভাগ জেলার চেয়ে দ্রুত; তাই সেচের ভার ${bnDecimal(gw.weight, 2)} গুণ ধরা হয়েছে।`

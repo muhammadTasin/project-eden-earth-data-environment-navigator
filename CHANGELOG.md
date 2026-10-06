@@ -2,6 +2,20 @@
 
 What changed in Project EDEN, newest first, with who made each change and the branch it came from. Every branch below was merged into `main` on 1 October 2026.
 
+## 6 October 2026 · NASA SMAP today, OPERA drain dates and the app for any upazila (Tasrif, `feature/smap-opera-hls-android`)
+
+- **SMAP:** `research/live/smap_now.py` reads Bangladesh's rows of the newest NASA SMAP L4 file (SPL4SMGP v8, 9 km) and writes each upazila's root-zone soil moisture and its percentile to `services/api/data/live/smap_upazila.json`. It takes about a minute; the national AppEEARS request sat in NASA's queue for more than four hours.
+  - The API serves the reading alongside the daily file. While it is under a week old, the dry-start advice prefers SMAP's percentile (dry at or below the 20th), names it, and falls back to NASA POWER where SMAP gives none.
+  - On 2 October 2026 it read the 0th–13th percentile in all 471 upazilas where it is defined.
+  - The daily GitHub workflow runs it when Earthdata secrets are set.
+- **OPERA:** `research/explore/opera_water.py` turns the radar water counts (205 Sentinel-1 pass dates, February 2025 to January 2026) into each upazila's dry-season water, monsoon peak, and the dates by which 80% and 90% of the monsoon water had drained. Haor examples:
+  - Khaliajuri: 8% → 82% under water, 80% drained by 11 December.
+  - Itna: 27 November.
+  - Tahirpur: 23 December.
+
+  Where the monsoon water covered at least a tenth of the upazila, low land is free from the 80% date and very low land from the 90% date, kept between 1 November and 31 January. The advice names the radar evidence.
+- **Android:** the app asks the server for the engine's upazila nearest the location saved on the weather screen (`/api/v1/live/upazila?lat=&lon=`). It uses that for the farmer card and the voice assistant, and the Tanore pilot when none is saved. Android unit tests: 40 pass.
+
 ## 5 October 2026 · Soil salinity, rain-only yields and NASA radar water (Tasrif, `feature/nasa-layers-yields-salinity`)
 
 - Salinity: `research/soil/srdi_salinity.py` reads SRDI's *Saline Soils of Bangladesh* (2010; May 2009 survey) into each coastal upazila's cultivated land by ECe class (99 of 102 upazilas matched). With FAO-61's salt tolerance (`research/crops/salt_tolerance.csv`; lentil, grass pea, mustard and jute assumed moderately sensitive), a place's own plans leave out winter and pre-monsoon crops that would lose half their yield, income moves by the yield left against the district's least saline upazila, and the advice names the salinity hazard with BRRI's salt-tolerant Boro.

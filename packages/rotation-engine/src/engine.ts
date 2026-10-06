@@ -15,7 +15,7 @@ import type {
 import { FeatureRegistry } from './registry.ts';
 import { RELEASE } from './data/tanore_replay_data.ts';
 import { LOC, placeFor, profileData, withPlace } from './data/location.ts';
-import { flashFloodExposed, flashFloodRisk, harvestTooLate, landRules, type LandRules } from './data/land.ts';
+import { OPERA_MIN_EXTRA, flashFloodExposed, flashFloodRisk, harvestTooLate, landRules, radarReady, type LandRules } from './data/land.ts';
 import { SALT_LIMIT, salinityEffect } from './data/salinity.ts';
 import { AMAN_CATALOG, RABI_CATALOG } from './data/crop_catalog.ts';
 import type { AmanCatalogEntry } from './data/crop_catalog.ts';
@@ -84,6 +84,9 @@ export interface PlanOptionsRequest {
     soilStatus: string; // 'dry' | 'normal' | 'wet'
     soilRank?: number | null;
     soilYears?: number | null;
+    /** NASA SMAP L4's root-zone percentile (0-100) against its climatology, when SMAP is the reading. */
+    soilPercentile?: number | null;
+    sensor?: 'SMAP' | 'POWER';
     rain30PctOfNormal?: number | null;
     source: string;
   };
@@ -135,6 +138,9 @@ const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 /** Options shown for a crop choice, as many as the five fixed rotations. */
 const CHOICE_OPTIONS = 5;
 /** The order in which a place's hazards are raised: the most serious first. */
+/** 1st, 2nd, 3rd, 4th ... for percentiles. */
+const ordinal = (n: number) => `${n}${[11, 12, 13].includes(n % 100) ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+
 const HAZARD_ORDER = ['flash_flood', 'salinity', 'winter_fallow_salinity', 'dry_start', 'deep_flooding', 'submergence'];
 /** A pattern is named among what farmers grow at this share of the cropped land, and taken as current practice at this. */
 const PATTERN_NOTE_PCT = 10;
@@ -1189,6 +1195,14 @@ export class RotationEngine {
     }
     notesBangla.push(evidenceBn);
     notesEnglish.push(evidenceEn);
+    // NASA OPERA radar: how much of the upazila the monsoon covered, and when low land drained (2025)
+    const radar = local.opera;
+    const radarDate = radarReady(request.landType);
+    if (radar && radar.extra >= OPERA_MIN_EXTRA) {
+      const peakPct = Math.round(radar.peak * 100), dryPct = Math.round(radar.dry * 100);
+      notesBangla.push(`নাসার OPERA রাডার (২০২৫): বর্ষার চূড়ায় (${bnDate(radar.peakDate.slice(5))}) উপজেলার ${bnDigits(peakPct)}% পানির নিচে, শুকনো মৌসুমে ${bnDigits(dryPct)}%।${radarDate ? ` নিচু জমি ধরা হয়েছে ~${bnDate(radarDate)} থেকে খালি, যখন বর্ষার পানির বেশির ভাগ নেমে গিয়েছিল।` : ''}`);
+      notesEnglish.push(`NASA OPERA radar (2025): ${peakPct}% of the upazila under water at the monsoon peak (${enDate(radar.peakDate.slice(5))}), ${dryPct}% in the dry season.${radarDate ? ` ${request.landType === 'very_low' ? 'Very low' : 'Low'} land is taken as free from ~${enDate(radarDate)}, when ${request.landType === 'very_low' ? '90' : '80'}% of the monsoon water had drained.` : ''}`);
+    }
 
     // What farmers grow here now: patterns on a tenth of the cropped land or more
     const patterns = local.patterns
@@ -1248,8 +1262,14 @@ export class RotationEngine {
     // A dry start matters for a winter crop sown on the soil water Aman leaves, not for irrigated Boro
     if (current?.dryStart && topWinter && topWinter.crop !== 'Boro rice') {
       const rain = typeof current.rain30PctOfNormal === 'number' ? current.rain30PctOfNormal : null;
+      if (current.sensor === 'SMAP' && typeof current.soilPercentile === 'number') {
+        const pc = Math.round(current.soilPercentile);
+        notesBangla.push(`আজকের নাসা তথ্য (SMAP উপগ্রহ, ${bnDate(current.date.slice(5))}): শিকড়ের স্তরে মাটির রস এই সময়ের হিসাবে ${bnDigits(pc)} পার্সেন্টাইলে, অর্থাৎ বেশির ভাগ বছরের চেয়ে শুকনো${rain !== null ? `; গত ৩০ দিনে বৃষ্টি স্বাভাবিকের ${bnDigits(rain)}%` : ''}। আমন কাটার পর রস ধরে রাখতে দেরি না করে বুনুন।`);
+        notesEnglish.push(`Today's NASA reading (SMAP satellite, ${enDate(current.date.slice(5))}): root-zone soil moisture at the ${ordinal(pc)} percentile for the date, drier than in most years${rain !== null ? `; rain in the last 30 days ${rain}% of normal` : ''}. Sow soon after the Aman harvest, while the field still holds water.`);
+      } else {
       notesBangla.push(`আজকের নাসা তথ্য (POWER, ${bnDate(current.date.slice(5))}): মাটির রস এই সময়ের গত ${bnDigits(current.soilYears ?? 10)} বছরের ${current.soilRank === 0 ? 'সবচেয়ে কম' : 'তুলনায় কম'}${rain !== null ? `, গত ৩০ দিনে বৃষ্টি স্বাভাবিকের ${bnDigits(rain)}%` : ''}। রবি ফসল আমন কাটার পরপরই বুনুন, দরকারে বোনার আগে হালকা সেচ দিন।`);
       notesEnglish.push(`Today's NASA reading (POWER, ${enDate(current.date.slice(5))}): soil moisture ${current.soilRank === 0 ? 'the lowest' : 'lower than most'} of the last ${current.soilYears ?? 10} years for the date${rain !== null ? `, rain in the last 30 days at ${rain}% of normal` : ''}. Sow the winter crop right after the Aman harvest, with a light irrigation first if needed; the plan counts about 50 mm more irrigation this year.`);
+      }
       hazard('dry_start', ['রবির আগে মাটি শুকনো', 'Dry soil before the winter sowing']);
       farmerLineBangla = [farmerLineBangla, 'এ বছর মাটি শুকনো: রবি ফসল দেরি না করে বুনুন।'].filter(Boolean).join(' ');
       farmerLineEnglish = [farmerLineEnglish, 'The soil is dry this year: sow the winter crop without delay.'].filter(Boolean).join(' ');

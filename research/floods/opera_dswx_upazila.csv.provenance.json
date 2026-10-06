@@ -1,0 +1,7 @@
+{
+ "source": "NASA/JPL OPERA DSWx-S1 v1 (PO.DAAC), binary water layer at its 4x overview (120 m)",
+ "collection": "OPERA_L3_DSWX-S1_V1",
+ "period": "2025-07-01 to 2026-01-31",
+ "granules": 3788,
+ "retrieved_utc": "2026-10-05T17:01:43+00:00"
+}
