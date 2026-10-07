@@ -2,6 +2,19 @@
 
 What changed in Project EDEN, newest first, with who made each change and the branch it came from. Every branch below was merged into `main` on 1 October 2026.
 
+## 8 October 2026 · Our Bangla voice, Gemini wording and SMS (Tasrif, `feature/smap-opera-hls-android`)
+
+- **Voice:** `services/api/src/providers/tts.ts` speaks with Google Cloud Text-to-Speech (bn-BD) from a service-account key file named in `GOOGLE_TTS_CREDENTIALS`. It signs its own token, so no Google SDK is needed.
+  - It returns MP3 for browsers and apps, and 8 kHz WAV for calls. The generic `TTS_BASE_URL` endpoint still works.
+  - The dashboard's audio preview and voice-answer buttons now try the server voice first and fall back to the computer's Bangla voice. The web farmer portal already did.
+- **Gemini wording:** the LLM slot works with Gemini's OpenAI-compatible endpoint.
+  - The client never asks for fewer than `LLM_MAX_TOKENS` (default 800), because Bangla is token-heavy and reasoning models spend tokens thinking. At 120 tokens Gemini answered HTTP 503 and the narration fell back. It passes `LLM_REASONING_EFFORT`.
+  - With `gemini-flash-lite-latest` at low effort, the reworded call passes both gates in about 1.7 s.
+- **Calls:** with `AWAJ_VOICE_SOURCE=google` and a public `PUBLIC_BASE_URL`, the call script is synthesized in Google's voice, served at `/api/v1/audio/`, and played through Awaj's `/broadcasts/direct`. Otherwise, or if Google fails, Awaj reads it in its own voice.
+- **SMS:** `services/api/src/sms.ts` sends the advice SMS through the REVE gateway (`POST /api/v1/sms/advice`). It is a dry run with the keys masked until `SMS_LIVE=1`, and needs an officer sign-in when live.
+- **Greeting:** the template greeting now says মাটি কহন (it said EDEN), in the API and in the app's default card.
+- **Tests:** the API tests check the SMS dry run and keep every outside service off.
+
 ## 7 October 2026 · Fewer sprays: NASA disease weather (Tasrif, `feature/smap-opera-hls-android`)
 
 - **Rules:** `research/live/disease_weather.py` marks days whose NASA POWER weather favours the two diseases that draw the most fungicide. Both rules estimate the hours at 90% humidity from the day's minimum, maximum and dew point.

@@ -1075,33 +1075,50 @@ function renderAudioButton() {
 }
 
 // Audio preview: the browser's Bangla voice when available, otherwise a progress bar only
-window.toggleAudioPreview = function() {
+/** Speak Bangla in the server's voice (Google Cloud TTS when configured), else the computer's Bangla voice. */
+let serverAudio = null;
+async function playBangla(text, onEnd) {
+  try {
+    const res = await fetch('/api/v1/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, language: 'bn' }) });
+    if (res.ok && (res.headers.get('content-type') || '').startsWith('audio/')) {
+      serverAudio?.pause();
+      serverAudio = new Audio(URL.createObjectURL(await res.blob()));
+      serverAudio.onended = () => onEnd?.();
+      await serverAudio.play();
+      return 'server';
+    }
+  } catch { /* the computer's voice below */ }
+  const voice = window.speechSynthesis?.getVoices().find(v => v.lang.toLowerCase().startsWith('bn'));
+  if (!voice) return null;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.voice = voice;
+  utterance.lang = voice.lang;
+  utterance.onend = () => onEnd?.();
+  window.speechSynthesis.speak(utterance);
+  return 'device';
+}
+function stopBangla() {
+  serverAudio?.pause();
+  serverAudio = null;
+  window.speechSynthesis?.cancel();
+}
+
+window.toggleAudioPreview = async function() {
   const progress = $('audioProgress');
   const text = $('previewBanglaText')?.textContent?.trim() || '';
 
   if (audioState === 'playing') {
     clearInterval(audioTimer);
-    window.speechSynthesis?.cancel();
+    stopBangla();
     audioState = 'idle';
     progress.style.width = '0%';
     renderAudioButton();
     return;
   }
 
-  const voice = window.speechSynthesis?.getVoices().find(v => v.lang.toLowerCase().startsWith('bn'));
-  if (voice && text) {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.voice = voice;
-    utterance.lang = voice.lang;
-    utterance.onend = () => {
-      audioState = 'done';
-      renderAudioButton();
-    };
-    window.speechSynthesis.speak(utterance);
-    audioState = 'playing';
-  } else {
-    audioState = 'novoice';
-  }
+  const how = text ? await playBangla(text, () => { audioState = 'done'; renderAudioButton(); }) : null;
+  audioState = how ? 'playing' : 'novoice';
   renderAudioButton();
 
   let current = 0;
@@ -1596,19 +1613,13 @@ function renderVoice() {
   setHtml('voiceCallStatus', `<span class="log-line">${escapeHtml(tr(`শীর্ষ চক্র: ${v.advice.options[0].nameBangla}; কল প্রায় ${num(v.reply.durationSecondsEstimate)} সেকেন্ড`, `Top option: ${v.advice.options[0].nameEnglish}; call about ${v.reply.durationSecondsEstimate} s`))}</span>`);
 }
 
-window.speakVoiceReply = function() {
+window.speakVoiceReply = async function() {
   const text = voiceAnswerData?.reply?.speechBangla;
   if (!text) return window.answerVoice();
-  const voice = window.speechSynthesis?.getVoices().find(v => v.lang.toLowerCase().startsWith('bn'));
-  if (!voice) {
+  const how = await playBangla(text);
+  if (!how) {
     setHtml('voiceCallStatus', `<span class="log-line">${escapeHtml(tr('এই কম্পিউটারে বাংলা কণ্ঠ নেই; ফোন কলে Awaj-এর bn-BD কণ্ঠ পড়বে।', 'No Bangla voice on this computer; on a phone call Awaj reads it in its bn-BD voice.'))}</span>`);
-    return;
   }
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.voice = voice;
-  utterance.lang = voice.lang;
-  window.speechSynthesis.speak(utterance);
 };
 
 window.callVoiceReply = async function() {

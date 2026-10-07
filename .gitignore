@@ -29,3 +29,4 @@ __pycache__/
 
 # officer desk demo store (sample data, rebuilt from seed)
 services/api/.data/
+services/api/data/audio/

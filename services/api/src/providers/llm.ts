@@ -43,7 +43,10 @@ export function createLlmClient(env = process.env): LlmClient | null {
           body: JSON.stringify({
             model,
             temperature: 0.2,
-            ...(maxTokens ? { max_tokens: maxTokens } : {}),
+            // Bangla takes many tokens, and reasoning models (Gemini) spend part of the budget thinking first:
+            // never ask for fewer than LLM_MAX_TOKENS (default 800). LLM_REASONING_EFFORT (none, low, ...) is passed on.
+            max_tokens: Math.max(maxTokens ?? 0, Number(env.LLM_MAX_TOKENS) || 800),
+            ...(env.LLM_REASONING_EFFORT?.trim() ? { reasoning_effort: env.LLM_REASONING_EFFORT.trim() } : {}),
             messages: [{ role: 'user', content: prompt }],
           }),
         });

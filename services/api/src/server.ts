@@ -21,13 +21,14 @@ import { ApiError, errorBody, parseCoordinates } from './errors.ts';
 import { getLocationsPayload } from './locations.ts';
 import { createLlmClient, llmStatus } from './providers/llm.ts';
 import { synthesizeSpeech, ttsStatus } from './providers/tts.ts';
+import { sendSms, smsConfig } from './sms.ts';
 import { getRiverErosion } from './erosion.ts';
 import { liveHaor, liveStatus, liveUpazila, liveUpazilas } from './live.ts';
 import { mapLayers } from './map_layers.ts';
 import { askAiAssistant } from './ai_assistant.ts';
 import { cropMenu } from '../../../packages/rotation-engine/src/data/crop_choice.ts';
 import { cropsFromKeys, keypadMenu, landFromKey, replyFor, requestFromWords, understand } from './voice.ts';
-import { awajConfig, bdMobile, sendKeypadSurvey, sendTemplateSurvey, sendTtsCall } from './awaj.ts';
+import { awajConfig, sendAudioCall, bdMobile, sendKeypadSurvey, sendTemplateSurvey, sendTtsCall } from './awaj.ts';
 import { createFarmAoi } from './cattle/aoi.ts';
 import { cattleRepository } from './cattle/repository.ts';
 import { backgroundJobManager } from './cattle/jobs.ts';
@@ -127,6 +128,9 @@ function requireWriteToken(req: http.IncomingMessage) {
 }
 
 /** Today's NASA reading at a place from the daily live file, in the shape the engine takes; null without one. */
+/** Call audio in Google's voice (services/api/data/audio, git-ignored), served at /api/v1/audio/. */
+const AUDIO_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../data/audio');
+
 function currentConditionsFor(place: ReturnType<typeof placeFor>): PlanOptionsRequest['currentConditions'] {
   if (!place) return undefined;
   const live = liveUpazila({ id: place.kind === 'pilot' ? 'ADM3_Tanore' : place.id });
@@ -584,6 +588,7 @@ async function capabilities() {
     },
     llm: llmStatus(),
     tts: ttsStatus(),
+    sms: (({ configured, live, sender }) => ({ configured, live, sender }))(smsConfig()),
     mlModels: {
       supervisedHeatStress: 'training_data_unavailable',
       supervisedForageBiomass: 'training_data_unavailable',
@@ -676,9 +681,45 @@ const server = http.createServer(async (req, res) => {
       const phone = bdMobile(String(body.phone ?? ''));
       if (!phone) return sendJSON(res, 400, { error: 'phone must be a Bangladeshi mobile number (01XXXXXXXXX)' });
       const answer = body.text ? voiceAnswer(body) : { reply: replyFor(adviseWithNarration(planRequest(body), body.farmerId)) };
-      const sent = await sendTtsCall({ phoneNumbers: [phone], texts: [answer.reply.speechBangla], metadata: { channel: 'mather-kotha', unionId: body.unionId ?? 'talanda_tanore', option: answer.reply.topOptionId } });
-      logCall({ kind: 'advice_call', phone: maskPhone(phone), crops: answer.reply.understoodCrops, dryRun: sent.dryRun });
+      const metadata = { channel: 'mati-kohon', unionId: body.unionId ?? 'talanda_tanore', option: answer.reply.topOptionId };
+      // Our own Bangla voice (Google Cloud TTS) when it is set up and Awaj can reach this server; else Awaj's voice
+      let voiceNote: string | null = null;
+      let sent: any = null;
+      if (process.env.AWAJ_VOICE_SOURCE === 'google' && ttsStatus().provider === 'google' && process.env.PUBLIC_BASE_URL) {
+        try {
+          const audio = await synthesizeSpeech(answer.reply.speechBangla, 'bn', process.env, 'wav8k');
+          const id = `call_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+          fs.mkdirSync(AUDIO_DIR, { recursive: true });
+          fs.writeFileSync(path.join(AUDIO_DIR, `${id}.wav`), audio.audio);
+          const url = `${process.env.PUBLIC_BASE_URL.replace(/\/$/, '')}/api/v1/audio/${id}.wav`;
+          sent = { ...(await sendAudioCall({ phoneNumbers: [phone], audioUrls: [url], metadata })), voiceSource: 'google' };
+        } catch (err: any) {
+          voiceNote = `Google voice unavailable (${err?.details?.reason || err?.message || err}); Awaj's own Bangla voice used instead`;
+        }
+      }
+      if (!sent) sent = { ...(await sendTtsCall({ phoneNumbers: [phone], texts: [answer.reply.speechBangla], metadata })), voiceSource: 'awaj', ...(voiceNote ? { note: voiceNote } : {}) };
+      logCall({ kind: 'advice_call', phone: maskPhone(phone), crops: answer.reply.understoodCrops, dryRun: sent.dryRun, voice: sent.voiceSource });
       return sendJSON(res, 200, { reply: answer.reply, call: sent });
+    }
+    // The advice as a Bangla SMS through the REVE gateway (a dry run until SMS_LIVE=1)
+    if (pathname === '/api/v1/sms/advice' && req.method === 'POST') {
+      const body = await parseBody(req);
+      if (smsConfig().live && !desk.officerForToken(req.headers.authorization)) {
+        return sendJSON(res, 401, { error: 'Officer sign-in required to send a real SMS' });
+      }
+      const phone = bdMobile(String(body.phone ?? ''));
+      if (!phone) return sendJSON(res, 400, { error: 'phone must be a Bangladeshi mobile number (01XXXXXXXXX)' });
+      const answer = body.text ? voiceAnswer(body) : { reply: replyFor(adviseWithNarration(planRequest(body), body.farmerId)) };
+      const sent = await sendSms(phone, answer.reply.smsBangla);
+      logCall({ kind: 'advice_sms', phone: maskPhone(phone), dryRun: sent.dryRun });
+      return sendJSON(res, 200, { reply: answer.reply, sms: sent });
+    }
+    // Call audio made with Google's voice, fetched by Awaj while it places the call
+    if (pathname.startsWith('/api/v1/audio/') && req.method === 'GET') {
+      const name = pathname.slice('/api/v1/audio/'.length);
+      if (!/^call_[a-z0-9]+_[a-z0-9]+\.wav$/.test(name) || !fs.existsSync(path.join(AUDIO_DIR, name))) return sendJSON(res, 404, { error: 'No such audio' });
+      res.writeHead(200, { 'Content-Type': 'audio/wav', 'Cache-Control': 'no-store' });
+      return fs.createReadStream(path.join(AUDIO_DIR, name)).pipe(res);
     }
     // The keypad call: the farmer hears the recorded crop menu and presses keys; Awaj posts them to the webhook
     if (pathname === '/api/v1/calls/keypad' && req.method === 'POST') {

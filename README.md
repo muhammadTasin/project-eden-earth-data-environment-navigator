@@ -34,6 +34,13 @@ npm run call:test -- --to 01XXXXXXXXX --crops sunflower,lentil   # the Bangla ca
 - **Language:** the বাংলা / EN buttons in the dashboard header switch every text; the browser remembers the choice.
 - **Krishi officer desk:** tab ৬ / 6, demo access code `talanda-demo` (set `EDEN_OFFICER_CODE` to change it). **Restore sample data** resets the sample farmers before a recording.
 - **Farmer sign-in (app):** a farmer ID or phone number with the demo PIN `1234`. Both sign-ins are demo gates, not real authentication.
+- **Outside services (keys in the git-ignored `.env`; see `.env.example`):**
+  - **Gemini** rewords the advice through its OpenAI-compatible endpoint. Every number is checked against the advice, and the fixed template takes over on any doubt.
+  - **Google Cloud Text-to-Speech** (bn-BD) is the Bangla voice for the dashboard, the web farmer portal and, with `AWAJ_VOICE_SOURCE=google` and a public `PUBLIC_BASE_URL`, phone calls.
+  - **Awaj Digital** places the calls.
+  - **REVE** sends Bangla SMS (`POST /api/v1/sms/advice`).
+  - Calls and SMS stay dry runs until `AWAJ_LIVE=1` / `SMS_LIVE=1`.
+  - `GET /api/v1/config` shows what is set up, never the keys.
 - **Weather:** `/api/v1/weather` fetches NASA POWER over the internet and caches it; offline, it serves a fixed baseline marked as not live.
 - **Android app:** build steps and screens are in [`apps/farmer-mobile/README.md`](apps/farmer-mobile/README.md). The emulator reaches the API at `http://10.0.2.2:4000`; run its unit tests with `./gradlew test` in `apps/farmer-mobile`.
 

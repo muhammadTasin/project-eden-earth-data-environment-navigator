@@ -85,6 +85,25 @@ export async function sendTtsCall(opts: { phoneNumbers: string[]; texts: string[
   return { dryRun: false, endpoint: `POST ${BASE}/broadcasts/direct-tts`, requestId: body.request_id, response: await call('POST', '/broadcasts/direct-tts', body) };
 }
 
+/**
+ * Play our own audio to up to 999 numbers (POST /broadcasts/direct): the call script spoken in Google's Bangla voice,
+ * served by this API at a public address (PUBLIC_BASE_URL) so Awaj can fetch it.
+ */
+export async function sendAudioCall(opts: { phoneNumbers: string[]; audioUrls: string[]; metadata?: Record<string, unknown> }) {
+  const cfg = awajConfig();
+  const numbers = [...new Set(opts.phoneNumbers.map(bdMobile).filter((n): n is string => Boolean(n)))];
+  const body = {
+    request_id: requestId('mk_audio'),
+    sender: cfg.sender ?? '<AWAJ_SENDER>',
+    phone_numbers: numbers,
+    voices: opts.audioUrls.slice(0, 10),
+    metadata: opts.metadata ?? {},
+  };
+  if (!numbers.length) return { dryRun: !cfg.live, error: 'No valid Bangladeshi mobile number (01XXXXXXXXX)', request: body };
+  if (!cfg.live) return { dryRun: true, endpoint: `POST ${BASE}/broadcasts/direct`, request: body };
+  return { dryRun: false, endpoint: `POST ${BASE}/broadcasts/direct`, requestId: body.request_id, response: await call('POST', '/broadcasts/direct', body) };
+}
+
 /** Processing state of a Direct TTS request: pending, processing, completed (with broadcast_id) or failed. */
 export async function ttsStatus(id: string) {
   return call('GET', `/broadcasts/direct-tts/${encodeURIComponent(id)}/status`);

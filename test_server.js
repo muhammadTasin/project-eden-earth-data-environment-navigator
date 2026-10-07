@@ -13,7 +13,7 @@ const serverProc = spawn('node', ['--experimental-strip-types', 'services/api/sr
   stdio: ['inherit', 'pipe', 'pipe'],
   // tests never place a real call, never reach an LLM or TTS service, and read a fixed day of NASA conditions
   // (the daily update rewrites the live file)
-  env: { ...process.env, PORT, EDEN_OFFICER_STORE: STORE, CATTLE_STORE_PATH: CATTLE_STORE, SEED_DEMO_DATA: 'false', LLM_BASE_URL: '', TTS_BASE_URL: '',
+  env: { ...process.env, PORT, EDEN_OFFICER_STORE: STORE, CATTLE_STORE_PATH: CATTLE_STORE, SEED_DEMO_DATA: 'false', LLM_BASE_URL: '', TTS_BASE_URL: '', GOOGLE_TTS_CREDENTIALS: '', SMS_LIVE: '0', SMS_API_KEY: '', AWAJ_VOICE_SOURCE: '',
     API_WRITE_TOKEN: '', AWAJ_LIVE: '0', EDEN_LIVE_FILE: path.resolve('tests/fixtures/live_conditions_2026-10-01.json') },
 });
 
@@ -264,6 +264,11 @@ async function run() {
   const locs = await getJson('/api/v1/locations');
   check(locs.body.districtCount === 64 && locs.body.upazilaCount >= 495, `locations cover all 64 districts and 495+ upazilas (got ${locs.body.districtCount}/${locs.body.upazilaCount})`);
   check(locs.body.districts.every(d => d.upazilas.length > 0 && d.upazilas.every(u => Number.isFinite(u.lat) && Number.isFinite(u.lon))), 'every upazila has coordinates');
+  check(cfg.body.sms && cfg.body.sms.live === false, 'config reports the SMS gateway as not live');
+  const smsDry = await (await fetch(`${BASE}/api/v1/sms/advice`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone: '01700000000', unionId: 'talanda_tanore' }) })).json();
+  check(smsDry.sms?.dryRun === true && smsDry.sms.request.toUser === '8801700000000' && smsDry.sms.request.messageContent.startsWith('মাটি কহন')
+    && !/apikey=[^*]/.test(smsDry.sms.endpoint), 'the advice SMS is a dry run with the keys masked');
   const tts = await fetch(`${BASE}/api/v1/tts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'পরীক্ষা' }) });
   check(tts.status === 503 && (await tts.json()).error.code === 'configuration_required', 'TTS without a provider returns configuration_required');
   const unknown = await getJson('/api/v1/does-not-exist');

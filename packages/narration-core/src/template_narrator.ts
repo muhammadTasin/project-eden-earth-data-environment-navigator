@@ -27,7 +27,7 @@ export class TemplateNarrator {
 
     // Natural spoken Bangla message for IVR / voice call; every number comes from the advice.
     const speechLines = [
-      'EDEN থেকে বলছি।',
+      'মাটি কহন থেকে বলছি।',
       `${bnOf(advice.scope.union_name_bangla)} ${land ? `${land} ` : ''}জমির জন্য প্রস্তাবিত ফসল চক্র: ${option.nameBangla}।`,
       rescueCount !== undefined
         ? `গত ${bnDigits(totalSeasons as number)} মৌসুমের নাসা তথ্যে ${amanName} লাগালে ফুল আসার সময় ${bnDigits(rescueCount as number)} বার বাড়তি সেচ লেগেছে।`
@@ -44,7 +44,7 @@ export class TemplateNarrator {
     const unionEnglish = advice.scope.union_id === 'talanda_tanore' ? 'Talanda union' : advice.scope.union_id;
     const plantEnglish = rabiCrop.crop.toLowerCase().includes('rice') ? 'transplant' : 'sow';
     const englishGloss = [
-      'This is EDEN calling.',
+      'This is Mati Kohon calling.',
       `Suggested rotation for ${advice.scope.land_type.replace('_', '-')} land in ${unionEnglish}: ${option.nameEnglish}.`,
       rescueCount !== undefined
         ? `In NASA data from the last ${totalSeasons} seasons, ${amanCrop.variety} needed extra irrigation at flowering ${rescueCount} times.`
