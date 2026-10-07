@@ -329,7 +329,7 @@ private fun ForecastSection(section: Section<ForecastResponse>, onRetry: () -> U
         Section.Idle -> {}
         is Section.Loading -> {
             LoadingCard("আবহাওয়া পূর্বাভাস লোড হচ্ছে…")
-            section.stale?.let { ForecastContent(it) }
+            section.stale?.let { ForecastContent(it, stale = true) }
         }
         is Section.Failed -> {
             ErrorCard("আবহাওয়া পূর্বাভাস আনা যায়নি। ${section.kind.messageBangla()}", onRetry)
@@ -490,11 +490,11 @@ private fun ObservationsSection(section: Section<ObservationResponse>, onRetry: 
             Section.Idle -> {}
             is Section.Loading -> {
                 LoadingCard("নাসা পর্যবেক্ষণ উপাত্ত লোড হচ্ছে…")
-                section.stale?.let { ObservationsContent(it) }
+                section.stale?.let { ObservationsContent(it, stale = true) }
             }
             is Section.Failed -> {
                 ErrorCard("নাসা পর্যবেক্ষণ উপাত্ত আনা যায়নি। ${section.kind.messageBangla()} (আবহাওয়া পূর্বাভাস আলাদাভাবে কাজ করে।)", onRetry)
-                section.stale?.let { ObservationsContent(it) }
+                section.stale?.let { ObservationsContent(it, stale = true) }
             }
             is Section.Ready -> ObservationsContent(section.data)
         }
@@ -502,9 +502,13 @@ private fun ObservationsSection(section: Section<ObservationResponse>, onRetry: 
 }
 
 @Composable
-private fun ObservationsContent(obs: ObservationResponse) {
+private fun ObservationsContent(obs: ObservationResponse, stale: Boolean = false) {
     SourceBanner(
-        title = "নাসা পাওয়ার — বিলম্বিত উপগ্রহ/পুনঃবিশ্লেষণ পর্যবেক্ষণ (পূর্বাভাস নয়, সরাসরি নয়)",
+        title = if (stale) {
+            "পুরোনো নাসা পর্যবেক্ষণ (সর্বশেষ সফল লোড) — বিলম্বিত উপাত্ত, সরাসরি নয়"
+        } else {
+            "নাসা পাওয়ার — বিলম্বিত উপগ্রহ/পুনঃবিশ্লেষণ পর্যবেক্ষণ (পূর্বাভাস নয়, সরাসরি নয়)"
+        },
         detail = "সর্বশেষ পর্যবেক্ষণ: ${obs.latestObservationDate} (সাধারণত ২–৩ দিন বিলম্ব) • সময়কাল ${obs.windowStart} – ${obs.windowEnd}, ${obs.daysWithData} দিনের উপাত্ত",
     )
     Surface(color = SurfaceContainerLow, shape = RoundedCornerShape(2.dp), modifier = Modifier.fillMaxWidth()) {

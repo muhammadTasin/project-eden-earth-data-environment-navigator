@@ -93,6 +93,28 @@ class WeatherControllerTest {
     }
 
     @Test
+    fun repeatedRefreshFailuresKeepTheLastSuccessfulWeatherData() = runTest {
+        val api = FakeApi()
+        val c = controller(api)
+        c.start(); advanceUntilIdle()
+        c.selectUpazila("D1", "U1"); advanceUntilIdle()
+
+        api.forecast = { _, _ -> Result.failure(ApiException(ApiErrorKind.OFFLINE, "no network")) }
+        api.observations = { _, _ -> Result.failure(ApiException(ApiErrorKind.OFFLINE, "no network")) }
+
+        c.refresh(); advanceUntilIdle()
+        assertNotNull((c.state.value.forecast as Section.Failed).stale)
+        assertNotNull((c.state.value.observations as Section.Failed).stale)
+
+        // A retry after an offline failure must still carry the last successful responses.
+        c.refresh(); advanceUntilIdle()
+        val forecast = c.state.value.forecast as Section.Failed
+        val observations = c.state.value.observations as Section.Failed
+        assertEquals(23.84, forecast.stale!!.latitude, 0.0)
+        assertEquals(23.84, observations.stale!!.latitude, 0.0)
+    }
+
+    @Test
     fun catalogFailureIsReportedAndCanBeRetried() = runTest {
         val api = FakeApi().also { it.locations = Result.failure(ApiException(ApiErrorKind.OFFLINE, "x")) }
         val c = controller(api)

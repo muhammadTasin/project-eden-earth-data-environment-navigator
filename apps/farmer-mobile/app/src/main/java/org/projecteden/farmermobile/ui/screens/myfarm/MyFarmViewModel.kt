@@ -55,6 +55,9 @@ class MyFarmViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun startEditing() {
+        // The location and plot cards remain visible below the edit form. If one is tapped
+        // while editing, keep the current draft instead of replacing it with the saved profile.
+        if (_isEditing.value) return
         val current = farmProfile.value
         _draftProfile.value = current
         _isEditing.value = true

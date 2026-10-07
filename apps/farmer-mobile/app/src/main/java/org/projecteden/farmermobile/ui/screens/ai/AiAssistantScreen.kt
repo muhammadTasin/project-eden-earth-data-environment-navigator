@@ -46,9 +46,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -81,8 +78,8 @@ fun AiAssistantScreen(
     modifier: Modifier = Modifier
 ) {
     val messages by viewModel.messages.collectAsStateWithLifecycle()
+    val inputText by viewModel.inputDraft.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
-    var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
     LaunchedEffect(messages.size) {
@@ -239,7 +236,7 @@ fun AiAssistantScreen(
 
                 OutlinedTextField(
                     value = inputText,
-                    onValueChange = { inputText = it },
+                    onValueChange = viewModel::updateInputDraft,
                     placeholder = { Text("আপনার প্রশ্ন এখানে লিখুন...", color = OnSurfaceVariant) },
                     maxLines = 3,
                     shape = RoundedCornerShape(2.dp),
@@ -262,7 +259,7 @@ fun AiAssistantScreen(
                 IconButton(
                     onClick = {
                         val text = inputText
-                        inputText = ""
+                        viewModel.updateInputDraft("")
                         viewModel.sendQuery(text)
                     },
                     enabled = !isLoading && inputText.isNotBlank(),

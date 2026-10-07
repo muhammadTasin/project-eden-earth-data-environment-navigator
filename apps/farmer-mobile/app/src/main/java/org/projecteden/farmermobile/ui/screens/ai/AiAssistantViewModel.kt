@@ -45,6 +45,13 @@ class AiAssistantViewModel(application: Application) : AndroidViewModel(applicat
     )
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
 
+    private val _inputDraft = MutableStateFlow("")
+    val inputDraft: StateFlow<String> = _inputDraft.asStateFlow()
+
+    fun updateInputDraft(value: String) {
+        _inputDraft.value = value
+    }
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 

@@ -177,8 +177,10 @@ class WeatherController(
     private fun load(target: WeatherTarget, keepStaleForSameTarget: Boolean) {
         loadJob?.cancel()
         val previous = _state.value
-        val staleForecast = (previous.forecast as? Section.Ready)?.data?.takeIf { keepStaleForSameTarget && sameLocation(it.latitude, it.longitude, target) }
-        val staleObs = (previous.observations as? Section.Ready)?.data?.takeIf { keepStaleForSameTarget && sameLocation(it.latitude, it.longitude, target) }
+        // Preserve the last successful response across retries too. A prior failed refresh can still
+        // carry useful same-location data in Failed.stale (or Loading.stale).
+        val staleForecast = previous.forecast.cachedOrNull()?.takeIf { keepStaleForSameTarget && sameLocation(it.latitude, it.longitude, target) }
+        val staleObs = previous.observations.cachedOrNull()?.takeIf { keepStaleForSameTarget && sameLocation(it.latitude, it.longitude, target) }
         _state.update { it.copy(forecast = Section.Loading(staleForecast), observations = Section.Loading(staleObs)) }
 
         loadJob = scope.launch {
@@ -199,4 +201,11 @@ class WeatherController(
 
     private fun sameLocation(lat: Double, lon: Double, target: WeatherTarget) =
         kotlin.math.abs(lat - target.latitude) < 1e-4 && kotlin.math.abs(lon - target.longitude) < 1e-4
+}
+
+private fun <T> Section<T>.cachedOrNull(): T? = when (this) {
+    Section.Idle -> null
+    is Section.Loading -> stale
+    is Section.Ready -> data
+    is Section.Failed -> stale
 }
