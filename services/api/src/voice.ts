@@ -126,9 +126,18 @@ export function replyFor(advice: AdviceJSON, understood?: Pick<Understood, 'crop
     notes.some(n => n.includes('কর্মকর্তা')) ? 'ধন্যবাদ।' : 'বিস্তারিত জানতে আপনার উপসহকারী কৃষি কর্মকর্তার সাথে কথা বলুন। ধন্যবাদ।',
   ].filter(Boolean).join(' '));
 
+  // The SMS in plain sentences, without symbols a button phone may show as boxes: the plan with its dates, the water
+  // it saves, this season's alert if any, and who to ask. Every number comes from the advice.
   const verb = (p: typeof rabi) => (p.seasonType === 'Aman' || p.seasonType === 'Aus' || p.crop.toLowerCase().includes('rice') ? 'রোপণ' : 'বপন');
-  const named = (p: typeof rabi) => `${p.seasonType === 'Aman' ? p.varietyBangla : p.cropBangla}${p.sowingBangla ? ` (${verb(p)} ~${p.sowingBangla})` : ''}`;
-  const sms = `মাটি কহন: ${[monsoon, rabi, k1].filter(p => p && !p.fallow).map(p => named(p!)).join(' → ')}${monsoon.fallow ? '; বর্ষায় ধান নেই' : ''}। প্রশ্নে SAAO-কে ফোন করুন।`;
+  const named = (p: typeof rabi) => `${p.seasonType === 'Aman' ? `আমনে ${p.varietyBangla}` : p.varietyBangla || p.cropBangla}${p.sowingBangla ? `, ${verb(p)} ${p.sowingBangla}` : ''}`;
+  const waterLine = top.stewardship?.find(t => t.kind === 'water')?.bn.split('।')[0];
+  const alert = (advice.local_context as { farmerLineBangla?: string } | null | undefined)?.farmerLineBangla;
+  const sms = [
+    `মাটি কহন (নাসার তথ্যে): ${place} জন্য ভালো ফসলচক্র: ${[monsoon, rabi, k1].filter(p => p && !p.fallow).map(p => named(p!)).join('; এরপর ')}${monsoon.fallow ? '; বর্ষায় ধান নেই' : ''}।`,
+    waterLine ? `${waterLine}।` : '',
+    alert && alert.length <= 90 ? alert : '',
+    'জানতে উপসহকারী কৃষি কর্মকর্তাকে (SAAO) ফোন করুন।',
+  ].filter(Boolean).join(' ').replace(/\s*–\s*/g, '-');
 
   return {
     speechBangla: speech,
