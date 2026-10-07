@@ -22,6 +22,7 @@ import type { AmanCatalogEntry } from './data/crop_catalog.ts';
 import type { AmanRecord, MonthDay, RabiRecord } from './data/release_types.ts';
 import type { RabiCatalogEntry } from './data/crop_catalog.ts';
 import { IPM_AMAN, IPM_BY_RABI, IPM_GENERAL } from './data/ipm_catalog.ts';
+import { diseaseData, typicalDiseaseDays, type DiseaseNow } from './data/disease.ts';
 import { stewardshipTips } from './stewardship.ts';
 import {
   CHOICE_BY_ID,
@@ -88,6 +89,8 @@ export interface PlanOptionsRequest {
     soilPercentile?: number | null;
     sensor?: 'SMAP' | 'POWER';
     rain30PctOfNormal?: number | null;
+    /** This week's rice-blast and potato late-blight weather from the daily NASA POWER update. */
+    disease?: DiseaseNow | null;
     source: string;
   };
   season: string;
@@ -141,7 +144,7 @@ const CHOICE_OPTIONS = 5;
 /** 1st, 2nd, 3rd, 4th ... for percentiles. */
 const ordinal = (n: number) => `${n}${[11, 12, 13].includes(n % 100) ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
 
-const HAZARD_ORDER = ['flash_flood', 'salinity', 'winter_fallow_salinity', 'dry_start', 'deep_flooding', 'submergence'];
+const HAZARD_ORDER = ['flash_flood', 'salinity', 'winter_fallow_salinity', 'dry_start', 'disease_weather', 'deep_flooding', 'submergence'];
 /** A pattern is named among what farmers grow at this share of the cropped land, and taken as current practice at this. */
 const PATTERN_NOTE_PCT = 10;
 const CURRENT_PRACTICE_PCT = 20;
@@ -1195,6 +1198,17 @@ export class RotationEngine {
     }
     notesBangla.push(evidenceBn);
     notesEnglish.push(evidenceEn);
+    // NASA HLS (30 m): what share of the Aman land grew a winter crop in the last two winters
+    const hls = local.hls;
+    const winters = hls ? Object.keys(hls).sort().reverse() : [];
+    const latest = winters.length ? hls![winters[0]] : null;
+    if (latest && typeof latest.winterCropShare === 'number') {
+      const prev = winters[1] ? hls![winters[1]]?.winterCropShare : null;
+      const now = Math.round(latest.winterCropShare * 100);
+      const before = typeof prev === 'number' ? Math.round(prev * 100) : null;
+      notesBangla.push(`নাসার HLS উপগ্রহ (৩০ মিটার): যে জমিতে আমন হয়েছিল তার ${bnDigits(now)}% শীতে আবার সবুজ হয়েছে (${bnDigits(winters[0])})${before !== null ? `, আগের শীতে ${bnDigits(before)}%` : ''}; বাকিটা শীতে পতিত ছিল।`);
+      notesEnglish.push(`NASA HLS satellites (30 m): ${now}% of the land that grew Aman was green again with a winter crop in ${winters[0]}${before !== null ? ` (${before}% in ${winters[1]})` : ''}; the rest lay fallow over the winter.`);
+    }
     // NASA OPERA radar: how much of the upazila the monsoon covered, and when low land drained (2025)
     const radar = local.opera;
     const radarDate = radarReady(request.landType);
@@ -1219,6 +1233,42 @@ export class RotationEngine {
       hazards.push(id);
       alerts.push({ hazard: id, titleBangla: title[0], titleEnglish: title[1], textBangla: notesBangla[notesBangla.length - 1], textEnglish: notesEnglish[notesEnglish.length - 1] });
     };
+    // NASA POWER disease weather this week: look before spraying when it favours blast or late blight, and say so
+    // plainly when it does not, so no spray goes on "just in case"
+    const disease = (LOC.conditions.current as { disease?: DiseaseNow | null } | null | undefined)?.disease ?? null;
+    const typical = typicalDiseaseDays();
+    const diseaseRules = diseaseData().rules;
+    const topSeq = options[0]?.cropSequence ?? [];
+    const hasAman = topSeq.some(p => p.seasonType === 'Aman');
+    const winterCrop = topSeq.find(p => p.seasonType === 'Rabi')?.crop ?? '';
+    const diseaseRows: Array<{ id: string; nameBangla: string; nameEnglish: string; status: string; days7: number; season: string | null; typicalDays: number | null; relevant: boolean }> = [];
+    if (disease) {
+      const when = { bn: bnDate(disease.date.slice(5)), en: enDate(disease.date.slice(5)) };
+      for (const id of ['riceBlast', 'lateBlight'] as const) {
+        const r = disease[id];
+        const rule = diseaseRules[id];
+        if (!r || !rule) continue;
+        const relevant = id === 'riceBlast'
+          ? (r.season === 'aman' && hasAman) || (r.season === 'boro' && winterCrop === 'Boro rice')
+          : r.season === 'potato' && winterCrop === 'Potato';
+        const typicalDays = !typical ? null : id === 'lateBlight' ? typical.lateBlight.median
+          : r.season === 'boro' ? typical.blastBoro.median : typical.blastAman.median;
+        diseaseRows.push({ id, nameBangla: rule.nameBn, nameEnglish: rule.nameEn, status: r.status, days7: r.days7, season: r.season, typicalDays, relevant });
+        if (!relevant) continue;
+        const crop = id === 'lateBlight' ? { bn: 'আলু', en: 'potato' } : r.season === 'boro' ? { bn: 'বোরো', en: 'Boro' } : { bn: 'আমন', en: 'Aman' };
+        if (r.status === 'high' || r.status === 'watch') {
+          notesBangla.push(`নাসার আবহাওয়া (${when.bn} পর্যন্ত ৭ দিন): ${bnDigits(r.days7)} দিন ${rule.nameBn}-এর উপযোগী আবহাওয়া। প্রতি ২–৩ দিনে ${crop.bn} খেত দেখুন; রোগ ছড়াচ্ছে বলে কৃষি কর্মকর্তা নিশ্চিত করলে তবেই ছত্রাকনাশক দিন।`);
+          notesEnglish.push(`NASA POWER weather, 7 days to ${when.en}: ${r.days7} days of ${rule.nameEn.toLowerCase()} weather. Walk the ${crop.en} field every 2-3 days; spray a fungicide only if the agriculture officer confirms the disease is spreading.`);
+          hazard('disease_weather', ['রোগের উপযোগী আবহাওয়া', 'Disease weather']);
+          farmerLineBangla = [farmerLineBangla, `${rule.nameBn}-এর আবহাওয়া: স্প্রের আগে খেত দেখুন।`].filter(Boolean).join(' ');
+          farmerLineEnglish = [farmerLineEnglish, `${rule.nameEn} weather: look at the field before any spray.`].filter(Boolean).join(' ');
+        } else if (r.status === 'low') {
+          notesBangla.push(`নাসার আবহাওয়া (${when.bn} পর্যন্ত ৭ দিন): ${rule.nameBn}-এর উপযোগী আবহাওয়া ছিল না; এই সপ্তাহে ${crop.bn}-এ সতর্কতামূলক ছত্রাকনাশক লাগবে না।`);
+          notesEnglish.push(`NASA POWER weather, 7 days to ${when.en}: no ${rule.nameEn.toLowerCase()} weather, so no precautionary fungicide spray is needed on ${crop.en} this week.`);
+        }
+      }
+    }
+
     if (!rules.aman) {
       notesBangla.push(`${landBn} জমিতে জুন থেকে নভেম্বর পানি থাকে: আমন বা গ্রীষ্মের ফসল হয় না; পানি নামলে (~${bnDate(rules.ready!)}) রবি ফসল।`);
       notesEnglish.push(`On ${landEn} land water stands from June to November: no Aman or summer crop; the winter crop goes in once the water leaves (~${enDate(rules.ready!)}, after BRRI's haor seedbed dates).`);
@@ -1314,6 +1364,7 @@ export class RotationEngine {
       landTypeAssumed: assumed,
       landEvidenceBangla: evidenceBn,
       landEvidenceEnglish: evidenceEn,
+      diseaseWeather: disease ? { date: disease.date, rules: diseaseRows, method: diseaseData().method } : null,
       patterns,
       patternsSource: patterns.length ? profileData().sources.patterns ?? null : null,
       croppingIntensityPct: local.intensityPct,

@@ -84,6 +84,10 @@ export function mapLayers() {
         soilStatus: l?.soilStatus ?? null,
         hotDays7: l?.hotDays7 ?? null,
         rain7: l?.rain7 ?? null,
+        blastDays7: l?.blastDays7 ?? null,
+        blastStatus: l?.blastStatus ?? null,
+        lateBlightDays7: l?.lateBlightDays7 ?? null,
+        lateBlightStatus: l?.lateBlightStatus ?? null,
       }];
     })),
   };

@@ -1,0 +1,1138 @@
+{
+ "method": "Days of disease weather in each susceptible window, NASA POWER daily, seasons 2001-2025 (research/explore/disease_climatology.py with the rules in research/live/disease_weather.py)",
+ "rules": {
+  "riceBlast": {
+   "nameEn": "Rice blast",
+   "nameBn": "ধানের ব্লাস্ট রোগ",
+   "windows": {
+    "aman": [
+     "09-15",
+     "11-15"
+    ],
+    "boro": [
+     "02-01",
+     "04-15"
+    ]
+   },
+   "basis": "leaves wet 10 hours or more at 15-26 C (BLASTAM; IRRI Rice Knowledge Bank)"
+  },
+  "lateBlight": {
+   "nameEn": "Potato late blight",
+   "nameBn": "আলুর নাবি ধসা (লেট ব্লাইট)",
+   "windows": {
+    "potato": [
+     "11-15",
+     "02-28"
+    ]
+   },
+   "basis": "Hutton criteria (AHDB, 2017): two days running with a minimum of 10 C or more and 6 hours at 90% humidity"
+  }
+ },
+ "places": {
+  "talanda_tanore": {
+   "blastAman": {
+    "median": 8.0,
+    "p20": 3.8000000000000007,
+    "p80": 14.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 25.0,
+    "p20": 5.800000000000001,
+    "p80": 39.0
+   }
+  },
+  "Bagerhat": {
+   "blastAman": {
+    "median": 6.0,
+    "p20": 3.0,
+    "p80": 12.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 36.0,
+    "p20": 14.200000000000003,
+    "p80": 48.2
+   }
+  },
+  "Bandarban": {
+   "blastAman": {
+    "median": 34.0,
+    "p20": 27.400000000000002,
+    "p80": 38.60000000000001
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 38.0,
+    "p20": 18.400000000000002,
+    "p80": 51.0
+   }
+  },
+  "Barguna": {
+   "blastAman": {
+    "median": 1.0,
+    "p20": 0.0,
+    "p80": 2.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 13.0,
+    "p20": 1.8000000000000007,
+    "p80": 29.200000000000003
+   }
+  },
+  "Barisal": {
+   "blastAman": {
+    "median": 8.0,
+    "p20": 4.800000000000001,
+    "p80": 15.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 36.0,
+    "p20": 13.8,
+    "p80": 49.0
+   }
+  },
+  "Bhola": {
+   "blastAman": {
+    "median": 2.0,
+    "p20": 1.0,
+    "p80": 5.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.20000000000000284
+   },
+   "lateBlight": {
+    "median": 42.0,
+    "p20": 18.8,
+    "p80": 58.2
+   }
+  },
+  "Bogra": {
+   "blastAman": {
+    "median": 7.0,
+    "p20": 3.6000000000000014,
+    "p80": 10.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 40.0,
+    "p20": 18.200000000000006,
+    "p80": 45.2
+   }
+  },
+  "Brahamanbaria": {
+   "blastAman": {
+    "median": 11.0,
+    "p20": 8.0,
+    "p80": 16.400000000000006
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 32.0,
+    "p20": 13.000000000000004,
+    "p80": 42.0
+   }
+  },
+  "Chandpur": {
+   "blastAman": {
+    "median": 6.0,
+    "p20": 3.0,
+    "p80": 10.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 37.0,
+    "p20": 7.800000000000001,
+    "p80": 50.60000000000001
+   }
+  },
+  "Chittagong": {
+   "blastAman": {
+    "median": 3.0,
+    "p20": 0.8000000000000007,
+    "p80": 4.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 1.0
+   },
+   "lateBlight": {
+    "median": 40.0,
+    "p20": 20.6,
+    "p80": 54.0
+   }
+  },
+  "Chuadanga": {
+   "blastAman": {
+    "median": 8.0,
+    "p20": 5.800000000000001,
+    "p80": 13.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 20.0,
+    "p20": 8.0,
+    "p80": 37.400000000000006
+   }
+  },
+  "Comilla": {
+   "blastAman": {
+    "median": 15.0,
+    "p20": 11.0,
+    "p80": 22.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 1.0
+   },
+   "lateBlight": {
+    "median": 51.0,
+    "p20": 33.2,
+    "p80": 63.400000000000006
+   }
+  },
+  "Cox's Bazar": {
+   "blastAman": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 1.2000000000000028
+   }
+  },
+  "Dhaka": {
+   "blastAman": {
+    "median": 7.0,
+    "p20": 3.0,
+    "p80": 11.600000000000009
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 35.0,
+    "p20": 9.0,
+    "p80": 46.0
+   }
+  },
+  "Dinajpur": {
+   "blastAman": {
+    "median": 11.0,
+    "p20": 6.800000000000001,
+    "p80": 19.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 35.0,
+    "p20": 15.200000000000003,
+    "p80": 40.2
+   }
+  },
+  "Faridpur": {
+   "blastAman": {
+    "median": 6.0,
+    "p20": 2.8000000000000007,
+    "p80": 12.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 32.0,
+    "p20": 9.000000000000004,
+    "p80": 48.0
+   }
+  },
+  "Feni": {
+   "blastAman": {
+    "median": 11.0,
+    "p20": 7.800000000000001,
+    "p80": 15.400000000000006
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 2.0
+   },
+   "lateBlight": {
+    "median": 60.0,
+    "p20": 41.8,
+    "p80": 68.80000000000001
+   }
+  },
+  "Gaibandha": {
+   "blastAman": {
+    "median": 8.0,
+    "p20": 3.6000000000000014,
+    "p80": 12.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 38.0,
+    "p20": 20.40000000000001,
+    "p80": 42.400000000000006
+   }
+  },
+  "Gazipur": {
+   "blastAman": {
+    "median": 8.0,
+    "p20": 5.0,
+    "p80": 12.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 25.0,
+    "p20": 6.800000000000001,
+    "p80": 43.400000000000006
+   }
+  },
+  "Gopalganj": {
+   "blastAman": {
+    "median": 8.0,
+    "p20": 4.800000000000001,
+    "p80": 15.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 36.0,
+    "p20": 13.8,
+    "p80": 49.0
+   }
+  },
+  "Habiganj": {
+   "blastAman": {
+    "median": 10.0,
+    "p20": 6.0,
+    "p80": 12.400000000000006
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 41.0,
+    "p20": 24.800000000000004,
+    "p80": 49.2
+   }
+  },
+  "Jamalpur": {
+   "blastAman": {
+    "median": 9.0,
+    "p20": 4.800000000000001,
+    "p80": 12.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 35.0,
+    "p20": 14.800000000000004,
+    "p80": 44.2
+   }
+  },
+  "Jessore": {
+   "blastAman": {
+    "median": 10.0,
+    "p20": 5.600000000000001,
+    "p80": 15.400000000000006
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 28.0,
+    "p20": 9.0,
+    "p80": 39.0
+   }
+  },
+  "Jhalokati": {
+   "blastAman": {
+    "median": 6.0,
+    "p20": 3.0,
+    "p80": 12.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 36.0,
+    "p20": 14.200000000000003,
+    "p80": 48.2
+   }
+  },
+  "Jhenaidah": {
+   "blastAman": {
+    "median": 8.0,
+    "p20": 4.0,
+    "p80": 14.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 29.0,
+    "p20": 8.8,
+    "p80": 41.400000000000006
+   }
+  },
+  "Joypurhat": {
+   "blastAman": {
+    "median": 7.0,
+    "p20": 3.6000000000000014,
+    "p80": 10.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 40.0,
+    "p20": 18.200000000000006,
+    "p80": 45.2
+   }
+  },
+  "Khagrachhari": {
+   "blastAman": {
+    "median": 8.0,
+    "p20": 6.0,
+    "p80": 11.400000000000006
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 1.0
+   },
+   "lateBlight": {
+    "median": 55.0,
+    "p20": 39.0,
+    "p80": 66.2
+   }
+  },
+  "Khulna": {
+   "blastAman": {
+    "median": 6.0,
+    "p20": 3.8000000000000007,
+    "p80": 11.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 21.0,
+    "p20": 4.800000000000001,
+    "p80": 39.2
+   }
+  },
+  "Kishoreganj": {
+   "blastAman": {
+    "median": 10.0,
+    "p20": 6.0,
+    "p80": 12.400000000000006
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 41.0,
+    "p20": 24.800000000000004,
+    "p80": 49.2
+   }
+  },
+  "Kurigram": {
+   "blastAman": {
+    "median": 7.0,
+    "p20": 3.0,
+    "p80": 8.400000000000006
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 49.0,
+    "p20": 36.0,
+    "p80": 56.400000000000006
+   }
+  },
+  "Kushtia": {
+   "blastAman": {
+    "median": 6.0,
+    "p20": 3.8000000000000007,
+    "p80": 11.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 21.0,
+    "p20": 5.600000000000001,
+    "p80": 35.60000000000001
+   }
+  },
+  "Lakshmipur": {
+   "blastAman": {
+    "median": 4.0,
+    "p20": 1.8000000000000007,
+    "p80": 8.600000000000009
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 44.0,
+    "p20": 19.6,
+    "p80": 56.60000000000001
+   }
+  },
+  "Lalmonirhat": {
+   "blastAman": {
+    "median": 10.0,
+    "p20": 5.800000000000001,
+    "p80": 14.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 37.0,
+    "p20": 18.000000000000004,
+    "p80": 45.2
+   }
+  },
+  "Madaripur": {
+   "blastAman": {
+    "median": 8.0,
+    "p20": 4.800000000000001,
+    "p80": 15.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 36.0,
+    "p20": 13.8,
+    "p80": 49.0
+   }
+  },
+  "Magura": {
+   "blastAman": {
+    "median": 8.0,
+    "p20": 4.0,
+    "p80": 14.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 29.0,
+    "p20": 8.8,
+    "p80": 41.400000000000006
+   }
+  },
+  "Manikganj": {
+   "blastAman": {
+    "median": 7.0,
+    "p20": 3.0,
+    "p80": 11.600000000000009
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 35.0,
+    "p20": 9.0,
+    "p80": 46.0
+   }
+  },
+  "Maulvibazar": {
+   "blastAman": {
+    "median": 11.0,
+    "p20": 8.8,
+    "p80": 14.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 53.0,
+    "p20": 41.8,
+    "p80": 64.4
+   }
+  },
+  "Meherpur": {
+   "blastAman": {
+    "median": 6.0,
+    "p20": 3.8000000000000007,
+    "p80": 11.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 21.0,
+    "p20": 5.600000000000001,
+    "p80": 35.60000000000001
+   }
+  },
+  "Munshiganj": {
+   "blastAman": {
+    "median": 6.0,
+    "p20": 3.0,
+    "p80": 10.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 37.0,
+    "p20": 7.800000000000001,
+    "p80": 50.60000000000001
+   }
+  },
+  "Mymensingh": {
+   "blastAman": {
+    "median": 11.0,
+    "p20": 5.800000000000001,
+    "p80": 14.400000000000006
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 36.0,
+    "p20": 15.000000000000004,
+    "p80": 49.2
+   }
+  },
+  "Naogaon": {
+   "blastAman": {
+    "median": 10.0,
+    "p20": 3.8000000000000007,
+    "p80": 16.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 29.0,
+    "p20": 13.800000000000004,
+    "p80": 40.2
+   }
+  },
+  "Narail": {
+   "blastAman": {
+    "median": 10.0,
+    "p20": 5.600000000000001,
+    "p80": 15.400000000000006
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 28.0,
+    "p20": 9.0,
+    "p80": 39.0
+   }
+  },
+  "Narayanganj": {
+   "blastAman": {
+    "median": 6.0,
+    "p20": 3.0,
+    "p80": 10.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 37.0,
+    "p20": 7.800000000000001,
+    "p80": 50.60000000000001
+   }
+  },
+  "Narsingdi": {
+   "blastAman": {
+    "median": 8.0,
+    "p20": 5.0,
+    "p80": 12.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 25.0,
+    "p20": 6.800000000000001,
+    "p80": 43.400000000000006
+   }
+  },
+  "Natore": {
+   "blastAman": {
+    "median": 6.0,
+    "p20": 2.0,
+    "p80": 9.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 37.0,
+    "p20": 15.400000000000006,
+    "p80": 41.2
+   }
+  },
+  "Nawabganj": {
+   "blastAman": {
+    "median": 6.0,
+    "p20": 3.0,
+    "p80": 10.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 22.0,
+    "p20": 4.0,
+    "p80": 35.2
+   }
+  },
+  "Netrakona": {
+   "blastAman": {
+    "median": 13.0,
+    "p20": 7.800000000000001,
+    "p80": 17.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 30.0,
+    "p20": 13.600000000000001,
+    "p80": 38.60000000000001
+   }
+  },
+  "Nilphamari": {
+   "blastAman": {
+    "median": 11.0,
+    "p20": 7.600000000000001,
+    "p80": 18.60000000000001
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 28.0,
+    "p20": 10.8,
+    "p80": 35.2
+   }
+  },
+  "Noakhali": {
+   "blastAman": {
+    "median": 11.0,
+    "p20": 7.800000000000001,
+    "p80": 15.400000000000006
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 2.0
+   },
+   "lateBlight": {
+    "median": 60.0,
+    "p20": 41.8,
+    "p80": 68.80000000000001
+   }
+  },
+  "Pabna": {
+   "blastAman": {
+    "median": 6.0,
+    "p20": 3.0,
+    "p80": 10.400000000000006
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 31.0,
+    "p20": 8.400000000000002,
+    "p80": 42.0
+   }
+  },
+  "Panchagarh": {
+   "blastAman": {
+    "median": 10.0,
+    "p20": 7.0,
+    "p80": 16.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 5.0,
+    "p20": 0.0,
+    "p80": 8.600000000000009
+   }
+  },
+  "Patuakhali": {
+   "blastAman": {
+    "median": 2.0,
+    "p20": 1.0,
+    "p80": 5.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.20000000000000284
+   },
+   "lateBlight": {
+    "median": 42.0,
+    "p20": 18.8,
+    "p80": 58.2
+   }
+  },
+  "Pirojpur": {
+   "blastAman": {
+    "median": 6.0,
+    "p20": 3.0,
+    "p80": 12.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 36.0,
+    "p20": 14.200000000000003,
+    "p80": 48.2
+   }
+  },
+  "Rajbari": {
+   "blastAman": {
+    "median": 8.0,
+    "p20": 4.0,
+    "p80": 14.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 29.0,
+    "p20": 8.8,
+    "p80": 41.400000000000006
+   }
+  },
+  "Rajshahi": {
+   "blastAman": {
+    "median": 8.0,
+    "p20": 3.8000000000000007,
+    "p80": 14.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 25.0,
+    "p20": 5.800000000000001,
+    "p80": 39.0
+   }
+  },
+  "Rangamati": {
+   "blastAman": {
+    "median": 9.0,
+    "p20": 5.800000000000001,
+    "p80": 15.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 22.0,
+    "p20": 6.600000000000001,
+    "p80": 38.400000000000006
+   }
+  },
+  "Rangpur": {
+   "blastAman": {
+    "median": 8.0,
+    "p20": 3.6000000000000014,
+    "p80": 12.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 38.0,
+    "p20": 20.40000000000001,
+    "p80": 42.400000000000006
+   }
+  },
+  "Satkhira": {
+   "blastAman": {
+    "median": 6.0,
+    "p20": 3.8000000000000007,
+    "p80": 11.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 21.0,
+    "p20": 4.800000000000001,
+    "p80": 39.2
+   }
+  },
+  "Shariatpur": {
+   "blastAman": {
+    "median": 4.0,
+    "p20": 1.8000000000000007,
+    "p80": 8.600000000000009
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 44.0,
+    "p20": 19.6,
+    "p80": 56.60000000000001
+   }
+  },
+  "Sherpur": {
+   "blastAman": {
+    "median": 9.0,
+    "p20": 4.800000000000001,
+    "p80": 12.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 35.0,
+    "p20": 14.800000000000004,
+    "p80": 44.2
+   }
+  },
+  "Sirajganj": {
+   "blastAman": {
+    "median": 6.0,
+    "p20": 2.0,
+    "p80": 9.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 37.0,
+    "p20": 15.400000000000006,
+    "p80": 41.2
+   }
+  },
+  "Sunamganj": {
+   "blastAman": {
+    "median": 8.0,
+    "p20": 7.0,
+    "p80": 12.0
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 1.0
+   },
+   "lateBlight": {
+    "median": 28.0,
+    "p20": 21.000000000000004,
+    "p80": 35.400000000000006
+   }
+  },
+  "Sylhet": {
+   "blastAman": {
+    "median": 9.0,
+    "p20": 7.800000000000001,
+    "p80": 11.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 2.200000000000003
+   },
+   "lateBlight": {
+    "median": 33.0,
+    "p20": 25.6,
+    "p80": 49.400000000000006
+   }
+  },
+  "Tangail": {
+   "blastAman": {
+    "median": 8.0,
+    "p20": 3.0,
+    "p80": 11.200000000000003
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 41.0,
+    "p20": 16.000000000000004,
+    "p80": 49.2
+   }
+  },
+  "Thakurgaon": {
+   "blastAman": {
+    "median": 10.0,
+    "p20": 7.800000000000001,
+    "p80": 15.40000000000002
+   },
+   "blastBoro": {
+    "median": 0.0,
+    "p20": 0.0,
+    "p80": 0.0
+   },
+   "lateBlight": {
+    "median": 17.0,
+    "p20": 5.0000000000000036,
+    "p80": 28.60000000000001
+   }
+  }
+ }
+}

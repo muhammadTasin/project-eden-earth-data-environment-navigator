@@ -393,6 +393,31 @@ async function runTests() {
     throw new Error('A field without irrigation gets no Boro or Aus, and every plan states its rain-only yield');
   }
   if (understandRequest('আমার জমিতে সেচ নেই').irrigation !== 'none') throw new Error('"সেচ নেই" means no irrigation');
+  // NASA POWER disease weather: a quiet week says no precautionary spray; a blast week says look first; potato meets late blight
+  const blast = (status: string, days7: number) => ({ date: '2026-10-04', soilStatus: 'normal', source: 'test',
+    disease: { date: '2026-10-04', riceBlast: { days7, status, season: 'aman' }, lateBlight: { days7: 0, status: 'off', season: null } } });
+  const quiet = at('ADM3_FaridpurSadar', { currentConditions: blast('low', 0), today: '2026-10-07' });
+  const quietText = JSON.stringify(quiet.local_context);
+  if (!quietText.includes('no precautionary fungicide spray is needed on Aman this week') || quiet.local_context!.hazards.includes('disease_weather')
+    || !(quiet.local_context as any).diseaseWeather?.rules?.length) {
+    throw new Error('A week without blast weather tells the farmer no precautionary spray is needed');
+  }
+  const blastWeek = at('ADM3_FaridpurSadar', { currentConditions: blast('high', 4), today: '2026-10-07' });
+  if (!blastWeek.local_context!.hazards.includes('disease_weather') || !JSON.stringify(blastWeek.local_context).includes('Walk the Aman field')) {
+    throw new Error('A week of blast weather raises a disease-weather alert that says to look before spraying');
+  }
+  const potatoPlan = at('ADM3_RangpurSadar', {
+    heroCrop: 'potato', today: '2026-12-20',
+    currentConditions: { date: '2026-12-18', soilStatus: 'normal', source: 'test',
+      disease: { date: '2026-12-18', riceBlast: { days7: 0, status: 'off', season: null }, lateBlight: { days7: 4, status: 'high', season: 'potato' } } },
+  });
+  const pm = potatoPlan.options[0].dimensionDetails.pest.metrics as Record<string, number>;
+  if (!potatoPlan.local_context!.hazards.includes('disease_weather') || !(pm.diseaseWeatherDays > pm.diseaseWeatherAmanBoroDays)) {
+    throw new Error(`Potato meets more late-blight weather than Aman-Boro, and a blight week is flagged (got ${pm.diseaseWeatherDays} vs ${pm.diseaseWeatherAmanBoroDays})`);
+  }
+  if (!quiet.options[0].ipmActions.some(t => t.en.startsWith('No insecticide in the first 40 days'))) {
+    throw new Error("Aman plans carry IRRI's no-early-spray step");
+  }
   console.log('✓ TEST 17 PASSED: Land type, current patterns, flash floods, district yields and today\'s soil shape each upazila\'s plan.\n');
 
   console.log('========================================================');

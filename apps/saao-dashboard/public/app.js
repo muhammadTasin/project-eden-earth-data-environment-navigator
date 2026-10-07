@@ -705,6 +705,8 @@ function renderIpm(advice) {
           <li><span>${tr('পুরো চক্রে ইউরিয়া (SRDI)', 'Rotation urea (SRDI)')}</span><strong>${num(m.rotationUreaKgHa)} ${tr('কেজি/হেক্টর', 'kg/ha')}</strong></li>
           <li><span>${tr('রোগ প্রতিরোধী জাত', 'Disease-resistant variety')}</span><strong>${resistant}</strong></li>
           <li><span>${tr('সময়মতো বোনা', 'Sown on time')}</span><strong>${yesNo(m.sownOnTime)}</strong></li>
+          ${m.pesticideKgHa != null ? `<li><span>${tr('কীটনাশক, বছরে (নাসা PEST-CHEMGRIDS)', 'Pesticide a year (NASA PEST-CHEMGRIDS)')}</span><strong>${num(m.pesticideKgHa)} ${tr('কেজি/হেক্টর', 'kg/ha')}</strong></li>` : ''}
+          ${m.diseaseWeatherDays != null ? `<li><span>${tr('রোগের আবহাওয়ার দিন, সাধারণ বছরে (নাসা POWER)', 'Disease-weather days a year (NASA POWER)')}</span><strong>${num(m.diseaseWeatherDays)}</strong></li>` : ''}
         </ul>
       </div>`;
   };
@@ -716,6 +718,20 @@ function renderIpm(advice) {
     ${boro && boro.id !== top.id ? column(boro) : ''}
     ${less !== null && less > 0 ? `<p class="ipm-summary">${tr(`প্রস্তাবিত চক্রে বছরে ইউরিয়া ${num(less)}% কম, আর ধানের পোকার চক্র ভাঙে। কম নাইট্রোজেন আর খাবারের বিরতি মানে কম পোকা, তাই কম স্প্রে।`, `The recommended rotation uses ${less}% less urea a year and breaks the rice-pest cycle. Less nitrogen and a break in the food supply mean fewer pests, so fewer sprays.`)}</p>` : ''}
   `);
+
+  // NASA POWER disease weather in the last 7 days: look before spraying, or skip the precautionary spray
+  const dw = advice.local_context?.diseaseWeather;
+  const chip = { high: ['badge-danger', 'বেশি', 'High'], watch: ['badge-warning', 'নজরে রাখুন', 'Watch'], low: ['badge-success', 'কম', 'Low'], off: ['badge-neutral', 'মৌসুম নয়', 'Not the season'] };
+  setHtml('ipmDisease', !dw ? `<p class="dim-note">${tr('আজকের নাসা তথ্য এখনো আসেনি।', 'No daily NASA update yet.')}</p>` : `
+    <ul class="kv-list">${dw.rules.map(r => {
+      const [cls, bn, en] = chip[r.status] || chip.off;
+      const what = r.status === 'off' ? tr('এখন এই ফসলের সংবেদনশীল সময় নয়।', 'Not the crop\'s susceptible weeks now.')
+        : !r.relevant ? tr('এই চক্রে এখন এই ফসল মাঠে নেই।', 'Not in the field in this plan now.')
+        : r.status === 'low' ? tr('এই সপ্তাহে সতর্কতামূলক ছত্রাকনাশক লাগবে না।', 'No precautionary fungicide needed this week.')
+        : tr('প্রতি ২–৩ দিনে খেত দেখুন; কর্মকর্তা নিশ্চিত করলে তবেই স্প্রে।', 'Walk the field every 2-3 days; spray only when the officer confirms.');
+      return `<li><span><strong>${escapeHtml(tr(r.nameBangla, r.nameEnglish))}</strong><br><small>${what} ${tr(`গত ৭ দিনে ${num(r.days7)} দিন`, `${r.days7} of the last 7 days`)}${r.typicalDays != null ? tr(`; সাধারণ মৌসুমে ~${num(r.typicalDays)} দিন`, `; ~${r.typicalDays} days in a typical season`) : ''}</small></span><span class="badge ${cls}">${tr(bn, en)}</span></li>`;
+    }).join('')}</ul>
+    <p class="dim-note">${tr(`নাসা POWER, ${dw.date} পর্যন্ত। ব্লাস্ট: পাতা ১০ ঘণ্টা বা বেশি ভেজা, ১৫–২৬°সে; লেট ব্লাইট: হাটন নিয়ম। রোগের আবহাওয়া মানে দেখা, স্প্রে নয়।`, `NASA POWER to ${dw.date}. Blast: leaves wet 10 hours or more at 15-26 °C; late blight: the Hutton criteria. Disease weather means look, not spray.`)}</p>`);
 
   setHtml('ipmSteps', (top.ipmActions || []).map(tip => `
     <li><span>${escapeHtml(tr(tip.bn, tip.en))}</span> <span class="ipm-source">${escapeHtml(tip.source)}</span></li>

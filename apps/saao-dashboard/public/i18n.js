@@ -147,6 +147,8 @@ export const EN = {
   'ipm.stepsBadge': 'Non-chemical steps first',
   'ipm.rankTitle': 'Pest-pressure score of every rotation',
   'ipm.rankBadge': 'Higher = less pesticide',
+  'ipm.diseaseTitle': 'Disease weather this week (NASA POWER)',
+  'ipm.diseaseBadge': 'Look before you spray',
   'ipm.fieldTitle': 'Pest news from the field',
   'ipm.reportPest': 'Officer: report a pest',
   'ipm.safetyTitle': 'If a spray is unavoidable: safety',

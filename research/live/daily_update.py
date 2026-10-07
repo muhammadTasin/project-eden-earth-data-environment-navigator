@@ -23,6 +23,9 @@ from pathlib import Path
 
 import requests
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import disease_weather as dw  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[2]
 UPAZILAS = ROOT / "research" / "sites" / "upazilas.csv"
 DEFAULT_IMERG = ROOT / "research" / "data" / "imerg_nrt" / "imerg_daily_bd.parquet"
@@ -30,7 +33,7 @@ OUT = ROOT / "services" / "api" / "data" / "live" / "upazila_conditions.json"
 
 POWER = "https://power.larc.nasa.gov/api/temporal/daily/regional"
 BBOX = {"latitude-min": 20.5, "latitude-max": 26.7, "longitude-min": 88.0, "longitude-max": 92.7}
-PARAMS = ["PRECTOTCORR", "T2M_MAX", "T2M_MIN", "RH2M", "GWETROOT", "GWETTOP"]
+PARAMS = ["PRECTOTCORR", "T2M_MAX", "T2M_MIN", "RH2M", "GWETROOT", "GWETTOP", "T2MDEW"]
 NORMAL_YEARS = 10
 HOT_C = 35.0  # rice flowers start to fail at about 35 C
 RAIN_VS_NORMAL = ROOT / "research" / "pilots" / "rain_vs_normal.csv"
@@ -52,6 +55,20 @@ UPSTREAM = [
 WATCH_MM, WARNING_MM = 200, 250
 CARRY_DAYS = 7  # a run without IMERG keeps the last IMERG reading this long, with its own date
 SOHRA = (UPSTREAM[0]["lat"], UPSTREAM[0]["lon"])
+
+
+def disease_now(s: dict, latest_d: date) -> dict:
+    """Rice-blast and late-blight weather in the 7 days to the latest day (rules in disease_weather.py)."""
+    days = [{"tmin": valid(s["T2M_MIN"], f"{latest_d - timedelta(days=k):%Y%m%d}"),
+             "tmax": valid(s["T2M_MAX"], f"{latest_d - timedelta(days=k):%Y%m%d}"),
+             "tdew": valid(s["T2MDEW"], f"{latest_d - timedelta(days=k):%Y%m%d}")} for k in range(7, -1, -1)]
+    marks = dw.flags(days)
+    out = {"date": f"{latest_d}"}
+    for rule in dw.RULES:
+        n = sum(marks[rule][1:])  # the last 7 days; the 8th back only seeds the late-blight pair
+        season = dw.season_of(rule, f"{latest_d:%m-%d}")
+        out[rule] = {"days7": n, "status": dw.status(n) if season else "off", "season": season}
+    return out
 
 
 def power_regional(param: str, start: date, end: date) -> dict:
@@ -226,6 +243,7 @@ def main() -> None:
                 "soilStatus": status(rank_of(soil, past_soil), len(past_soil), "dry", "wet"),
             },
             "imerg": None,
+            "disease": disease_now(s, latest_d),
         }
         if imerg:
             rec["imerg"] = {"date": f"{imerg['last']}", "run": imerg["runs"], "rain1": imerg_sum(lat, lon, 1),
@@ -289,6 +307,9 @@ def main() -> None:
             "rainStatus": "30-day rain against the same 30 days in each past year: dry if at or below the 2nd lowest of 10, wet if at or above the 8th",
             "soilStatus": "root-zone soil wetness (0 to 1) against the same date in each past year, with the same cut-offs",
             "hotDays7": f"days in the last 7 with a maximum of {HOT_C:.0f} C or more",
+            "disease": ("days in the last 7 of rice-blast weather (leaves wet 10 h or more at 15-26 C) and potato "
+                        "late-blight weather (Hutton criteria), estimated from NASA POWER's minimum, maximum and dew "
+                        "point; 3 or more is high, 1-2 watch, none low; 'off' and a null season outside the crop's window"),
             "caution": ("POWER's newest weeks come from near-real-time inputs (GEOS-IT, IMERG Early/Late), which read drier "
                         "than the reprocessed archive used for past years, so dry labels are provisional until SMAP confirms them"),
         },

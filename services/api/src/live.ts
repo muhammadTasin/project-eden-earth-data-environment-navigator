@@ -74,6 +74,8 @@ export function liveUpazilas(district?: string) {
     soilStatus: u.power.soilStatus, rainStatus: u.power.rainStatus, rain30PctOfNormal: u.power.rain30PctOfNormal,
     rain7: u.imerg?.rain7 ?? u.power.rain7, tmax: u.power.tmax, hotDays7: u.power.hotDays7,
     smapStatus: smapFor(u.id)?.status ?? null, smapPctl: smapFor(u.id)?.rootzonePctl ?? null,
+    blastDays7: u.disease?.riceBlast?.days7 ?? null, blastStatus: u.disease?.riceBlast?.status ?? null,
+    lateBlightDays7: u.disease?.lateBlight?.days7 ?? null, lateBlightStatus: u.disease?.lateBlight?.status ?? null,
   }));
 }
 

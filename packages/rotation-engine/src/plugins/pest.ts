@@ -5,6 +5,7 @@ import { RESISTANT_VARIETIES } from '../data/ipm_catalog.ts';
 import { choiceIdOf } from '../data/crop_choice.ts';
 import { pesticideEstimate } from '../stewardship.ts';
 import { bnDecimal, bnDigits, seasonDay } from '../bn.ts';
+import { planDiseaseDays } from '../data/disease.ts';
 
 /**
  * Pest pressure and pesticide need of a rotation, from four transparent rules:
@@ -13,7 +14,9 @@ import { bnDecimal, bnDigits, seasonDay } from '../bn.ts';
  *  3. resistance: Rabi varieties the BWMRI/BRRI pages list as disease resistant
  *  4. timing: sowing after the handbook deadline raises pest and disease pressure
  * and NASA SEDAC's PEST-CHEMGRIDS estimate of the pesticide the year's crops take at this upazila, against the usual
- * Aman-Boro rotation there (potato and vegetables take the most, pulses and oilseeds the least).
+ * Aman-Boro rotation there (potato and vegetables take the most, pulses and oilseeds the least), and NASA POWER's
+ * count of the days in a typical season whose weather favours rice blast and potato late blight at this place
+ * (research/explore/disease_climatology.py): each such day more than Aman-Boro takes 0.003 off.
  * These are IPM rules and a model estimate, not field pest counts, so confidence is low until SAAOs log pest sightings.
  */
 export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
@@ -53,6 +56,11 @@ export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
     const usualKgHa = (usual.low + usual.high) / 2;
     const loadRatio = usualKgHa > 0 ? loadKgHa / usualKgHa : 1;
     score -= 0.25 * (loadRatio - 1);
+    // NASA POWER, 2001-2025: days of blast weather on Aman and Boro, and of late-blight weather on potato, here
+    const ids = [choiceIdOf(crop.variety), k1 ? choiceIdOf(k1.crop.variety) : ''];
+    const planDays = planDiseaseDays({ aman: Boolean(amanSlot), boro: rabiName.hostGroup === 'rice', potato: ids.includes('potato') });
+    const usualDays = planDiseaseDays({ aman: true, boro: true, potato: false });
+    if (planDays !== null && usualDays !== null) score -= 0.003 * (planDays - usualDays);
     const pestScore = clampScore(score, 0.1, 0.95);
 
     const partsBn = [
@@ -67,6 +75,9 @@ export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
       `নাসার PEST-CHEMGRIDS অনুমানে এই ফসলগুলোতে বছরে হেক্টরে প্রায় ${bnDecimal(loadKgHa, 2)} কেজি কীটনাশক (সক্রিয় উপাদান), আমন–বোরোতে ${bnDecimal(usualKgHa, 2)}।`,
       resistance ? `${rabiName.varietyBangla} ${resistance.bn}।` : '',
       sownOnTime ? '' : 'দেরিতে বোনায় পোকা ও রোগের চাপ বাড়ে।',
+      planDays !== null && usualDays !== null
+        ? `নাসার আবহাওয়ায় (২০০১–২০২৫) সাধারণ বছরে এই ফসলগুলো ব্লাস্ট বা লেট ব্লাইটের উপযোগী আবহাওয়া পায় প্রায় ${bnDigits(planDays)} দিন, আমন–বোরো ${bnDigits(usualDays)} দিন।`
+        : '',
     ];
     const partsEn = [
       riceCrops === 0
@@ -76,6 +87,9 @@ export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
       `NASA SEDAC PEST-CHEMGRIDS: about ${loadKgHa.toFixed(2)} kg/ha of pesticide active ingredient a year on these crops here, against ${usualKgHa.toFixed(2)} on Aman-Boro.`,
       resistance ? `${crop.variety} is ${resistance.en}.` : '',
       sownOnTime ? '' : 'Late sowing raises pest and disease pressure.',
+      planDays !== null && usualDays !== null
+        ? `NASA POWER weather, 2001-2025: in a typical year these crops meet about ${planDays} days of rice-blast or potato late-blight weather here, against ${usualDays} on Aman-Boro.`
+        : '',
     ];
 
     return {
@@ -92,9 +106,10 @@ export class PestDimensionPlugin implements IEvidenceDimensionPlugin {
         sownOnTime,
         pesticideKgHa: Math.round(loadKgHa * 1000) / 1000,
         pesticideAmanBoroKgHa: Math.round(usualKgHa * 1000) / 1000,
+        ...(planDays !== null ? { diseaseWeatherDays: planDays, diseaseWeatherAmanBoroDays: usualDays } : {}),
       },
       provenance: {
-        source: 'Rotation IPM rules (team) from BRRI/BARI IPM guidance, SRDI Talanda card, BWMRI/BRRI variety pages; NASA SEDAC PEST-CHEMGRIDS v1.01 (2020) pesticide estimate for the upazila; no field pest counts yet',
+        source: 'Rotation IPM rules (team) from BRRI/BARI IPM guidance, SRDI Talanda card, BWMRI/BRRI variety pages; NASA SEDAC PEST-CHEMGRIDS v1.01 (2020) pesticide estimate for the upazila; NASA POWER disease-weather days 2001-2025 (BLASTAM-style wet hours, Hutton criteria); no field pest counts yet',
         timePeriod: 'rules; pest sightings come from SAAO field observations',
         spatialResolution: 'Rotation level',
         measuredOrModeled: 'assumed',

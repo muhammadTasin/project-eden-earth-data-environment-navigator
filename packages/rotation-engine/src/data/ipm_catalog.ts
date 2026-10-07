@@ -23,6 +23,11 @@ export const IPM_GENERAL: IpmTip[] = [
 
 export const IPM_AMAN: IpmTip[] = [
   {
+    bn: 'রোপণের পর প্রথম ৪০ দিন কীটনাশক দেবেন না: আগাম স্প্রে মাকড়সা ও উপকারী পোকা মারে, তখন বাদামি গাছফড়িং আরও বাড়ে।',
+    en: 'No insecticide in the first 40 days after transplanting: early sprays kill the spiders and other natural enemies, and planthoppers come back worse.',
+    source: "IRRI 'no early spray' guidance; BRRI rice IPM",
+  },
+  {
     bn: 'আমনে আলোক ফাঁদ দিন ও ডাল পুঁতে পাখি বসার ব্যবস্থা (পার্চিং) করুন; পাখি ও ফাঁদ পোকা কমায়।',
     en: 'In Aman, set light traps and perching sticks; birds and traps take out insect pests.',
     source: 'BRRI rice IPM guidance',

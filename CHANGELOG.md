@@ -2,6 +2,23 @@
 
 What changed in Project EDEN, newest first, with who made each change and the branch it came from. Every branch below was merged into `main` on 1 October 2026.
 
+## 7 October 2026 · Fewer sprays: NASA disease weather (Tasrif, `feature/smap-opera-hls-android`)
+
+- **Rules:** `research/live/disease_weather.py` marks days whose NASA POWER weather favours the two diseases that draw the most fungicide. Both rules estimate the hours at 90% humidity from the day's minimum, maximum and dew point.
+  - Rice blast: leaves wet 10 hours or more at 15-26 °C, as in Japan's BLASTAM model and IRRI's guidance.
+  - Potato late blight: the Hutton criteria used for UK blight warnings.
+- **Typical season:** `research/explore/disease_climatology.py` counts those days in each crop's susceptible window, 2001-2025, for the pilot and all 64 districts (`disease_weather.json`).
+  - Aman meets about 8 blast days.
+  - Potato meets 21 (Khulna) to 40 (Bogra) late-blight days.
+  - The pest score takes 0.003 per day above Aman-Boro, so potato is marked down where blight weather is common.
+- **This week:** `daily_update.py` adds NASA's dew point and writes each upazila's blast and late-blight days in the last 7, as high, watch, low, or off outside the crop's season.
+  - The server passes this week's reading to the engine.
+  - Where the crop is in the field, the advice says to look at the field every 2-3 days and spray only when the officer confirms. When the weather does not favour the disease, it says no precautionary spray is needed this week.
+  - In the week to 4 October: no high blast weather anywhere, 21 upazilas on watch, 523 low.
+- **Dashboard:** the less-pesticide tab has a "Disease weather this week" card. Its comparison now shows each plan's PEST-CHEMGRIDS pesticide and its disease-weather days. The map has two new layers, rice blast and late-blight weather in the last 7 days.
+- **Pest-control steps:** IRRI's "no early spray" is added for Aman: no insecticide in the first 40 days after transplanting, which spares the natural enemies of planthoppers.
+- **HLS:** `research/acquire/hls_winter.py` is committed. Its first full run is still going, and its results will follow.
+
 ## 6 October 2026 · NASA SMAP today, OPERA drain dates and the app for any upazila (Tasrif, `feature/smap-opera-hls-android`)
 
 - **SMAP:** `research/live/smap_now.py` reads Bangladesh's rows of the newest NASA SMAP L4 file (SPL4SMGP v8, 9 km) and writes each upazila's root-zone soil moisture and its percentile to `services/api/data/live/smap_upazila.json`. It takes about a minute; the national AppEEARS request sat in NASA's queue for more than four hours.

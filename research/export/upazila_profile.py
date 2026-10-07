@@ -271,6 +271,21 @@ def opera_water() -> dict:
                         "passes": int(r.passes)} for r in w.itertuples()}
 
 
+def hls_winter() -> dict:
+    """NASA HLS 30 m: the share of Aman land green again in winter, per winter (research/acquire/hls_winter.py)."""
+    path = RESEARCH / "crops" / "hls_winter_upazila.csv"
+    if not path.exists():
+        return {}
+    h = pd.read_csv(path)
+    num = lambda v: None if pd.isna(v) else float(v)  # noqa: E731
+    out: dict = {}
+    for r in h.itertuples():
+        out.setdefault(r.site_id, {})[r.winter] = {"winterCropShare": num(r.winter_crop_share),
+                                                  "floodWinterShare": num(r.flood_winter_share),
+                                                  "amanLandShare": num(r.aman_land_share)}
+    return out
+
+
 def main() -> None:
     sites = pd.read_csv(RESEARCH / "sites" / "upazilas.csv")
     top, bff, intensity, report = patterns(sites)
@@ -278,6 +293,7 @@ def main() -> None:
     district_yields, national = yields()
     saline, tolerance = salinity()
     water = opera_water()
+    hls = hls_winter()
     ups = {}
     for s in sites.itertuples():
         entry = {"land": land.get(s.site_id)}
@@ -285,6 +301,8 @@ def main() -> None:
             entry["salinity"] = saline[s.site_id]
         if s.site_id in water:
             entry["opera"] = water[s.site_id]
+        if s.site_id in hls:
+            entry["hls"] = hls[s.site_id]
         if s.site_id in top:
             entry["patterns"] = top[s.site_id]
             entry["boroFallowFallowPct"] = bff[s.site_id]
@@ -299,6 +317,8 @@ def main() -> None:
             "yields": "BBS district crop tables 2022-23 to 2024-25 (Yearbook of Agricultural Statistics 2025)",
             "salinity": "SRDI (2010) Saline Soils of Bangladesh, Appendix 2: soil salinity classes surveyed in May 2009",
             "saltTolerance": "FAO Irrigation and Drainage Paper 61 (2002), Annex 1 Table A1.1 (Maas and Grattan 1999)",
+            "hls": ("NASA HLS v2.0 vegetation indices (Landsat 8/9 and Sentinel-2, 30 m read at 120 m): the share of "
+                    "Aman land (green in September-October, bare after the harvest) green again in January-March"),
             "opera": ("NASA OPERA DSWx-S1 surface water from Copernicus Sentinel-1 radar, 2025 season: dry-season and "
                       "monsoon-peak water share, and when 80% and 90% of the monsoon water had drained"),
         },

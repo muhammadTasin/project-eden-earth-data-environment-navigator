@@ -61,6 +61,8 @@ async function run() {
   check(tanoreLive.district === 'Rajshahi' && typeof tanoreLive.power.soilRoot === 'number', 'an upazila carries its NASA POWER conditions');
   const nearLive = await (await fetch(`${BASE}/api/v1/live/upazila?lat=24.62&lon=88.56`)).json();
   check(nearLive.name === 'Tanore', `the nearest upazila to the Tanore pilot point is Tanore (got ${nearLive.name})`);
+  check(['high', 'watch', 'low', 'off'].includes(tanoreLive.disease?.riceBlast?.status) && typeof tanoreLive.disease?.lateBlight?.days7 === 'number',
+    'an upazila carries this week\'s rice-blast and late-blight weather');
   console.log('✓ Daily NASA update:', live.upazilas, 'upazilas; POWER', live.sources[0].latestDate, '; IMERG', live.sources[1].latestDate || 'not set');
 
   // Any upazila: the places list, advice from its district's replay, and the overview for it
@@ -111,6 +113,7 @@ async function run() {
   check(Object.keys(mapRows.upazilas).length === 544 && god.cropsNow !== undefined && god.boroIrrigationMm > 0 && god.pesticideRice?.length === 2 && god.organicMatter,
     'the map has 544 upazilas with MODIS, NASA replay, PEST-CHEMGRIDS and SRDI values');
   check(Object.values(mapRows.upazilas).filter(r => r.rainStatus).length > 500, "the map carries the daily NASA update's rain and soil status");
+  check(Object.values(mapRows.upazilas).filter(r => r.blastStatus && r.lateBlightStatus).length > 500, 'the map carries this week\'s disease weather');
   const outlines = await fetch(`${BASE}/data/bd_upazilas.geojson`, { headers: { 'Accept-Encoding': 'gzip' } });
   const encoding = outlines.headers.get('content-encoding');
   const shapes = await outlines.json();

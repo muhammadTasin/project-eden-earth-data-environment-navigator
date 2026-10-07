@@ -139,6 +139,7 @@ function currentConditionsFor(place: ReturnType<typeof placeFor>): PlanOptionsRe
       soilPercentile: sm.rootzonePctl,
       sensor: 'SMAP',
       rain30PctOfNormal: live!.power?.rain30PctOfNormal ?? null,
+      disease: live!.disease ?? null,
       source: 'NASA SMAP L4 root-zone soil moisture percentile, 9 km (research/live/smap_now.py); rain from NASA POWER',
     };
   }
@@ -150,6 +151,7 @@ function currentConditionsFor(place: ReturnType<typeof placeFor>): PlanOptionsRe
     soilRank: live.power.soilRank ?? null,
     soilYears: live.power.soilYears ?? null,
     rain30PctOfNormal: live.power.rain30PctOfNormal ?? null,
+    disease: live.disease ?? null,
     source: 'NASA POWER daily, ranked against the same date in past years (research/live/daily_update.py)',
   };
 }

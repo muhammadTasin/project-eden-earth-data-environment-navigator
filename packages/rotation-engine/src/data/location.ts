@@ -32,6 +32,8 @@ export interface LocalProfile {
   salinity: { cultivatedHa: number; salineShare: number; strongShare: number; classShares: number[] } | null;
   /** NASA OPERA radar water, 2025: shares of the upazila under water and when the monsoon water drained (ISO dates). */
   opera: { dry: number; peak: number; peakDate: string; extra: number; drained80: string | null; drained90: string | null; passes: number } | null;
+  /** NASA HLS 30 m by winter ('2025-26'): the share of Aman land green again in winter, and of monsoon-flooded land. */
+  hls: Record<string, { winterCropShare: number | null; floodWinterShare: number | null; amanLandShare: number | null }> | null;
 }
 
 interface ProfileFile {
@@ -73,6 +75,7 @@ export function localProfile(upazilaId: string, district: string): LocalProfile 
     yields: data.districts[district] ?? {},
     salinity: u.salinity ?? null,
     opera: u.opera ?? null,
+    hls: u.hls ?? null,
   };
 }
 
