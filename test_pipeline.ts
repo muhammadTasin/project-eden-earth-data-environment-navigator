@@ -418,6 +418,11 @@ async function runTests() {
   if (!quiet.options[0].ipmActions.some(t => t.en.startsWith('No insecticide in the first 40 days'))) {
     throw new Error("Aman plans carry IRRI's no-early-spray step");
   }
+  // NASA HLS (30 m): the salty coast leaves most Aman land fallow in winter; the Barind grows a winter crop on most of it
+  const hlsShare = (id: string) => Number(/NASA HLS satellites \(30 m\): (\d+)% of the land that grew Aman/.exec(JSON.stringify(at(id).local_context))?.[1]);
+  const coastHls = hlsShare('ADM3_Shyamnagar'), barindHls = hlsShare('ADM3_Tanore');
+  if (!(coastHls < 30 && barindHls > 70)) throw new Error(`HLS winter cropping: Shyamnagar low, Tanore high (got ${coastHls}% and ${barindHls}%)`);
+  console.log(`NASA HLS: Aman land green again in winter 2025-26, Shyamnagar ${coastHls}%, Tanore ${barindHls}%`);
   console.log('✓ TEST 17 PASSED: Land type, current patterns, flash floods, district yields and today\'s soil shape each upazila\'s plan.\n');
 
   console.log('========================================================');

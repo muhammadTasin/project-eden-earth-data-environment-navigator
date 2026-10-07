@@ -1,0 +1,7 @@
+{
+ "source": "NASA HLS v2.0 vegetation indices (HLSS30_VI, HLSL30_VI; LP DAAC), NDVI and Fmask at the 4x overview (120 m)",
+ "collection": "HLSS30_VI,HLSL30_VI",
+ "period": "2025-26, 2024-25",
+ "tiles": 36,
+ "retrieved_utc": "2026-10-07T18:58:35+00:00"
+}

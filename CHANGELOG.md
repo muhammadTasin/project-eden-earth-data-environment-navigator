@@ -12,6 +12,11 @@ What changed in Project EDEN, newest first, with who made each change and the br
   - With `gemini-flash-lite-latest` at low effort, the reworded call passes both gates in about 1.7 s.
 - **Calls:** with `AWAJ_VOICE_SOURCE=google` and a public `PUBLIC_BASE_URL`, the call script is synthesized in Google's voice, served at `/api/v1/audio/`, and played through Awaj's `/broadcasts/direct`. Otherwise, or if Google fails, Awaj reads it in its own voice.
 - **SMS:** `services/api/src/sms.ts` sends the advice SMS through the REVE gateway (`POST /api/v1/sms/advice`). It is a dry run with the keys masked until `SMS_LIVE=1`, and needs an officer sign-in when live.
+  - The SMS is plain Bangla sentences in four Unicode parts: the place, each crop with its sowing or transplanting date, the groundwater saved against Aman-Boro, this season's alert when short, and the officer to call. It has no symbols that a button phone may show as boxes.
+  - Two test SMS went out through REVE on 8 October and were sent.
+- **HLS:** the first full run of `research/acquire/hls_winter.py` is in `research/crops/hls_winter_upazila.csv`. It covers all 544 upazilas for the winters 2024-25 and 2025-26 from 48 tiles, and `upazila_profile.json` is regenerated with it.
+  - The upazila note now reads, for example, "7% of the land that grew Aman was green again with a winter crop in 2025-26" for Shyamnagar, where salty soil leaves most of it fallow. Tanore reads 88%.
+  - The median upazila was 87% in 2024-25 and 71% in 2025-26.
 - **Greeting:** the template greeting now says মাটি কহন (it said EDEN), in the API and in the app's default card.
 - **Tests:** the API tests check the SMS dry run and keep every outside service off.
 
