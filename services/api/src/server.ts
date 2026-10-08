@@ -23,7 +23,7 @@ import { createLlmClient, llmStatus } from './providers/llm.ts';
 import { synthesizeSpeech, ttsStatus } from './providers/tts.ts';
 import { sendSms, smsConfig } from './sms.ts';
 import { getRiverErosion } from './erosion.ts';
-import { floodFor, floodStatus, liveHaor, liveStatus, liveUpazila, liveUpazilas } from './live.ts';
+import { cropLossStatus, floodFor, floodStatus, liveHaor, liveStatus, liveUpazila, liveUpazilas } from './live.ts';
 import { floodCheckList, mapLayers } from './map_layers.ts';
 import { askAiAssistant } from './ai_assistant.ts';
 import { cropMenu } from '../../../packages/rotation-engine/src/data/crop_choice.ts';
@@ -655,7 +655,7 @@ const server = http.createServer(async (req, res) => {
 
     // API: where to check first for flood damage (NASA OPERA DSWx-HLS), most water first
     if (pathname === '/api/v1/flood/upazilas' && req.method === 'GET') {
-      return sendJSON(res, 200, { status: floodStatus(), upazilas: floodCheckList() });
+      return sendJSON(res, 200, { status: floodStatus(), cropLoss: cropLossStatus(), upazilas: floodCheckList() });
     }
 
     // API: the crops a farmer can ask for at a place, and after which Aman varieties each one fits

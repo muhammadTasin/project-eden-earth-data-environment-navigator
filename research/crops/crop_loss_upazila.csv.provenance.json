@@ -1,0 +1,19 @@
+{
+ "source": "NASA HLS v2.0 vegetation indices (HLSS30_VI, HLSL30_VI; LP DAAC), NDVI with Fmask, read at 120 m: last year's Aman land and this year's greenest clear look in the same weeks",
+ "windows": {
+  "before": [
+   "2025-09-10",
+   "2025-10-08"
+  ],
+  "bare": [
+   "2025-11-20",
+   "2025-12-31"
+  ],
+  "now": [
+   "2026-09-10",
+   "2026-10-08"
+  ]
+ },
+ "tiles": 48,
+ "retrieved_utc": "2026-10-08T08:52:04+00:00"
+}

@@ -1,0 +1,58 @@
+{
+ "source": "test fixture",
+ "made": "2026-10-08T12:00:00+00:00",
+ "year": 2026,
+ "windows": {
+  "before": [
+   "2025-09-10",
+   "2025-10-08"
+  ],
+  "bare": [
+   "2025-11-20",
+   "2025-12-31"
+  ],
+  "now": [
+   "2026-09-10",
+   "2026-10-08"
+  ]
+ },
+ "thresholds": {
+  "amanGreen": 0.5,
+  "bare": 0.35,
+  "notGreen": 0.4,
+  "water": 0.05,
+  "weaker": 0.15,
+  "minPx": 50
+ },
+ "summary": {
+  "upazilas": 3,
+  "notGreenAtLeast20pct": 2,
+  "notGreenAtLeast40pct": 1
+ },
+ "upazilas": {
+  "ADM3_Tanore": {
+   "amanLandShare": 0.62,
+   "seenShare": 0.88,
+   "notGreenShare": 0.003,
+   "waterShare": 0.0,
+   "weakerShare": 0.009,
+   "meanChange": -0.013
+  },
+  "ADM3_Barhatta": {
+   "amanLandShare": 0.3,
+   "seenShare": 0.7,
+   "notGreenShare": 0.45,
+   "waterShare": 0.2,
+   "weakerShare": 0.1,
+   "meanChange": -0.3
+  },
+  "ADM3_Atpara": {
+   "amanLandShare": 0.3,
+   "seenShare": 0.7,
+   "notGreenShare": 0.25,
+   "waterShare": 0.05,
+   "weakerShare": 0.1,
+   "meanChange": -0.2
+  }
+ }
+}

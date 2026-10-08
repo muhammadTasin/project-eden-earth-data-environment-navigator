@@ -9,7 +9,7 @@
  * upazila grows them (BRRI's 2014-15 cropping patterns; Aman not on low land).
  */
 import fs from 'node:fs';
-import { floodFor, liveFields, liveStatus, liveUpazilas } from './live.ts';
+import { cropLossFor, floodFor, liveFields, liveStatus, liveUpazilas } from './live.ts';
 import { LOC } from '../../../packages/rotation-engine/src/data/location.ts';
 import { AMAN_CATALOG } from '../../../packages/rotation-engine/src/data/crop_catalog.ts';
 import { fieldAlerts, worstLevel, type FieldAlert, type FieldCrops } from '../../../packages/rotation-engine/src/field_alerts.ts';
@@ -69,6 +69,7 @@ function staticRows() {
       crops: `${green.source}; ${green.upazilas[national.upazilas[0].id]?.early?.years ?? ''} against ${green.upazilas[national.upazilas[0].id]?.recent?.years ?? ''}`,
       water: 'NASA POWER + GPM IMERG 25-season replay at the district point (FAO-56); GLDAS-2.2 GRACE-assimilated groundwater, 2003-2025',
       pesticide: `${pest.source.name}, ${pest.source.year}: ${pest.source.units}. ${pest.source.caution}`,
+      cropLoss: "NASA HLS (Landsat and Sentinel-2): the share of last year's Aman land not green this year in the same weeks",
       flood: 'NASA OPERA DSWx-HLS (Landsat and Sentinel-2): water now on land normally dry in winter (not water in both December 2025 and February 2026), of the land seen clear',
       field: "Paddy water from NASA GPM IMERG rain and POWER evapotranspiration (the replay's water balance); heat and cold from NASA POWER and Open-Meteo's 7-day forecast (a weather model, not NASA)",
       soil: atlas.source,
@@ -111,31 +112,39 @@ function fieldNow(id: string, field: any, today: string): FieldAlert[] {
 }
 
 /**
- * Where to check first for flood damage: upazilas with water now on land normally dry in winter (NASA OPERA
- * DSWx-HLS), most water above the same weeks of 2025 first, with the share of their land that grew Aman (NASA HLS, 2025-26), the same weeks of 2025 by
- * OPERA radar, and when 80% of the 2025 monsoon water had drained. A list for officers to send field checks; crop
- * loss itself needs the field check or a greenness drop.
+ * Where to check first for flood and crop damage: upazilas where last year's Aman land is not green this year (NASA
+ * HLS, research/live/crop_loss.py), or with water now on land normally dry in winter (NASA OPERA DSWx-HLS). The most
+ * Aman land not green comes first, then the most water above the same weeks of 2025. Each row carries the share of
+ * the land that grew Aman, the same weeks of 2025 by OPERA radar and when 80% of the 2025 monsoon water had drained.
+ * A list for officers to send field checks: greenness is not yield.
  */
-export function floodCheckList(minShare = 0.10) {
+export function floodCheckList(minShare = 0.10, minLoss = 0.10) {
   const { rows } = staticRows();
   const profile = read('upazila_profile.json');
   const out = [];
   for (const [id, r] of Object.entries(rows)) {
     const fl = floodFor(id);
-    if (!fl || typeof fl.floodShare !== 'number' || fl.floodShare < minShare) continue;
+    const loss = cropLossFor(id);
+    const flooded = fl && typeof fl.floodShare === 'number' && fl.floodShare >= minShare;
+    const lost = loss && typeof loss.notGreenShare === 'number' && loss.notGreenShare >= minLoss;
+    if (!flooded && !lost) continue;
     const p = profile.upazilas[id] ?? {};
     const hls = p.hls ? p.hls[Object.keys(p.hls).sort().reverse()[0]] : null;
     out.push({
-      id, name: r.name, district: r.district, date: fl.date,
-      floodSharePct: Math.round(fl.floodShare * 100), seenSharePct: Math.round(fl.seenShare * 100),
-      lastYearRadarPct: typeof fl.lastYearRadar === 'number' ? Math.round(fl.lastYearRadar * 100) : null,
+      id, name: r.name, district: r.district, date: fl?.date ?? null,
+      floodSharePct: fl && typeof fl.floodShare === 'number' ? Math.round(fl.floodShare * 100) : null,
+      seenSharePct: fl ? Math.round(fl.seenShare * 100) : null,
+      lastYearRadarPct: typeof fl?.lastYearRadar === 'number' ? Math.round(fl.lastYearRadar * 100) : null,
+      amanNotGreenPct: typeof loss?.notGreenShare === 'number' ? Math.round(loss.notGreenShare * 100) : null,
+      amanUnderWaterPct: typeof loss?.waterShare === 'number' ? Math.round(loss.waterShare * 100) : null,
+      amanWeakerPct: typeof loss?.weakerShare === 'number' ? Math.round(loss.weakerShare * 100) : null,
       amanLandSharePct: typeof hls?.amanLandShare === 'number' ? Math.round(hls.amanLandShare * 100) : null,
       drained80In2025: p.opera?.drained80 ?? null,
     });
   }
-  // Unusual water first: above last year's radar figure (which reads higher than optical), then the most water
-  const excess = (u: { floodSharePct: number; lastYearRadarPct: number | null }) => u.floodSharePct - (u.lastYearRadarPct ?? 0);
-  return out.sort((a, b) => excess(b) - excess(a) || b.floodSharePct - a.floodSharePct);
+  // Aman land not green first, then unusual water: above last year's radar figure (which reads higher than optical)
+  const excess = (u: { floodSharePct: number | null; lastYearRadarPct: number | null }) => (u.floodSharePct ?? 0) - (u.lastYearRadarPct ?? 0);
+  return out.sort((a, b) => (b.amanNotGreenPct ?? 0) - (a.amanNotGreenPct ?? 0) || excess(b) - excess(a));
 }
 
 /** Every upazila with its map values; `live` is today's NASA update (null before the first run). */
@@ -173,7 +182,9 @@ export function mapLayers() {
 function fieldRow(id: string, field: any, today: string) {
   const fl = floodFor(id);
   const floodSharePct = fl && typeof fl.floodShare === 'number' ? Math.round(fl.floodShare * 100) : null;
-  if (!field) return { amanDryStatus: null, riceHeatStatus: null, coldStatus: null, wheatHeatStatus: null, paddyWaterMm: null, floodSharePct };
+  const loss = cropLossFor(id);
+  const amanNotGreenPct = typeof loss?.notGreenShare === 'number' ? Math.round(loss.notGreenShare * 100) : null;
+  if (!field) return { amanDryStatus: null, riceHeatStatus: null, coldStatus: null, wheatHeatStatus: null, paddyWaterMm: null, floodSharePct, amanNotGreenPct };
   const alerts = fieldNow(id, field, today);
   return {
     amanDryStatus: worstLevel(alerts, 'aman_dry_spell') ?? 'none',
@@ -183,5 +194,6 @@ function fieldRow(id: string, field: any, today: string) {
     paddyWaterMm: field.paddyWaterMm ?? null,
     forecastRain7: field.forecast ? Math.round(field.forecast.rain.reduce((a: number, b: number | null) => a + (b ?? 0), 0)) : null,
     floodSharePct,
+    amanNotGreenPct,
   };
 }

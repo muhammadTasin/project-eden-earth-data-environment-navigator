@@ -12,6 +12,8 @@ const FILE = process.env.EDEN_LIVE_FILE || path.resolve(__dirname, '../data/live
 const SMAP_FILE = process.env.EDEN_SMAP_FILE || path.resolve(__dirname, '../data/live/smap_upazila.json');
 /** Flood water now per upazila from NASA OPERA DSWx-HLS, written by research/live/flood_now.py. */
 const FLOOD_FILE = process.env.EDEN_FLOOD_FILE || path.resolve(__dirname, '../data/live/flood_now.json');
+/** Where last year's Aman land is not green this year, from NASA HLS (research/live/crop_loss.py). */
+const CROP_LOSS_FILE = process.env.EDEN_CROP_LOSS_FILE || path.resolve(__dirname, '../data/live/crop_loss.json');
 /** A flood reading older than this is not used for advice. */
 const FLOOD_MAX_AGE_DAYS = 21;
 
@@ -69,6 +71,27 @@ export function floodFor(id: string) {
   if (!r || (daysSince(r.date) ?? 99) > FLOOD_MAX_AGE_DAYS) return null;
   return { date: r.date, seenShare: r.seenShare, floodShare: r.floodShare, waterNow: r.waterNow, waterDry: r.waterDry, lastYearRadar: r.lastYearRadar ?? null };
 }
+let lossCache: { mtime: number; data: Record<string, any> } | null = null;
+function cropLoss() {
+  try {
+    const mtime = fs.statSync(CROP_LOSS_FILE).mtimeMs;
+    if (!lossCache || lossCache.mtime !== mtime) lossCache = { mtime, data: JSON.parse(fs.readFileSync(CROP_LOSS_FILE, 'utf8')) };
+    return lossCache.data;
+  } catch {
+    return null;
+  }
+}
+/** One upazila's HLS greenness on last year's Aman land: shares not green, under water and weaker this year. */
+export function cropLossFor(id: string) {
+  const r = cropLoss()?.upazilas?.[id];
+  return r ? { notGreenShare: r.notGreenShare, waterShare: r.waterShare, weakerShare: r.weakerShare, meanChange: r.meanChange, amanLandShare: r.amanLandShare, seenShare: r.seenShare } : null;
+}
+/** When the crop-loss file was made and the weeks it compares. */
+export function cropLossStatus() {
+  const d = cropLoss();
+  return d ? { source: d.source, made: d.made, year: d.year, windows: d.windows, thresholds: d.thresholds, summary: d.summary } : null;
+}
+
 /** When the flood file was made, its window and how many upazilas it saw. */
 export function floodStatus() {
   const d = flood();

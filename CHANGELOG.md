@@ -2,6 +2,14 @@
 
 What changed in Project EDEN, newest first, with who made each change and the branch it came from. Every branch below was merged into `main` on 1 October 2026.
 
+## 8 October 2026 · Where this year's Aman is missing: NASA HLS crop loss (Tasrif, `feature/crop-loss`)
+
+- **Crop loss:** `research/live/crop_loss.py` sets last year's Aman land (NASA HLS, green in September to early October 2025 and bare after the harvest) against this year's greenest clear look in the same weeks. It reads the share not green, under water and weaker per upazila, with each tile's composites cached.
+- **Results:** 301 upazilas have Aman on 5% or more of their land and enough of it seen. As of 2026-10-08 there is no widespread loss: the median upazila has 1.1% not green. 9 upazilas have 10% or more, mostly on the coast (in Paikgachha and Assasuni OPERA also sees flood water). The most are Maheshkhali (Cox's Bazar) 45%, Paikgachha (Khulna) 17%, Assasuni (Satkhira) 13%, Daulatkhan (Bhola) 11%, Pekua (Cox's Bazar) 11%.
+- **Where it shows:** the officers' check list (API and overview card) ranks the most Aman land not green first, beside OPERA's flood water. The map has an "Aman not green this year" layer.
+- **Tests:** a fixture checks the ranking, the 10% cut and the map field.
+- **Yield model:** it stays on MODIS. Two seasons of HLS cannot train it.
+
 ## 8 October 2026 · Flood water now, groundwater budget and a yield-model test (Tasrif, `feature/field-alerts`)
 
 - **Flood water now:** `research/live/flood_now.py` reads NASA OPERA DSWx-HLS (Landsat and Sentinel-2), because OPERA's radar product over Bangladesh stops on 16 July 2026. It sets each pixel's latest clear look in the last 24 days against December 2025 and February 2026 (lasting water must be water in both, so Boro paddies do not count), and adds the same weeks of 2025 by radar.

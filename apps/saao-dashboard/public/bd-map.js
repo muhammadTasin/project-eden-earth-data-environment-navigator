@@ -57,6 +57,8 @@ const LAYERS = [
   { id: 'amanDryNow', group: 'now', name: ['আমনে খরা, এই সপ্তাহ', 'Aman dry spell, this week'], note: ['নাসা GPM IMERG বৃষ্টি, পানির হিসাব ও ৭ দিনের পূর্বাভাস; ফুল আসার সময়', 'NASA GPM IMERG rain, the paddy water balance and a 7-day forecast, around flowering'],
     value: r => r.amanDryStatus, source: 'live',
     categories: [['high', 'সেচ দিন (৫+ শুকনো দিন)', 'Irrigate (5+ dry days)', '#9A5A14'], ['watch', 'নজরে রাখুন (২–৪ দিন)', 'Watch (2-4 days)', '#DFB680'], ['clear', 'সেচ লাগবে না', 'No irrigation needed', '#A2C69E'], ['none', 'আমনের ফুলের সময় নয়', 'Not Aman flowering', NEUTRAL]] },
+  { id: 'amanNotGreen', group: 'now', name: ['এ বছর আমন সবুজ নয়', 'Aman not green this year'], note: ['গত বছরের আমনের জমির %, নাসা HLS (ল্যান্ডস্যাট ও সেন্টিনেল-২), একই সপ্তাহ', "% of last year's Aman land, NASA HLS (Landsat and Sentinel-2), same weeks"],
+    value: r => r.amanNotGreenPct, breaks: [2, 5, 10, 20, 40], colors: AMBER.slice(1), digits: 0, unit: ['%', '%'], source: 'live' },
   { id: 'floodNow', group: 'now', name: ['বন্যার পানি এখন', 'Flood water now'], note: ['%, নাসা OPERA (ল্যান্ডস্যাট ও সেন্টিনেল-২): শীতে সাধারণত শুকনো জমিতে এখন পানি', '%, NASA OPERA (Landsat and Sentinel-2): water now on land normally dry in winter'],
     value: r => r.floodSharePct, breaks: [5, 10, 25, 40, 60], colors: BLUE.slice(1), digits: 0, unit: ['%', '%'], source: 'live' },
   { id: 'paddyWater', group: 'now', name: ['বৃষ্টিনির্ভর ধানখেতে পানি', 'Water in a rainfed paddy'], note: ['মিমি, নাসা বৃষ্টি ও পানির হিসাব; ০-এর নিচে খেত শুকাচ্ছে', 'mm, NASA rain and water balance; below 0 the field is drying'],

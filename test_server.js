@@ -14,7 +14,7 @@ const serverProc = spawn('node', ['--experimental-strip-types', 'services/api/sr
   // tests never place a real call, never reach an LLM or TTS service, and read a fixed day of NASA conditions
   // (the daily update rewrites the live file)
   env: { ...process.env, PORT, EDEN_OFFICER_STORE: STORE, CATTLE_STORE_PATH: CATTLE_STORE, SEED_DEMO_DATA: 'false', LLM_BASE_URL: '', TTS_BASE_URL: '', GOOGLE_TTS_CREDENTIALS: '', SMS_LIVE: '0', SMS_API_KEY: '', AWAJ_VOICE_SOURCE: '',
-    API_WRITE_TOKEN: '', AWAJ_LIVE: '0', EDEN_LIVE_FILE: path.resolve('tests/fixtures/live_conditions_2026-10-01.json'), EDEN_FLOOD_FILE: path.resolve('tests/fixtures/no_flood_file.json') },
+    API_WRITE_TOKEN: '', AWAJ_LIVE: '0', EDEN_LIVE_FILE: path.resolve('tests/fixtures/live_conditions_2026-10-01.json'), EDEN_FLOOD_FILE: path.resolve('tests/fixtures/no_flood_file.json'), EDEN_CROP_LOSS_FILE: path.resolve('tests/fixtures/crop_loss_fixture.json') },
 });
 
 serverProc.stdout.on('data', (d) => process.stdout.write(d));
@@ -117,8 +117,11 @@ async function run() {
   check(['high', 'watch', 'clear', 'none'].includes(mapRows.upazilas.ADM3_Tanore.amanDryStatus) && typeof mapRows.upazilas.ADM3_Tanore.paddyWaterMm === 'number'
     && mapRows.upazilas.ADM3_Abhaynagar.amanDryStatus === null, 'the map carries this week\'s field alerts where the daily file has field water');
   const floodList = await (await fetch(`${BASE}/api/v1/flood/upazilas`)).json();
-  check(floodList.status === null && Array.isArray(floodList.upazilas) && floodList.upazilas.length === 0 && mapRows.upazilas.ADM3_Tanore.floodSharePct === null,
-    'without a NASA OPERA flood reading the check list is empty and the map has no flood share');
+  check(floodList.status === null && floodList.cropLoss?.year === 2026 && floodList.upazilas.map(u => u.id).join() === 'ADM3_Barhatta,ADM3_Atpara'
+    && floodList.upazilas[0].amanNotGreenPct === 45 && floodList.upazilas[0].floodSharePct === null && mapRows.upazilas.ADM3_Tanore.floodSharePct === null,
+    'the check list ranks Aman land not green (NASA HLS), most first, and leaves out places below 20%; no flood share without OPERA');
+  check(mapRows.upazilas.ADM3_Barhatta.amanNotGreenPct === 45 && mapRows.upazilas.ADM3_Tanore.amanNotGreenPct === 0 && mapRows.upazilas.ADM3_Abhaynagar.amanNotGreenPct === null,
+    'the map carries the share of last year\'s Aman land not green this year');
   const outlines = await fetch(`${BASE}/data/bd_upazilas.geojson`, { headers: { 'Accept-Encoding': 'gzip' } });
   const encoding = outlines.headers.get('content-encoding');
   const shapes = await outlines.json();

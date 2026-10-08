@@ -213,7 +213,7 @@ function renderFloodCheck() {
   const f = floodCheck;
   const badge = $('floodCheckBadge');
   if (f === undefined) return;
-  if (!f?.status) {
+  if (!f?.status && !f?.cropLoss) {
     if (badge) badge.textContent = '—';
     setHtml('floodCheckList', `<li>${tr('নাসার OPERA বন্যার তথ্য এখনো আসেনি।', 'No NASA OPERA flood reading yet.')}</li>`);
     setText('floodCheckNote', '');
@@ -221,16 +221,21 @@ function renderFloodCheck() {
   }
   const top = f.upazilas.slice(0, 8);
   if (badge) {
-    badge.className = `badge ${top.some(u => u.floodSharePct >= 25) ? 'badge-warning' : 'badge-neutral'}`;
-    badge.textContent = tr(`${num(f.upazilas.length)} উপজেলায় ১০%+`, `${f.upazilas.length} upazilas at 10%+`);
+    badge.className = `badge ${top.some(u => (u.amanNotGreenPct ?? 0) >= 40 || (u.floodSharePct ?? 0) >= 25) ? 'badge-warning' : 'badge-neutral'}`;
+    badge.textContent = tr(`${num(f.upazilas.length)} উপজেলা`, `${f.upazilas.length} upazilas`);
   }
-  setHtml('floodCheckList', top.length ? top.map(u => `<li><span><strong>${escapeHtml(u.name)}</strong>, ${escapeHtml(u.district)}<br><small>${tr(
-    `দেখা জমির ${num(u.floodSharePct)}% পানির নিচে${u.lastYearRadarPct != null ? `; গত বছর এই সময়ে রাডারে ${num(u.lastYearRadarPct)}%` : ''}${u.amanLandSharePct != null ? `; আমনের জমি ${num(u.amanLandSharePct)}%` : ''}`,
-    `${u.floodSharePct}% of the land seen under water${u.lastYearRadarPct != null ? `; ${u.lastYearRadarPct}% by radar this time last year` : ''}${u.amanLandSharePct != null ? `; Aman land ${u.amanLandSharePct}%` : ''}`)}</small></span><span class="badge ${u.floodSharePct >= 25 ? 'badge-warning' : 'badge-neutral'}">${num(u.floodSharePct)}%</span></li>`).join('')
-    : `<li>${tr('কোনো উপজেলায় ১০%-এর বেশি জমি পানির নিচে নেই।', 'No upazila has more than 10% of its land under water.')}</li>`);
+  const parts = u => [
+    u.amanNotGreenPct != null ? tr(`গত বছরের আমনের জমির ${num(u.amanNotGreenPct)}% এ বছর সবুজ নয়${u.amanUnderWaterPct ? ` (${num(u.amanUnderWaterPct)}% পানির নিচে)` : ''}`, `${u.amanNotGreenPct}% of last year's Aman land not green${u.amanUnderWaterPct ? ` (${u.amanUnderWaterPct}% under water)` : ''}`) : '',
+    u.floodSharePct != null ? tr(`দেখা জমির ${num(u.floodSharePct)}% পানির নিচে${u.lastYearRadarPct != null ? `, গত বছর এই সময়ে রাডারে ${num(u.lastYearRadarPct)}%` : ''}`, `${u.floodSharePct}% of the land seen under water${u.lastYearRadarPct != null ? `, ${u.lastYearRadarPct}% by radar this time last year` : ''}`) : '',
+    u.amanLandSharePct != null ? tr(`আমনের জমি ${num(u.amanLandSharePct)}%`, `Aman land ${u.amanLandSharePct}%`) : '',
+  ].filter(Boolean).join('; ');
+  const headline = u => (u.amanNotGreenPct != null ? u.amanNotGreenPct : u.floodSharePct);
+  setHtml('floodCheckList', top.length ? top.map(u => `<li><span><strong>${escapeHtml(u.name)}</strong>, ${escapeHtml(u.district)}<br><small>${parts(u)}</small></span><span class="badge ${(u.amanNotGreenPct ?? 0) >= 40 || (u.floodSharePct ?? 0) >= 25 ? 'badge-warning' : 'badge-neutral'}">${num(headline(u))}%</span></li>`).join('')
+    : `<li>${tr('কোনো উপজেলায় বড় ক্ষতির চিহ্ন নেই।', 'No upazila shows large damage.')}</li>`);
+  const w = f.cropLoss?.windows?.now;
   setText('floodCheckNote', tr(
-    `নাসার OPERA (ল্যান্ডস্যাট ও সেন্টিনেল-২), ${isoDate(f.status.window[0])} থেকে ${isoDate(f.status.window[1])}: শীতে সাধারণত শুকনো জমিতে এখন পানি; গত বছরের চেয়ে বেশি পানি আগে। মেঘে ঢাকা জমি গোনা হয়নি। এটি মাঠ যাচাইয়ের তালিকা, ক্ষতির হিসাব নয়।`,
-    `NASA OPERA (Landsat and Sentinel-2), ${f.status.window[0]} to ${f.status.window[1]}: water now on land normally dry in winter, the most above last year first; land under cloud is not counted. A list for field checks, not a loss estimate.`));
+    `নাসার HLS ও OPERA (ল্যান্ডস্যাট ও সেন্টিনেল-২)${w ? `, ${isoDate(w[0])} থেকে ${isoDate(w[1])}` : ''}: গত বছরের আমনের জমি এ বছর একই সপ্তাহে সবুজ কি না, আর শীতে সাধারণত শুকনো জমিতে এখন পানি। সবুজ নয় মানে ফসল নষ্ট, দেরিতে রোপণ বা জমি খালি; মেঘে ঢাকা জমি গোনা হয়নি। এটি মাঠ যাচাইয়ের তালিকা, ফলনের হিসাব নয়।`,
+    `NASA HLS and OPERA (Landsat and Sentinel-2)${w ? `, ${w[0]} to ${w[1]}` : ''}: whether last year's Aman land is green in the same weeks this year, and water now on land normally dry in winter. Not green means lost, replanted late or left fallow; land under cloud is not counted. A list for field checks, not a yield estimate.`));
 }
 
 function renderOverview(o) {
