@@ -10,6 +10,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FILE = process.env.EDEN_LIVE_FILE || path.resolve(__dirname, '../data/live/upazila_conditions.json');
 /** NASA SMAP L4 root-zone soil moisture per upazila, written by research/live/smap_now.py. */
 const SMAP_FILE = process.env.EDEN_SMAP_FILE || path.resolve(__dirname, '../data/live/smap_upazila.json');
+/** Flood water now per upazila from NASA OPERA DSWx-HLS, written by research/live/flood_now.py. */
+const FLOOD_FILE = process.env.EDEN_FLOOD_FILE || path.resolve(__dirname, '../data/live/flood_now.json');
+/** A flood reading older than this is not used for advice. */
+const FLOOD_MAX_AGE_DAYS = 21;
 
 interface LiveFile {
   summary: Record<string, any>;
@@ -48,6 +52,29 @@ function smapFor(id: string) {
   return r ? { date: s!.date, validTime: s!.validTime, rootzonePctl: r.rootzonePctl, rootzone: r.rootzone, surface: r.surface, status: r.status } : null;
 }
 
+let floodCache: { mtime: number; data: Record<string, any> } | null = null;
+function flood() {
+  try {
+    const mtime = fs.statSync(FLOOD_FILE).mtimeMs;
+    if (!floodCache || floodCache.mtime !== mtime) floodCache = { mtime, data: JSON.parse(fs.readFileSync(FLOOD_FILE, 'utf8')) };
+    return floodCache.data;
+  } catch {
+    return null;
+  }
+}
+/** One upazila's OPERA flood reading (date, seen share, flood share), or null when there is none or it is old. */
+export function floodFor(id: string) {
+  const d = flood();
+  const r = d?.upazilas?.[id];
+  if (!r || (daysSince(r.date) ?? 99) > FLOOD_MAX_AGE_DAYS) return null;
+  return { date: r.date, seenShare: r.seenShare, floodShare: r.floodShare, waterNow: r.waterNow, waterDry: r.waterDry, lastYearRadar: r.lastYearRadar ?? null };
+}
+/** When the flood file was made, its window and how many upazilas it saw. */
+export function floodStatus() {
+  const d = flood();
+  return d ? { source: d.source, made: d.made, window: d.window, baseline: d.baseline, passes: d.passes, summary: d.summary } : null;
+}
+
 const daysSince = (iso: string | null | undefined) =>
   iso ? Math.floor((Date.now() - Date.parse(`${iso}T00:00:00Z`)) / 86_400_000) : null;
 
@@ -60,6 +87,7 @@ export function liveStatus() {
     sources: [
       ...d.summary.sources.map((s: any) => ({ ...s, ageDays: daysSince(s.latestDate) })),
       ...(smap() ? [{ name: 'NASA SMAP L4 root-zone soil moisture', latestDate: smap()!.date, ageDays: daysSince(smap()!.date), note: smap()!.source }] : []),
+      ...(flood() ? [{ id: 'opera_flood', name: 'NASA OPERA DSWx-HLS flood water', latestDate: flood()!.window?.[1] ?? null, ageDays: daysSince(flood()!.window?.[1]), note: flood()!.source }] : []),
     ],
   };
 }

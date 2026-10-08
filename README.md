@@ -311,6 +311,26 @@ npm test
 
 The latest SMAP soil-moisture values come from the downloaded cache (`research/data/appeears/l4/smap_l4_daily.parquet`, built by `research/acquire/`), which Git ignores. Without the cache the generator writes `smap: null`, so regenerate from a checkout that has it; every other number comes from the committed tables. Labels and the illustrative income figures live in `packages/rotation-engine/src/data/crop_catalog.ts`.
 
+### Flood water now (NASA OPERA)
+
+```bash
+python research/live/flood_now.py   # needs an Earthdata Login; caches every pass in research/data/opera_hls_water/
+```
+
+OPERA's radar water maps (DSWx-S1) over Bangladesh stop on 16 July 2026, so the flood reading comes from OPERA DSWx-HLS, its optical sister product from Landsat 8/9 and Sentinel-2 (30 m, read at 120 m). Each pixel's latest clear look in the last 24 days is set against December 2025 and February 2026: water in both months is lasting water (rivers, ponds, beels, shrimp ghers), so Boro paddies, which stand in water in February, do not count. Water now on land that is normally dry in winter, as a share of the land seen clear, is the upazila's flood share; the same weeks of 2025 by OPERA radar sit beside it, because much of it is the water that comes every monsoon. `services/api/data/live/flood_now.json` holds it; the first run read 567 December, 765 February and 335 recent passes (about 120 MB, cached).
+
+- **Farmers:** from 1 July to 31 October, where the plan has Aman, 10% of the land under such water is watch and 25% high (only watch when it is no more than last year's radar figure plus 5 points). Up to 10 September the advice is to replant photoperiod-sensitive BR22, BR23, BRRI dhan46 or 54 by 15 September once the water leaves, from floating or tray seedbeds or spare tillers; ordinary Aman dies after about 5 days under water, BRRI dhan51, 52 and 79 last about 2 weeks (DAE agromet advisories 2020 and 2024; BRRI). Later it says to prepare the winter crop, with the 2025 radar date by which 80% of the monsoon water had drained.
+- **Officers:** `GET /api/v1/flood/upazilas` and the overview's "Where to check first for flood damage" card rank upazilas by flood share, with last year's radar figure, the share of land that grew Aman (NASA HLS) and the 2025 drain date. It is a list for field checks, not a loss estimate. The map has a "Flood water now" layer.
+- On 2026-10-08: 531 upazilas were seen clearly enough; 208 had 10% or more of their land under water where it is normally dry in winter and 45 had 25% or more (most: Itna 80%, Sulla 78%, Khaliajuri 77%, haor upazilas where last year's radar read nearly as much).
+
+### Groundwater budget per district (NASA GRACE)
+
+`python research/explore/groundwater_budget.py` turns each district's NASA GLDAS-2.2 groundwater trend (GRACE-assimilated, 2003-2025) into a budget: the yearly fall times the district's area is the water pumped beyond what comes back, and each hectare of Boro moved to lentil saves Boro's net irrigation minus lentil's (the district replay). Rajshahi falls 7.7 mm a year: moving about 4.7% of its Boro (3,183 ha) to lentil would stop the average fall; Naogaon needs 2.9% (5,510 ha). The budget is given in 31 districts, where the fall is at least 4 mm a year and Boro covers a tenth of the land; elsewhere much Boro is watered from rivers and beels. GRACE's district trend is smooth and Barind wells fall faster, so it is a floor. The advice notes it, the overview's groundwater line carries it, and the map has a layer for it.
+
+### Can NASA data forecast district yields? (tested: not yet)
+
+`python research/explore/yield_model.py` predicts BBS district yields of Aman (on 25 September) and Boro (on 31 March) from NASA MODIS NDVI at the upazila centres and NASA POWER/IMERG weather at the district point, as the departure from each district's own trend, with LightGBM and ridge regression. Every season is predicted by a model that never saw it (2012-13 to 2024-25). Neither beats the district trend: Aman mean error 0.129 t/ha for the trend, 0.132 for LightGBM and 0.129 for ridge; Boro 0.187, 0.198 and 0.188. BBS yield is per harvested hectare, so disasters barely move it (Sunamganj Boro stayed at 3.61 t/ha in 2016-17 while production fell from 685,226 t to 196,500 t), and only 12-16% of the yearly departures are shared across districts. The outlook in `research/pilots/yield_forecast.json` is therefore the district trend. The next tests are rice-masked HLS greenness instead of one MODIS pixel per upazila, production as the target and flood extent as a feature.
+
 ## Known limits
 
 - Upazilas outside the Talanda pilot use their district's NASA point (about 50 km grid) for weather and water, the SRDI Talanda fertilizer card as a stand-in, district (not upazila) yields, BRRI's 2014-15 cropping survey and an upazila-level land type that a given field may not share. Unknown places get HTTP 422.
@@ -325,6 +345,7 @@ The latest SMAP soil-moisture values come from the downloaded cache (`research/d
 - The pest score is rule-based until officers log pest counts.
 - Floods are not modelled for Barind land. The haor warning shows the 25-season hindcast and the season status; a live trigger needs a daily IMERG Early feed and river-gauge confirmation. Rotation advice is not modelled for the haor.
 - Flooded-rice days stand in for methane; they are not a methane measurement.
+- The flood reading is optical: cloud hides the monsoon, so July-September readings are patchy, and OPERA's radar maps over Bangladesh stop on 16 July 2026. Water on land normally dry in winter includes the usual monsoon water; last year's radar figure reads higher than the optical one. Crop loss itself is not mapped yet: that needs a greenness drop from HLS or field checks.
 - NASA POWER weather arrives 2–3 days late and is not a forecast; the field alerts take their forecast from Open-Meteo's weather model. Their temperatures are grid values (a field can be 1-2 °C off), the paddy water balance assumes a bunded rainfed field with 2 mm/day seepage, and the crop stage comes from the plan's calendar, not the farmer's own transplanting date. River-erosion risk comes from station records and needs checking on the ground.
 - Sign-in uses a shared officer code, a demo farmer PIN, in-memory sessions and a JSON file store; a real deployment needs proper accounts and a database. The role picker only decides what the screen shows; the API checks its own tokens.
 - The cattle module keeps farm outlines and jobs in a local JSON file (not production-durable), and its Earth Engine worker has not been run against a real Earth Engine account; until it is set up, satellite inputs are reported as unavailable and jobs end as partial.

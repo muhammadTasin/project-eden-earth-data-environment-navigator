@@ -2,6 +2,22 @@
 
 What changed in Project EDEN, newest first, with who made each change and the branch it came from. Every branch below was merged into `main` on 1 October 2026.
 
+## 8 October 2026 · Flood water now, groundwater budget and a yield-model test (Tasrif, `feature/field-alerts`)
+
+- **Flood water now:** `research/live/flood_now.py` reads NASA OPERA DSWx-HLS (Landsat and Sentinel-2), because OPERA's radar product over Bangladesh stops on 16 July 2026. It sets each pixel's latest clear look in the last 24 days against December 2025 and February 2026 (lasting water must be water in both, so Boro paddies do not count), and adds the same weeks of 2025 by radar.
+  - The advice gets a flood alert where Aman is grown. Up to 10 September: replant BR22, BR23, BRRI dhan46 or 54 by 15 September. After that: prepare the winter crop, with the 2025 drain date.
+  - Officers get `GET /api/v1/flood/upazilas`, a "Where to check first for flood damage" card and a "Flood water now" map layer.
+  - On 2026-10-08: 208 upazilas had 10% or more of their land under water where it is normally dry in winter, and 45 had 25% or more, mostly haor.
+- **Groundwater budget:** `research/explore/groundwater_budget.py` sets each district's NASA GLDAS-GRACE fall against its Boro area and the replay's net irrigation. Rajshahi would move about 4.7% of its Boro (3,183 ha) to lentil to stop the average fall.
+  - It applies in 31 districts.
+  - It is a floor, because Barind wells fall faster than the district average.
+  - It shows in the advice notes, the overview's groundwater line and a map layer.
+- **Yield model, tested:** `research/explore/yield_model.py` tries LightGBM and ridge on NASA NDVI and weather against BBS district yields, leave-one-season-out.
+  - Neither beats the district trend: Aman 0.129 vs 0.129 t/ha; Boro 0.187 vs 0.188 t/ha.
+  - BBS yield is per harvested hectare and barely moves in a disaster, so the outlook stays the trend.
+  - Results are in `research/pilots/`.
+- **Tests:** a flood in August says replant, and one in October says the winter crop. Rajshahi's budget is a few percent, and Sylhet gets none. Without an OPERA file the check list is empty.
+
 ## 8 October 2026 · This week in the field: crop-stage alerts (Tasrif, `feature/field-alerts`)
 
 - **Field water and forecast:** `research/live/field_weather.py`, run by `daily_update.py`, adds a `field` record to every upazila.

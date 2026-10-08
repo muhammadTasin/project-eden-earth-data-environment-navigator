@@ -23,8 +23,8 @@ import { createLlmClient, llmStatus } from './providers/llm.ts';
 import { synthesizeSpeech, ttsStatus } from './providers/tts.ts';
 import { sendSms, smsConfig } from './sms.ts';
 import { getRiverErosion } from './erosion.ts';
-import { liveHaor, liveStatus, liveUpazila, liveUpazilas } from './live.ts';
-import { mapLayers } from './map_layers.ts';
+import { floodFor, floodStatus, liveHaor, liveStatus, liveUpazila, liveUpazilas } from './live.ts';
+import { floodCheckList, mapLayers } from './map_layers.ts';
 import { askAiAssistant } from './ai_assistant.ts';
 import { cropMenu } from '../../../packages/rotation-engine/src/data/crop_choice.ts';
 import { cropsFromKeys, keypadMenu, landFromKey, replyFor, requestFromWords, understand } from './voice.ts';
@@ -145,6 +145,7 @@ function currentConditionsFor(place: ReturnType<typeof placeFor>): PlanOptionsRe
       rain30PctOfNormal: live!.power?.rain30PctOfNormal ?? null,
       disease: live!.disease ?? null,
       field: live!.field ?? null,
+      flood: floodFor(live!.id),
       source: 'NASA SMAP L4 root-zone soil moisture percentile, 9 km (research/live/smap_now.py); rain from NASA POWER',
     };
   }
@@ -158,6 +159,7 @@ function currentConditionsFor(place: ReturnType<typeof placeFor>): PlanOptionsRe
     rain30PctOfNormal: live.power.rain30PctOfNormal ?? null,
     disease: live.disease ?? null,
     field: live.field ?? null,
+    flood: floodFor(live.id),
     source: 'NASA POWER daily, ranked against the same date in past years (research/live/daily_update.py)',
   };
 }
@@ -649,6 +651,11 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/v1/overview' && req.method === 'GET') {
       const ov = overview(url.searchParams.get('place'));
       return ov ? sendJSON(res, 200, ov) : sendJSON(res, 422, { error: 'No research data for this place yet' });
+    }
+
+    // API: where to check first for flood damage (NASA OPERA DSWx-HLS), most water first
+    if (pathname === '/api/v1/flood/upazilas' && req.method === 'GET') {
+      return sendJSON(res, 200, { status: floodStatus(), upazilas: floodCheckList() });
     }
 
     // API: the crops a farmer can ask for at a place, and after which Aman varieties each one fits

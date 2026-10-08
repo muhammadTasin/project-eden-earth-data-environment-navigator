@@ -14,6 +14,11 @@
  *   - Heat at wheat grain filling: 30 C or more in the 5 weeks before harvest (Wardlaw and Wrigley 1994).
  *   - Boro alternate wetting and drying (AWD): from 10 days after transplanting to 2 weeks before harvest, except a
  *     week either side of flowering; irrigate only when the water in the field pipe is 15 cm below the surface (IRRI).
+ *   - Flood water now (NASA OPERA DSWx-HLS, research/live/flood_now.py), 1 July to 31 October where Aman is grown:
+ *     10% of the land seen under water where it is normally dry in winter is watch, 25% high. Until 10 September: replant
+ *     photoperiod-sensitive BR22, BR23, BRRI dhan46 or 54 by 15 September once the water leaves, from floating or
+ *     tray seedbeds or spare tillers; ordinary Aman dies after about 5 days under water, BRRI dhan51, 52 and 79
+ *     survive about 2 weeks (DAE agromet advisories, 2020 and 2024; BRRI). Later, plan the winter crop instead.
  */
 import { bnDate, bnDigits, enDate } from './bn.ts';
 
@@ -43,7 +48,18 @@ export interface FieldCrops {
   boroSeedbed?: boolean;
 }
 
-export type FieldAlertId = 'aman_dry_spell' | 'rice_heat' | 'cold_seedbed' | 'wheat_heat' | 'boro_awd';
+export type FieldAlertId = 'flood_now' | 'aman_dry_spell' | 'rice_heat' | 'cold_seedbed' | 'wheat_heat' | 'boro_awd';
+
+/** Flood water now from NASA OPERA DSWx-HLS (research/live/flood_now.py). */
+export interface FloodNow {
+  date: string | null; // the mean date of the latest clear looks
+  seenShare: number; // the share of the upazila seen clear both now and in February
+  floodShare: number | null; // water now on land normally dry in winter (not water in both December and February), of the land seen
+  waterNow: number | null;
+  waterDry: number | null;
+  /** OPERA radar, 2025: water above the dry-season share around the same date a year earlier (reads higher than optical). */
+  lastYearRadar?: number | null;
+}
 export type FieldAlertLevel = 'high' | 'watch' | 'advice' | 'clear';
 export interface FieldAlert {
   id: FieldAlertId;
@@ -58,7 +74,7 @@ export interface FieldAlert {
   numbers: Record<string, number | string | null>;
 }
 
-export const FIELD_ALERT_ORDER: FieldAlertId[] = ['aman_dry_spell', 'rice_heat', 'cold_seedbed', 'wheat_heat', 'boro_awd'];
+export const FIELD_ALERT_ORDER: FieldAlertId[] = ['flood_now', 'aman_dry_spell', 'rice_heat', 'cold_seedbed', 'wheat_heat', 'boro_awd'];
 const LEVEL_ORDER: FieldAlertLevel[] = ['high', 'watch', 'advice', 'clear'];
 
 export const DRY_DAYS_RESCUE = 5;
@@ -66,6 +82,7 @@ const FLOWER_BEFORE = 20, FLOWER_AFTER = 10;
 export const RICE_HEAT_C = 35, RICE_HEAT_WATCH_C = 34;
 export const COLD_C = 10, COLD_WATCH_C = 13;
 export const WHEAT_HEAT_C = 30;
+export const FLOOD_WATCH = 0.10, FLOOD_HIGH = 0.25;
 const KC_RICE = 1.2, SEEPAGE = 2;
 const RAIN_HOLD_MM = 20; // rain in the next 3 days that is worth waiting for
 
@@ -75,6 +92,7 @@ export const FIELD_ALERT_METHOD = {
   coldSeedbed: `Boro seedbeds, 15 November to 15 February: a minimum of ${COLD_C} C or less in the last 3 days or the next 3 is high, ${COLD_WATCH_C} C watch. Cover the seedbed with clear polythene at night and keep 3-5 cm of water in it (BRRI and DAE cold-wave advice, as reported).`,
   wheatHeat: `Wheat in the 5 weeks before harvest: ${WHEAT_HEAT_C} C or more in the last 3 days or the next 5 (grain-filling heat, Wardlaw and Wrigley 1994). Irrigation helps less than sowing on time, so this is a watch.`,
   boroAwd: 'Boro from 10 days after transplanting to 2 weeks before harvest, except a week either side of flowering: irrigate only when the water in a perforated field pipe is 15 cm below the soil surface (IRRI safe AWD, up to about 30% less water without yield loss). Daily loss = 1.2 x reference ET + 2 mm seepage.',
+  floodNow: `NASA OPERA DSWx-HLS (Landsat and Sentinel-2, 30 m read at 120 m): each pixel's latest clear look in the last 24 days against December 2025 and February 2026 (lasting water is water in both, so Boro paddies do not count); ${FLOOD_WATCH * 100}% of the land seen under water where it is normally dry in winter is watch, ${FLOOD_HIGH * 100}% high, 1 July to 31 October where Aman is grown. Replanting: BR22, BR23, BRRI dhan46 or 54 until 15 September (DAE agromet advisories 2020 and 2024); ordinary Aman dies after about 5 days under water, BRRI dhan51, 52 and 79 survive about 2 weeks (BRRI). Cloud hides the monsoon from optical satellites, and OPERA's radar maps over Bangladesh stop on 16 July 2026.`,
   temperatures: 'NASA POWER (0.5 degree) for past days and Open-Meteo for the forecast are grid values; a field can be 1-2 C hotter or colder.',
 };
 
@@ -252,13 +270,70 @@ function boroAwd(t: number, boro: NonNullable<FieldCrops['boro']>, w: FieldWeath
   };
 }
 
+function floodNow(t: number, f: FloodNow, drained80: string | null | undefined): FieldAlert | null {
+  const d = md(t);
+  if (d < '07-01' || d > '10-31' || f.floodShare === null || f.floodShare < FLOOD_WATCH) return null;
+  // About as much water as the same weeks of 2025 (radar, which reads higher) is the season, not an unusual flood
+  const usual = typeof f.lastYearRadar === 'number' && f.floodShare <= f.lastYearRadar + 0.05;
+  const level: FieldAlertLevel = f.floodShare >= FLOOD_HIGH && !usual ? 'high' : 'watch';
+  const pct = r0(f.floodShare * 100);
+  const lastYear = typeof f.lastYearRadar === 'number' ? r0(f.lastYearRadar * 100) : null;
+  const when = f.date ? { bn: ` (${bnDate(f.date.slice(5))})`, en: ` (${enDate(f.date.slice(5))})` } : { bn: '', en: '' };
+  const head = {
+    bn: `নাসার OPERA উপগ্রহে${when.bn} উপজেলার দেখা জমির ${bnDigits(pct)}% পানির নিচে, যেখানে শীতে সাধারণত পানি থাকে না${lastYear !== null ? ` (গত বছর এই সময়ে রাডারে ${bnDigits(lastYear)}%${usual ? ', অর্থাৎ মৌসুমের স্বাভাবিক পানি' : ''})` : ''}।`,
+    en: `NASA OPERA${when.en}: ${pct}% of the upazila's land seen is under water where it is normally dry in winter${lastYear !== null ? ` (${lastYear}% by radar at this time last year${usual ? ', so about the usual seasonal water' : ''})` : ''}.`,
+  };
+  const numbers = { floodSharePct: pct, seenSharePct: r0(f.seenShare * 100), lastYearRadarPct: lastYear, date: f.date, drained80: drained80 ?? null };
+  const base = { id: 'flood_now' as const, level, crop: 'aman' as const, numbers, titleBangla: 'বন্যার পানি', titleEnglish: 'Flood water' };
+  if (d <= '09-10') {
+    return {
+      ...base, titleBangla: 'বন্যার পর আমন', titleEnglish: 'Aman after the flood',
+      textBangla: `${head.bn} সাধারণ আমন ৫ দিনের বেশি ডুবে থাকলে মরে যায়; ব্রি ধান৫১, ৫২ ও ৭৯ প্রায় ২ সপ্তাহ টেকে। ধান নষ্ট হলে পানি নামার পর ১৫ সেপ্টেম্বরের মধ্যে বিআর২২, বিআর২৩, ব্রি ধান৪৬ বা ৫৪ রোপণ করুন; উঁচু জমি না থাকলে ভাসমান বা ট্রে বীজতলায় চারা করুন, অথবা না-ডোবা খেতের গোছা থেকে ২-৩টি কুশি রেখে বাকিগুলো তুলে লাগান।`,
+      textEnglish: `${head.en} Ordinary Aman dies after about 5 days under water; BRRI dhan51, 52 and 79 survive about 2 weeks. Where the crop is lost, replant once the water leaves with BR22, BR23, BRRI dhan46 or 54 by 15 September, raising seedlings in floating or tray seedbeds where no high land is free, or taking spare tillers from unflooded fields (leave 2-3 a hill).`,
+      smsBangla: 'বন্যার পর: পানি নামলে বিআর২২, বিআর২৩ বা ব্রি ধান৪৬ রোপণ করুন।',
+    };
+  }
+  if (d <= '09-30') {
+    return {
+      ...base,
+      textBangla: `${head.bn} আমন আবার রোপণের সময় প্রায় শেষ (বিআর২২ ও ২৩ শুধু ১৫ সেপ্টেম্বর পর্যন্ত)। আমন নষ্ট হলে পানি নামামাত্র আগাম রবি ফসলের প্রস্তুতি নিন। যে ধান বেঁচে আছে, পানি নামার ৭ দিন পর পাতার পলি পরিষ্কার পানি ছিটিয়ে ধুয়ে দিন।`,
+      textEnglish: `${head.en} It is late to replant Aman (BR22 and BR23 only until 15 September). Where the Aman is lost, prepare an early winter crop as soon as the land drains. Where the rice survived, spray clean water to wash the silt off the leaves a week after the water leaves.`,
+      smsBangla: 'বন্যায় আমন নষ্ট হলে আগাম রবি ফসলের প্রস্তুতি নিন।',
+    };
+  }
+  const drain = drained80
+    ? { bn: ` ২০২৫ মৌসুমে এই উপজেলার বর্ষার পানির ৮০% নেমেছিল ~${bnDate(drained80.slice(5))} (নাসার OPERA রাডার)।`, en: ` In the 2025 season, 80% of this upazila's monsoon water had drained by ~${enDate(drained80.slice(5))} (NASA OPERA radar).` }
+    : { bn: '', en: '' };
+  return {
+    ...base,
+    textBangla: `${head.bn} জমির পানি নামলেই রবি ফসল বুনুন, রস থাকতে থাকতে।${drain.bn}`,
+    textEnglish: `${head.en} Sow the winter crop as each field drains, while the soil still holds water.${drain.en}`,
+    smsBangla: 'জমির পানি নামলেই রবি ফসল বুনুন।',
+  };
+}
+
 /** This week's alerts for the crops in the field, the most serious first; an empty list outside every crop's window. */
-export function fieldAlerts(todayIso: string, crops: FieldCrops, w: FieldWeather | null | undefined): FieldAlert[] {
-  if (!w) return [];
+export function fieldAlerts(todayIso: string, crops: FieldCrops, w: FieldWeather | null | undefined,
+  extra: { flood?: FloodNow | null; drained80?: string | null } = {}): FieldAlert[] {
   const t = utc(todayIso);
   const out: FieldAlert[] = [];
+  if (crops.aman && extra.flood) {
+    const f = floodNow(t, extra.flood, extra.drained80);
+    if (f) out.push(f);
+  }
+  if (!w) return out;
   if (crops.aman) {
-    const a = amanDrySpell(t, crops.aman, w);
+    let a = amanDrySpell(t, crops.aman, w);
+    // Flood water on part of the upazila and a dry paddy at the district point: low fields are wet, so only the higher
+    // fields that have dried need the irrigation, and it is a watch rather than an order
+    if (a && (a.level === 'high' || a.level === 'watch') && out.some(x => x.id === 'flood_now')) {
+      a = {
+        ...a, level: 'watch',
+        textBangla: `${a.textBangla} উপজেলার নিচু জমিতে বন্যার পানি আছে (নাসার OPERA); শুধু যে উঁচু খেত শুকিয়ে গেছে সেখানে সেচ দিন।`,
+        textEnglish: `${a.textEnglish} Low land in the upazila is under flood water (NASA OPERA); irrigate only the higher fields that have dried.`,
+        smsBangla: 'উঁচু খেত শুকিয়ে গেলে একবার সেচ দিন।',
+      };
+    }
     if (a) out.push(a);
     const h = riceHeat(t, 'aman', nearest(crops.aman.flowering, t), { bn: 'আমন', en: 'Aman' }, w);
     if (h) out.push(h);

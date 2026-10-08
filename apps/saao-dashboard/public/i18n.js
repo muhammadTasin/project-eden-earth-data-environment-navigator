@@ -68,6 +68,7 @@ export const EN = {
   'overview.solution': 'What to do:',
   'overview.pestTitle': 'Pest reports from the field (officer observations)',
   'overview.fieldTitle': 'This week in the field',
+  'overview.floodTitle': 'Where to check first for flood damage',
   'overview.pestMore': 'Ways to use less pesticide',
 
   'place.label': 'Choose a place:',

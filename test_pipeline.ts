@@ -459,7 +459,40 @@ async function runTests() {
   if (alertsOf(at('ADM3_Tanore', { today: '2026-07-01', currentConditions: cc(fw('2026-07-01')) })).length) {
     throw new Error('No crop is at a sensitive stage on 1 July, so no field alert');
   }
+  // NASA OPERA flood water now: replant late Aman until 10 September, then the winter crop as the land drains
+  const flooded = (today: string) => at('ADM3_Tanore', { today, currentConditions: { date: today, soilStatus: 'normal', source: 'test',
+    flood: { date: today, seenShare: 0.6, floodShare: 0.3, waterNow: 0.35, waterDry: 0.05 } } });
+  const floodAug = flooded('2026-08-20').local_context!;
+  const floodOct = flooded('2026-10-08').local_context!;
+  const augustFlood = floodAug.fieldAlerts!.alerts.find(x => x.id === 'flood_now');
+  if (augustFlood?.level !== 'high' || !augustFlood.textEnglish.includes('BR22, BR23, BRRI dhan46 or 54 by 15 September') || floodAug.hazards[0] !== 'flood_now') {
+    throw new Error('30% of the land under water in August says replant BR22/BR23/dhan46/54 by 15 September, first among the hazards');
+  }
+  if (!floodOct.fieldAlerts!.alerts.find(x => x.id === 'flood_now')?.textEnglish.includes('Sow the winter crop as each field drains')) {
+    throw new Error('Flood water in October says sow the winter crop as the land drains');
+  }
+  // Flood on low land and a dry paddy at the district point: irrigate only the higher fields, as a watch
+  const wetAndDry = at('ADM3_Tanore', { today: '2026-10-08', currentConditions: { date: '2026-10-08', soilStatus: 'normal', source: 'test',
+    field: fw('2026-10-08', { paddyWaterMm: -12, paddyDry14: '00000001111111', paddyDryNext7: '1111111' }),
+    flood: { date: '2026-09-20', seenShare: 0.9, floodShare: 0.4, waterNow: 0.5, waterDry: 0.1, lastYearRadar: 0.01 } } }).local_context!;
+  const softened = wetAndDry.fieldAlerts!.alerts.find(x => x.id === 'aman_dry_spell');
+  if (softened?.level !== 'watch' || !softened.textEnglish.includes('irrigate only the higher fields')) {
+    throw new Error('Where OPERA sees flood water the dry-spell alert drops to a watch for the higher fields');
+  }
   console.log(`Field alerts: Aman dry spell ${dryAlert.level}, Boro seedbed cold ${cold[0].level}, Boro flowering heat ${hotBoro[0].level}, AWD "${awd[0].titleEnglish}"`);
+  // Groundwater budget (NASA GRACE via GLDAS, BBS Boro area): Rajshahi needs a few percent of its Boro moved to stop the
+  // fall; Sylhet's Boro is watered mostly from rivers and beels, so the budget is not given there
+  const rajshahiBudget = at('ADM3_Tanore').local_context!;
+  const sylhetBudget = at('ADM3_Balaganj').local_context!;
+  const moveRajshahi = rajshahiBudget.groundwaterBudget?.moveShareToLentil ?? 0;
+  if (!rajshahiBudget.groundwaterBudget?.applies || !(moveRajshahi > 0.02 && moveRajshahi < 0.1)
+    || !rajshahiBudget.notesEnglish.some(n => n.startsWith('NASA GRACE (GLDAS-2.2): groundwater under Rajshahi district falls about 7.7 mm'))) {
+    throw new Error(`Rajshahi's groundwater budget moves a few percent of its Boro to lentil (got ${moveRajshahi})`);
+  }
+  if (sylhetBudget.groundwaterBudget?.applies || sylhetBudget.notesEnglish.some(n => n.startsWith('NASA GRACE'))) {
+    throw new Error('Sylhet falls under 4 mm a year, so no groundwater budget is given');
+  }
+  console.log(`Groundwater budget: Rajshahi moves ${(moveRajshahi * 100).toFixed(1)}% of its Boro (${rajshahiBudget.groundwaterBudget!.moveHaToLentil} ha) to lentil`);
   console.log('✓ TEST 17 PASSED: Land type, current patterns, flash floods, district yields and today\'s soil shape each upazila\'s plan.\n');
 
   console.log('========================================================');

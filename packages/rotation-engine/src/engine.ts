@@ -23,7 +23,8 @@ import type { AmanRecord, MonthDay, RabiRecord } from './data/release_types.ts';
 import type { RabiCatalogEntry } from './data/crop_catalog.ts';
 import { IPM_AMAN, IPM_BY_RABI, IPM_GENERAL } from './data/ipm_catalog.ts';
 import { diseaseData, typicalDiseaseDays, type DiseaseNow } from './data/disease.ts';
-import { FIELD_ALERT_METHOD, fieldAlerts, type FieldCrops, type FieldWeather } from './field_alerts.ts';
+import { budgetHere, groundwaterBudgetData } from './data/groundwater_budget.ts';
+import { FIELD_ALERT_METHOD, fieldAlerts, type FieldCrops, type FieldWeather, type FloodNow } from './field_alerts.ts';
 import { stewardshipTips } from './stewardship.ts';
 import {
   CHOICE_BY_ID,
@@ -94,6 +95,8 @@ export interface PlanOptionsRequest {
     disease?: DiseaseNow | null;
     /** This week's field water and weather with a 7-day forecast (research/live/field_weather.py), for field_alerts.ts. */
     field?: FieldWeather | null;
+    /** Flood water now from NASA OPERA DSWx-HLS (research/live/flood_now.py). */
+    flood?: FloodNow | null;
     source: string;
   };
   season: string;
@@ -147,7 +150,7 @@ const CHOICE_OPTIONS = 5;
 /** 1st, 2nd, 3rd, 4th ... for percentiles. */
 const ordinal = (n: number) => `${n}${[11, 12, 13].includes(n % 100) ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
 
-const HAZARD_ORDER = ['flash_flood', 'aman_dry_spell', 'rice_heat', 'cold_seedbed', 'salinity', 'winter_fallow_salinity', 'dry_start', 'disease_weather', 'wheat_heat', 'deep_flooding', 'submergence'];
+const HAZARD_ORDER = ['flash_flood', 'flood_now', 'aman_dry_spell', 'rice_heat', 'cold_seedbed', 'salinity', 'winter_fallow_salinity', 'dry_start', 'disease_weather', 'wheat_heat', 'deep_flooding', 'submergence'];
 /** A pattern is named among what farmers grow at this share of the cropped land, and taken as current practice at this. */
 const PATTERN_NOTE_PCT = 10;
 const CURRENT_PRACTICE_PCT = 20;
@@ -1275,7 +1278,9 @@ export class RotationEngine {
     // This week in the field (field_alerts.ts, from research/live/field_weather.py): a dry spell at Aman flowering, heat
     // at rice flowering or wheat grain filling, cold on Boro seedbeds and AWD in Boro, for the crops of the first option
     // (the farmer's own Aman variety when given)
-    const field = (LOC.conditions.current as { field?: FieldWeather | null } | null | undefined)?.field ?? null;
+    const nowConditions = LOC.conditions.current as { field?: FieldWeather | null; flood?: FloodNow | null } | null | undefined;
+    const field = nowConditions?.field ?? null;
+    const floodReading = nowConditions?.flood ?? null;
     const amanKey = rules.aman ? (request.currentAmanCrop && LOC.aman[request.currentAmanCrop] ? request.currentAmanCrop : best.aman) : undefined;
     const amanRec = amanKey ? LOC.aman[amanKey] : undefined;
     const rabiRec = recordFor(best.rabi);
@@ -1286,7 +1291,7 @@ export class RotationEngine {
       wheat: rabiCat?.crop === 'Wheat' && rabiRec ? { sowing: rabiRec.sowing, harvest: rabiRec.harvest } : null,
     };
     const todayIso = (request.today ? new Date(request.today) : new Date()).toISOString().slice(0, 10);
-    const thisWeek = fieldAlerts(todayIso, fieldCrops, field);
+    const thisWeek = fieldAlerts(todayIso, fieldCrops, field, { flood: floodReading, drained80: local.opera?.drained80 ?? null });
     for (const a of thisWeek) {
       notesBangla.push(a.textBangla);
       notesEnglish.push(a.textEnglish);
@@ -1354,6 +1359,17 @@ export class RotationEngine {
       farmerLineEnglish = [farmerLineEnglish, 'The soil is dry this year: sow the winter crop without delay.'].filter(Boolean).join(' ');
     }
 
+    // The district's groundwater budget (NASA GRACE via GLDAS, BBS Boro area): the Boro land a water-saving rotation
+    // would need to take over to stop the fall, a floor at GRACE's scale
+    const budget = budgetHere();
+    if (budget?.applies && budget.moveHaToLentil && budget.moveShareToLentil) {
+      const like = topWinter && topWinter.crop !== 'Boro rice' ? { bn: 'এই চক্রের মতো', en: 'like this one' } : { bn: 'মসুর বা সরিষার', en: 'with lentil or mustard' };
+      const ha = Math.round(budget.moveHaToLentil / 100) * 100;
+      const pctMove = Math.max(1, Math.round(budget.moveShareToLentil * 100));
+      notesBangla.push(`নাসার GRACE (GLDAS): এই জেলায় ভূগর্ভস্থ পানি বছরে প্রায় ${bnDigits(Math.abs(budget.trendMmPerYear))} মিমি কমছে। জেলার বোরো জমির প্রায় ${bnDigits(pctMove)}% (${bnDigits(ha.toLocaleString('en-US'))} হেক্টর) ${like.bn} কম-পানির চক্রে গেলে গড় পতন থামে; বরেন্দ্রের মতো সবচেয়ে ক্ষতিগ্রস্ত এলাকার নলকূপে পানি এর চেয়ে দ্রুত নামে, তাই এটি সর্বনিম্ন হিসাব।`);
+      notesEnglish.push(`NASA GRACE (GLDAS-2.2): groundwater under ${budget.district} district falls about ${Math.abs(budget.trendMmPerYear)} mm of water a year. Moving about ${pctMove}% of the district's Boro land (${ha.toLocaleString('en-US')} ha) to a rotation ${like.en} would stop the average fall; wells in the worst-hit areas, such as the Barind, fall faster than the district average, so this is a floor.`);
+    }
+
     // Soil salinity: SRDI's survey where it covers the upazila, else the coast's winter fallow as a sign of it
     const sal = local.salinity;
     if (sal && sal.salineShare >= 0.3) {
@@ -1394,7 +1410,8 @@ export class RotationEngine {
       landEvidenceBangla: evidenceBn,
       landEvidenceEnglish: evidenceEn,
       diseaseWeather: disease ? { date: disease.date, rules: diseaseRows, method: diseaseData().method } : null,
-      fieldAlerts: field ? { through: field.through, observedTo: field.observedTo, forecastFrom: field.forecast?.from ?? null, rainSource: field.rainSource, alerts: thisWeek, method: FIELD_ALERT_METHOD } : null,
+      groundwaterBudget: budget ? { ...budget, source: groundwaterBudgetData().source, caution: groundwaterBudgetData().caution } : null,
+      fieldAlerts: field || floodReading ? { through: field?.through ?? null, observedTo: field?.observedTo ?? null, forecastFrom: field?.forecast?.from ?? null, rainSource: field?.rainSource ?? null, floodDate: floodReading?.date ?? null, alerts: thisWeek, method: FIELD_ALERT_METHOD } : null,
       patterns,
       patternsSource: patterns.length ? profileData().sources.patterns ?? null : null,
       croppingIntensityPct: local.intensityPct,

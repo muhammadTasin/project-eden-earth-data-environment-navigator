@@ -192,6 +192,45 @@ async function loadOverview() {
   }
   renderOverview(currentOverview);
   applyPlaceText();
+  loadFloodCheck();
+}
+
+/**
+ * Where to check first for flood damage: upazilas with water now on land normally dry in winter (NASA OPERA
+ * DSWx-HLS), with last year's radar reading for the same weeks and the share of the land that grew Aman (NASA HLS).
+ * A list for sending field checks, not a loss estimate.
+ */
+let floodCheck; // undefined until loaded, null when the API has none
+async function loadFloodCheck() {
+  try {
+    if (floodCheck === undefined) floodCheck = await (await fetch('/api/v1/flood/upazilas')).json();
+  } catch {
+    floodCheck = null;
+  }
+  renderFloodCheck();
+}
+function renderFloodCheck() {
+  const f = floodCheck;
+  const badge = $('floodCheckBadge');
+  if (f === undefined) return;
+  if (!f?.status) {
+    if (badge) badge.textContent = '—';
+    setHtml('floodCheckList', `<li>${tr('নাসার OPERA বন্যার তথ্য এখনো আসেনি।', 'No NASA OPERA flood reading yet.')}</li>`);
+    setText('floodCheckNote', '');
+    return;
+  }
+  const top = f.upazilas.slice(0, 8);
+  if (badge) {
+    badge.className = `badge ${top.some(u => u.floodSharePct >= 25) ? 'badge-warning' : 'badge-neutral'}`;
+    badge.textContent = tr(`${num(f.upazilas.length)} উপজেলায় ১০%+`, `${f.upazilas.length} upazilas at 10%+`);
+  }
+  setHtml('floodCheckList', top.length ? top.map(u => `<li><span><strong>${escapeHtml(u.name)}</strong>, ${escapeHtml(u.district)}<br><small>${tr(
+    `দেখা জমির ${num(u.floodSharePct)}% পানির নিচে${u.lastYearRadarPct != null ? `; গত বছর এই সময়ে রাডারে ${num(u.lastYearRadarPct)}%` : ''}${u.amanLandSharePct != null ? `; আমনের জমি ${num(u.amanLandSharePct)}%` : ''}`,
+    `${u.floodSharePct}% of the land seen under water${u.lastYearRadarPct != null ? `; ${u.lastYearRadarPct}% by radar this time last year` : ''}${u.amanLandSharePct != null ? `; Aman land ${u.amanLandSharePct}%` : ''}`)}</small></span><span class="badge ${u.floodSharePct >= 25 ? 'badge-warning' : 'badge-neutral'}">${num(u.floodSharePct)}%</span></li>`).join('')
+    : `<li>${tr('কোনো উপজেলায় ১০%-এর বেশি জমি পানির নিচে নেই।', 'No upazila has more than 10% of its land under water.')}</li>`);
+  setText('floodCheckNote', tr(
+    `নাসার OPERA (ল্যান্ডস্যাট ও সেন্টিনেল-২), ${isoDate(f.status.window[0])} থেকে ${isoDate(f.status.window[1])}: শীতে সাধারণত শুকনো জমিতে এখন পানি; গত বছরের চেয়ে বেশি পানি আগে। মেঘে ঢাকা জমি গোনা হয়নি। এটি মাঠ যাচাইয়ের তালিকা, ক্ষতির হিসাব নয়।`,
+    `NASA OPERA (Landsat and Sentinel-2), ${f.status.window[0]} to ${f.status.window[1]}: water now on land normally dry in winter, the most above last year first; land under cloud is not counted. A list for field checks, not a loss estimate.`));
 }
 
 function renderOverview(o) {
@@ -237,9 +276,13 @@ function renderOverview(o) {
     ? tr(`${o.context.soilTypeBangla}, ${o.context.landTypeBangla}`, `${o.context.soilTypeEnglish}, ${o.context.landTypeEnglish}`)
     : tr('এই উপজেলার SRDI কার্ড এখনো যোগ হয়নি', 'This upazila’s SRDI card is not added yet'));
   const gw = o.context.groundwater;
+  const gb = o.local_context?.groundwaterBudget;
+  const move = gb?.applies && gb.moveHaToLentil ? tr(
+    `; পতন থামাতে জেলার বোরোর ~${num(Math.max(1, Math.round(gb.moveShareToLentil * 100)))}% (${num(Math.round(gb.moveHaToLentil / 100) * 100)} হে.) মসুরের চক্রে`,
+    `; to stop it, ~${Math.max(1, Math.round(gb.moveShareToLentil * 100))}% of the district's Boro (${Math.round(gb.moveHaToLentil / 100) * 100} ha) to a lentil rotation`) : '';
   setText('specGroundwater', gw ? tr(
-    `বছরে ${num(gw.trendMmPerYear)} মিমি (${num(gw.period.replace(' to ', ' থেকে '))}: ${num(gw.changeMm)} মিমি)`,
-    `${gw.trendMmPerYear} mm a year (${gw.changeMm} mm, ${gw.period})`,
+    `বছরে ${num(gw.trendMmPerYear)} মিমি (${num(gw.period.replace(' to ', ' থেকে '))}: ${num(gw.changeMm)} মিমি)${move}`,
+    `${gw.trendMmPerYear} mm a year (${gw.changeMm} mm, ${gw.period})${move}`,
   ) : '—');
   const green = o.context.winterGreenness;
   setText('specGreenness', green
@@ -251,6 +294,7 @@ function renderOverview(o) {
   ) : tr('১০০ কিমির মধ্যে BMD স্টেশন নেই; তাপমাত্রা সংশোধন ছাড়া', 'No BMD station within 100 km; temperatures uncorrected'));
 
   renderFieldWeek(o.local_context?.fieldAlerts);
+  renderFloodCheck();
 
   const alert = o.active_alerts[0];
   if (alert) {
