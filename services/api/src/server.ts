@@ -144,6 +144,7 @@ function currentConditionsFor(place: ReturnType<typeof placeFor>): PlanOptionsRe
       sensor: 'SMAP',
       rain30PctOfNormal: live!.power?.rain30PctOfNormal ?? null,
       disease: live!.disease ?? null,
+      field: live!.field ?? null,
       source: 'NASA SMAP L4 root-zone soil moisture percentile, 9 km (research/live/smap_now.py); rain from NASA POWER',
     };
   }
@@ -156,6 +157,7 @@ function currentConditionsFor(place: ReturnType<typeof placeFor>): PlanOptionsRe
     soilYears: live.power.soilYears ?? null,
     rain30PctOfNormal: live.power.rain30PctOfNormal ?? null,
     disease: live.disease ?? null,
+    field: live.field ?? null,
     source: 'NASA POWER daily, ranked against the same date in past years (research/live/daily_update.py)',
   };
 }
@@ -311,16 +313,20 @@ function overviewHere(placeId: string) {
     local_context: local ?? null,
     active_alerts: [
       // The place's own hazards first (haor flash floods, deep water, a dry start, winter fallow on the coast)
-      ...(local?.alerts ?? []).slice(0, 1).map(a => ({
-        id: `alt_local_${a.hazard}`,
-        type: 'warning',
-        titleBangla: a.titleBangla,
-        titleEnglish: a.titleEnglish,
-        textBangla: a.textBangla,
-        textEnglish: a.textEnglish,
-        recommendationBangla: best.nameBangla,
-        recommendationEnglish: best.nameEnglish,
-      })),
+      // (a field alert's own action this week, else the first option)
+      ...(local?.alerts ?? []).slice(0, 1).map(a => {
+        const now = local?.fieldAlerts?.alerts.find(f => f.id === a.hazard);
+        return {
+          id: `alt_local_${a.hazard}`,
+          type: 'warning',
+          titleBangla: a.titleBangla,
+          titleEnglish: a.titleEnglish,
+          textBangla: a.textBangla,
+          textEnglish: a.textEnglish,
+          recommendationBangla: now?.smsBangla || best.nameBangla,
+          recommendationEnglish: now ? now.titleEnglish : best.nameEnglish,
+        };
+      }),
       ...(bestAman ? [{
         id: 'alt_late_aman_drought',
         type: 'warning',

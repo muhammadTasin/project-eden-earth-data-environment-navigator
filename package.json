@@ -11,7 +11,8 @@
   ],
   "scripts": {
     "start": "node --env-file-if-exists=.env --experimental-strip-types services/api/src/server.ts",
-    "test": "node --experimental-strip-types test_pipeline.ts && node --experimental-strip-types test_cattle.ts && node test_server.js",
+    "test": "node --experimental-strip-types test_pipeline.ts && node --experimental-strip-types test_cattle.ts && npm run check:web && node test_server.js",
+    "check:web": "node --check apps/saao-dashboard/public/app.js && node --check apps/saao-dashboard/public/bd-map.js && node --check apps/saao-dashboard/public/i18n.js && node --check apps/saao-dashboard/public/portals.js",
     "call:test": "node --env-file-if-exists=.env --experimental-strip-types services/api/src/call_cli.ts"
   },
   "author": "muhammadTasin",

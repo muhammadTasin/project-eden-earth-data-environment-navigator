@@ -123,6 +123,20 @@ The same run reads the **live haor flash-flood check**: the last 3 days of IMERG
 
 The dry and wet labels are provisional: POWER's newest weeks come from near-real-time inputs that read drier than the reprocessed archive, so they wait for the SMAP check (next step).
 
+### This week in the field: crop-stage alerts
+
+The same run adds a `field` record to every upazila (`research/live/field_weather.py`): FAO-56 reference evapotranspiration from NASA POWER, rain from GPM IMERG (scaled to the Final run) or POWER, the standing water in a rainfed paddy from the replay's water balance (Kc 1.2, 2 mm/day seepage, 10 cm bunds), and Open-Meteo's 7-day forecast, which is a weather model, not NASA (`--no-forecast` skips it). The engine's rules (`packages/rotation-engine/src/field_alerts.ts`) read it for the first option's crops at their stage this week:
+
+| Alert | When | Trigger | What the farmer hears |
+|---|---|---|---|
+| Aman dry spell | 20 days before to 10 days after flowering | 5+ days without standing water, past 14 days and next 7 (the replay's rescue-irrigation rule) | One irrigation of about 5 cm this week; or "no irrigation needed" |
+| Heat at rice flowering | about 9 days before to 7 days after Aman or Boro flowering | 35 °C or more (34 °C watch), last 3 days or next 5 | Keep 5-7 cm of water until the grain hardens |
+| Cold on Boro seedbeds | 15 November to 15 February | 10 °C or less (13 °C watch), last 3 nights or next 3 | Cover the seedbed with clear polythene at night, keep 3-5 cm of water, wait to transplant |
+| Heat at wheat grain filling | 5 weeks before harvest | 30 °C or more | Give the last irrigation if it is due; sow by 30 November next year |
+| Boro AWD | 10 days after transplanting to 2 weeks before harvest | every week | Irrigate only when the field pipe shows water 15 cm down; hold it when 20 mm of rain is forecast; keep 5 cm at flowering |
+
+The alerts go into the advice's `local_context.fieldAlerts` and its hazards, the overview's "This week in the field" card, the call script and the SMS ("এই সপ্তাহে: ..."). The map has four layers from them: Aman dry spell, paddy water, heat at rice flowering and cold on Boro seedbeds, using every Aman variety the advice knows, BRRI dhan28 and BARI Gom 33 where BRRI's survey shows the crop. On 8 October 2026, 270 upazilas had an Aman variety at flowering with 5 or more dry days, 68 were on watch and 154 needed no irrigation.
+
 IMERG needs the `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD` repository secrets in GitHub; the run of 4 October had none, so it wrote no IMERG rain and no haor reading. A run without IMERG now keeps the last IMERG reading for up to 7 days, marked with its own date and `carriedForward`, and the API tests read a fixed day (`tests/fixtures/live_conditions_2026-10-01.json`) instead of the file the Action rewrites.
 
 `.github/workflows/daily-nasa-update.yml` runs this every morning at 09:30 Bangladesh time and commits the file when it changes. GitHub runs scheduled workflows only from `main`. For IMERG, add the repository secrets `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD` (Settings → Secrets and variables → Actions); without them only POWER updates.
@@ -311,7 +325,7 @@ The latest SMAP soil-moisture values come from the downloaded cache (`research/d
 - The pest score is rule-based until officers log pest counts.
 - Floods are not modelled for Barind land. The haor warning shows the 25-season hindcast and the season status; a live trigger needs a daily IMERG Early feed and river-gauge confirmation. Rotation advice is not modelled for the haor.
 - Flooded-rice days stand in for methane; they are not a methane measurement.
-- NASA POWER weather arrives 2–3 days late and is not a forecast. River-erosion risk comes from station records and needs checking on the ground.
+- NASA POWER weather arrives 2–3 days late and is not a forecast; the field alerts take their forecast from Open-Meteo's weather model. Their temperatures are grid values (a field can be 1-2 °C off), the paddy water balance assumes a bunded rainfed field with 2 mm/day seepage, and the crop stage comes from the plan's calendar, not the farmer's own transplanting date. River-erosion risk comes from station records and needs checking on the ground.
 - Sign-in uses a shared officer code, a demo farmer PIN, in-memory sessions and a JSON file store; a real deployment needs proper accounts and a database. The role picker only decides what the screen shows; the API checks its own tokens.
 - The cattle module keeps farm outlines and jobs in a local JSON file (not production-durable), and its Earth Engine worker has not been run against a real Earth Engine account; until it is set up, satellite inputs are reported as unavailable and jobs end as partial.
 - Two upazila lists live side by side for now: the 544 geoBoundaries units the advice and the map use, and the 500 Open Admin Data units the weather pickers use.

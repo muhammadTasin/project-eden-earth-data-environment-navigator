@@ -79,6 +79,12 @@ export function liveUpazilas(district?: string) {
   }));
 }
 
+/** Every upazila's field record (field water, weather and the 7-day forecast) by id, for the map's field alerts. */
+export function liveFields(): Map<string, Record<string, any>> {
+  const d = load();
+  return new Map((d?.upazilas ?? []).filter(u => u.field).map(u => [u.id, u.field]));
+}
+
 /** One upazila by id, by name, or the nearest to a point. */
 export function liveUpazila(q: { id?: string | null; name?: string | null; lat?: number; lon?: number }) {
   const d = load();

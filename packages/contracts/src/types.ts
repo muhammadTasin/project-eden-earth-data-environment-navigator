@@ -174,6 +174,20 @@ export interface LocalContext {
   alerts: Array<{ hazard: string; titleBangla: string; titleEnglish: string; textBangla: string; textEnglish: string }>;
   notesBangla: string[];
   notesEnglish: string[];
+  /** This week's NASA rice-blast and late-blight weather, and whether each matters to the first option's crops. */
+  diseaseWeather?: { date: string; rules: Array<{ id: string; nameBangla: string; nameEnglish: string; status: string; days7: number; season: string | null; typicalDays: number | null; relevant: boolean }>; method: string } | null;
+  /**
+   * This week in the field (rotation-engine field_alerts.ts): a dry spell at Aman flowering, heat at rice flowering or
+   * wheat grain filling, cold on Boro seedbeds and AWD in Boro, from the daily NASA update and a 7-day forecast.
+   */
+  fieldAlerts?: {
+    through: string;
+    observedTo: string;
+    forecastFrom: string | null;
+    rainSource: string | null;
+    alerts: Array<{ id: string; level: 'high' | 'watch' | 'advice' | 'clear'; crop: string; titleBangla: string; titleEnglish: string; textBangla: string; textEnglish: string; smsBangla: string; numbers: Record<string, number | string | null> }>;
+    method: Record<string, string>;
+  } | null;
 }
 
 /** How the crops a farmer asked for fit the year at their place, and what else fits the gap before Aman. */

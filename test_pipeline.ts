@@ -423,6 +423,43 @@ async function runTests() {
   const coastHls = hlsShare('ADM3_Shyamnagar'), barindHls = hlsShare('ADM3_Tanore');
   if (!(coastHls < 30 && barindHls > 70)) throw new Error(`HLS winter cropping: Shyamnagar low, Tanore high (got ${coastHls}% and ${barindHls}%)`);
   console.log(`NASA HLS: Aman land green again in winter 2025-26, Shyamnagar ${coastHls}%, Tanore ${barindHls}%`);
+  // This week in the field (field_alerts.ts): a dry spell at Aman flowering, cold on Boro seedbeds, heat at Boro
+  // flowering, AWD that waits for forecast rain, and heat at wheat grain filling
+  const days = (v: number) => Array(7).fill(v);
+  const fw = (from: string, over: Record<string, unknown> = {}) => ({
+    through: from, observedTo: from, rainSource: 'IMERG+POWER', rain7: 2, rain14: 10, et0Mm7: 4, tmax3: 31, tmin3: 22, paddyWaterMm: 20,
+    paddyDry14: '00000000000000', paddyDryNext7: '0000000', forecast: { from, tmax: days(31), tmin: days(22), rain: days(0), et0: days(4) }, ...over,
+  });
+  const cc = (field: unknown) => ({ date: '2026-10-05', soilStatus: 'normal', source: 'test', field });
+  const alertsOf = (a: ReturnType<typeof at>) => a.local_context!.fieldAlerts!.alerts;
+  const dryAman = at('ADM3_Tanore', { today: '2026-10-08', currentConditions: cc(fw('2026-10-08', { paddyWaterMm: -12, paddyDry14: '00000001111111', paddyDryNext7: '1111111' })) });
+  const dryAlert = alertsOf(dryAman).find(x => x.id === 'aman_dry_spell');
+  if (dryAlert?.level !== 'high' || !dryAman.local_context!.hazards.includes('aman_dry_spell') || !dryAman.farmer_summary_bangla.includes('একবার সেচ দিন')) {
+    throw new Error('Seven dry days at Aman flowering raise a rescue-irrigation alert that reaches the farmer line');
+  }
+  const wetAman = at('ADM3_Tanore', { today: '2026-10-08', currentConditions: cc(fw('2026-10-08', { paddyWaterMm: 60 })) });
+  if (alertsOf(wetAman).find(x => x.id === 'aman_dry_spell')?.level !== 'clear' || wetAman.local_context!.hazards.includes('aman_dry_spell')) {
+    throw new Error('A paddy with standing water is told no irrigation is needed this week');
+  }
+  const winterDay = (today: string, hero: string, over: Record<string, unknown>) => at('ADM3_Tanore', { heroCrop: hero, today, currentConditions: cc(fw(today, over)) });
+  const cold = alertsOf(winterDay('2027-01-10', 'boro', { tmin3: 12, forecast: { from: '2027-01-10', tmax: days(20), tmin: [11, 8.5, 9, 12, 12, 13, 13], rain: days(0), et0: days(2) } }));
+  const hotBoro = alertsOf(winterDay('2027-04-10', 'boro', { tmax3: 34, forecast: { from: '2027-04-10', tmax: [35, 36.4, 37, 34, 33, 33, 32], tmin: days(25), rain: days(0), et0: days(5) } }));
+  const awd = alertsOf(winterDay('2027-03-01', 'boro', { forecast: { from: '2027-03-01', tmax: days(30), tmin: days(19), rain: [12, 10, 3, 0, 0, 0, 0], et0: days(4) } }));
+  const hotWheat = alertsOf(winterDay('2027-02-15', 'wheat', { tmax3: 29, forecast: { from: '2027-02-15', tmax: [29, 30.5, 31, 31, 30, 29, 29], tmin: days(16), rain: days(0), et0: days(3.5) } }));
+  if (cold.find(x => x.id === 'cold_seedbed')?.level !== 'high' || cold.find(x => x.id === 'cold_seedbed')?.numbers.tminC !== 8.5) {
+    throw new Error('A night at 8.5 C in January puts Boro seedbeds on a cold alert');
+  }
+  if (hotBoro.find(x => x.id === 'rice_heat')?.level !== 'high' || !hotBoro.find(x => x.id === 'rice_heat')!.textEnglish.includes('5-7 cm')
+    || !hotBoro.find(x => x.id === 'boro_awd')?.textEnglish.includes('no alternate wetting and drying now')) {
+    throw new Error('37 C at Boro flowering says keep 5-7 cm of water, and AWD pauses at flowering');
+  }
+  if (!awd.find(x => x.id === 'boro_awd')?.titleEnglish.startsWith('Rain coming') || hotWheat.find(x => x.id === 'wheat_heat')?.level !== 'watch') {
+    throw new Error('AWD holds the irrigation for 25 mm of forecast rain; 31 C at wheat grain filling is a watch');
+  }
+  if (alertsOf(at('ADM3_Tanore', { today: '2026-07-01', currentConditions: cc(fw('2026-07-01')) })).length) {
+    throw new Error('No crop is at a sensitive stage on 1 July, so no field alert');
+  }
+  console.log(`Field alerts: Aman dry spell ${dryAlert.level}, Boro seedbed cold ${cold[0].level}, Boro flowering heat ${hotBoro[0].level}, AWD "${awd[0].titleEnglish}"`);
   console.log('✓ TEST 17 PASSED: Land type, current patterns, flash floods, district yields and today\'s soil shape each upazila\'s plan.\n');
 
   console.log('========================================================');

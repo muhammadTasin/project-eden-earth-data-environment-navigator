@@ -86,6 +86,8 @@ function speakable(text: string): string {
     .replace(/~/g, '')
     .replace(/\s*–\s*/g, ' থেকে ')
     .replace(/মিমি/g, 'মিলিমিটার')
+    .replace(/°\s*সে\./g, ' ডিগ্রি সেলসিয়াস')
+    .replace(/সেমি/g, 'সেন্টিমিটার')
     .replace(/→/g, ', তারপর')
     .replace(/\s+/g, ' ')
     .trim();
@@ -108,6 +110,9 @@ export function replyFor(advice: AdviceJSON, understood?: Pick<Understood, 'crop
   // scores or the list of monsoon alternatives, which the officer sees on screen
   const notes = (choice?.notesBangla ?? []).filter(n => !n.includes('বাজারদর') && !n.includes('স্কোর') && !n.startsWith('কোনো চক্রে ধান')).slice(0, 2);
 
+  // This week's most serious field alert (a dry spell at Aman flowering, heat, cold, AWD), when there is one to act on
+  const fieldNow = advice.local_context?.fieldAlerts?.alerts.find(a => a.level !== 'clear' && a.smsBangla);
+
   const speech = speakable([
     'আসসালামু আলাইকুম। মাটি কহন থেকে বলছি।',
     asked.length ? `আপনি ${andJoin(asked)} করতে চেয়েছেন।` : '',
@@ -122,6 +127,7 @@ export function replyFor(advice: AdviceJSON, understood?: Pick<Understood, 'crop
     top.approvedActionBangla[3] ?? '',
     // One soil-and-water saving the farmer can hear: the first sentence of the water tip
     (top.stewardship?.find(t => t.kind === 'water')?.bn.split('।')[0] ?? '') + (top.stewardship?.some(t => t.kind === 'water') ? '।' : ''),
+    fieldNow && (fieldNow.level === 'high' || fieldNow.level === 'watch') ? `এই সপ্তাহের সতর্কতা: ${fieldNow.textBangla}` : '',
     ...notes,
     notes.some(n => n.includes('কর্মকর্তা')) ? 'ধন্যবাদ।' : 'বিস্তারিত জানতে আপনার উপসহকারী কৃষি কর্মকর্তার সাথে কথা বলুন। ধন্যবাদ।',
   ].filter(Boolean).join(' '));
@@ -131,11 +137,11 @@ export function replyFor(advice: AdviceJSON, understood?: Pick<Understood, 'crop
   const verb = (p: typeof rabi) => (p.seasonType === 'Aman' || p.seasonType === 'Aus' || p.crop.toLowerCase().includes('rice') ? 'রোপণ' : 'বপন');
   const named = (p: typeof rabi) => `${p.seasonType === 'Aman' ? `আমনে ${p.varietyBangla}` : p.varietyBangla || p.cropBangla}${p.sowingBangla ? `, ${verb(p)} ${p.sowingBangla}` : ''}`;
   const waterLine = top.stewardship?.find(t => t.kind === 'water')?.bn.split('।')[0];
-  const alert = (advice.local_context as { farmerLineBangla?: string } | null | undefined)?.farmerLineBangla;
+  const alert = fieldNow?.smsBangla;
   const sms = [
     `মাটি কহন (নাসার তথ্যে): ${place} জন্য ভালো ফসলচক্র: ${[monsoon, rabi, k1].filter(p => p && !p.fallow).map(p => named(p!)).join('; এরপর ')}${monsoon.fallow ? '; বর্ষায় ধান নেই' : ''}।`,
     waterLine ? `${waterLine}।` : '',
-    alert && alert.length <= 90 ? alert : '',
+    alert ? `এই সপ্তাহে: ${alert}` : '',
     'জানতে উপসহকারী কৃষি কর্মকর্তাকে (SAAO) ফোন করুন।',
   ].filter(Boolean).join(' ').replace(/\s*–\s*/g, '-');
 

@@ -2,6 +2,23 @@
 
 What changed in Project EDEN, newest first, with who made each change and the branch it came from. Every branch below was merged into `main` on 1 October 2026.
 
+## 8 October 2026 · This week in the field: crop-stage alerts (Tasrif, `feature/field-alerts`)
+
+- **Field water and forecast:** `research/live/field_weather.py`, run by `daily_update.py`, adds a `field` record to every upazila.
+  - Reference ET is FAO-56 Penman-Monteith from NASA POWER, or Hargreaves on days POWER's sunshine has not arrived.
+  - Rain comes from GPM IMERG divided by the median Late/Final ratio, or from NASA POWER.
+  - A rainfed paddy's standing water uses the replay's water balance.
+  - The 7-day forecast is from Open-Meteo, which is a weather model, not NASA.
+- **Rules:** `packages/rotation-engine/src/field_alerts.ts` covers a dry spell at Aman flowering, heat at rice flowering, cold on Boro seedbeds, heat at wheat grain filling and Boro AWD (wait for forecast rain, keep water at flowering). Each fires only while its crop is at the stage it guards.
+  - "Clear" says plainly that no irrigation is needed.
+- **Where they show:**
+  - in the advice (`local_context.fieldAlerts`, hazards and the farmer line);
+  - in the overview's "This week in the field" card and alert card;
+  - in the call script and the SMS;
+  - in four new map layers: Aman dry spell, paddy water, heat at rice flowering and cold on Boro seedbeds.
+- **On 8 October:** 270 upazilas had an Aman variety at flowering with 5 or more dry days, 68 were on watch and 154 needed no irrigation. Tanore was on watch, with about 12 mm of water left and 18 mm of rain forecast.
+- **Tests:** each rule is checked with set weather: 7 dry days at dhan71 flowering; 8.5 °C on 11 January; 37 °C at Boro flowering; 25 mm of rain forecast during AWD; 31 °C at wheat grain filling; and nothing on 1 July. The map test reads field records added to the fixture.
+
 ## 8 October 2026 · Our Bangla voice, Gemini wording and SMS (Tasrif, `feature/smap-opera-hls-android`)
 
 - **Voice:** `services/api/src/providers/tts.ts` speaks with Google Cloud Text-to-Speech (bn-BD) from a service-account key file named in `GOOGLE_TTS_CREDENTIALS`. It signs its own token, so no Google SDK is needed.

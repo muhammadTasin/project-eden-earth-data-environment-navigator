@@ -150,6 +150,32 @@ window.updateObsWeights = function() {
 
 // ---------------------------------------------------------------------------
 // SCREEN 1: overview (dated research values, sample farmer rows, field pest reports)
+
+/**
+ * This week in the field: the engine's crop-stage alerts (field_alerts.ts) for the first option's crops, from NASA
+ * rain and water balance and a 7-day forecast. 'clear' says plainly that nothing is needed, so no water is pumped
+ * and nothing is sprayed just in case.
+ */
+function renderFieldWeek(fa) {
+  const chip = { high: ['badge-danger', 'এখনই', 'Act now'], watch: ['badge-warning', 'নজরে রাখুন', 'Watch'], advice: ['badge-info', 'পরামর্শ', 'Advice'], clear: ['badge-success', 'কিছু লাগবে না', 'Nothing needed'] };
+  if (!fa) {
+    setText('fieldWeekBadge', '—');
+    setHtml('fieldWeekList', `<li>${tr('দৈনিক নাসা হালনাগাদ এখনো চলেনি।', 'The daily NASA update has not run yet.')}</li>`);
+    setText('fieldWeekNote', '');
+    return;
+  }
+  const top = fa.alerts[0];
+  const [cls, bn, en] = top ? chip[top.level] : chip.clear;
+  const badge = $('fieldWeekBadge');
+  if (badge) { badge.className = `badge ${top ? cls : 'badge-neutral'}`; badge.textContent = top ? tr(bn, en) : tr('এখন কোনো সতর্কতা নেই', 'No alerts now'); }
+  setHtml('fieldWeekList', fa.alerts.length ? fa.alerts.map(a => {
+    const [c, b, e] = chip[a.level] || chip.advice;
+    return `<li><span><strong>${escapeHtml(tr(a.titleBangla, a.titleEnglish))}</strong><br><small>${escapeHtml(tr(a.textBangla, a.textEnglish))}</small></span><span class="badge ${c}">${tr(b, e)}</span></li>`;
+  }).join('') : `<li>${tr('এই সপ্তাহে প্রথম পছন্দের ফসলগুলোর কোনোটি খরা, গরম বা শীতে সংবেদনশীল পর্যায়ে নেই।', "None of the first option's crops is at a stage that dry spells, heat or cold harm this week.")}</li>`);
+  setText('fieldWeekNote', tr(
+    `নাসা POWER ${isoDate(fa.observedTo)} পর্যন্ত, বৃষ্টি ${fa.rainSource || '—'}; পূর্বাভাস Open-Meteo (আবহাওয়া মডেল, নাসা নয়)${fa.forecastFrom ? `, ${isoDate(fa.forecastFrom)} থেকে ৭ দিন` : ''}। তাপমাত্রা গ্রিডের মান; খেতে ১–২° কমবেশি হতে পারে।`,
+    `NASA POWER to ${fa.observedTo}, rain from ${fa.rainSource || '—'}; forecast from Open-Meteo (a weather model, not NASA)${fa.forecastFrom ? `, 7 days from ${fa.forecastFrom}` : ''}. Temperatures are grid values; a field can be 1-2 °C off.`));
+}
 // ---------------------------------------------------------------------------
 
 async function loadOverview() {
@@ -223,6 +249,8 @@ function renderOverview(o) {
     `${o.context.bmdStationBangla} (${num(o.context.bmdStationKm)} কিমি দূরে)`,
     `${pilot ? 'Shah Mokhdum, Rajshahi (41895)' : o.context.bmdStation}, ${o.context.bmdStationKm} km away`,
   ) : tr('১০০ কিমির মধ্যে BMD স্টেশন নেই; তাপমাত্রা সংশোধন ছাড়া', 'No BMD station within 100 km; temperatures uncorrected'));
+
+  renderFieldWeek(o.local_context?.fieldAlerts);
 
   const alert = o.active_alerts[0];
   if (alert) {

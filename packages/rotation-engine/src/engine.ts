@@ -23,6 +23,7 @@ import type { AmanRecord, MonthDay, RabiRecord } from './data/release_types.ts';
 import type { RabiCatalogEntry } from './data/crop_catalog.ts';
 import { IPM_AMAN, IPM_BY_RABI, IPM_GENERAL } from './data/ipm_catalog.ts';
 import { diseaseData, typicalDiseaseDays, type DiseaseNow } from './data/disease.ts';
+import { FIELD_ALERT_METHOD, fieldAlerts, type FieldCrops, type FieldWeather } from './field_alerts.ts';
 import { stewardshipTips } from './stewardship.ts';
 import {
   CHOICE_BY_ID,
@@ -91,6 +92,8 @@ export interface PlanOptionsRequest {
     rain30PctOfNormal?: number | null;
     /** This week's rice-blast and potato late-blight weather from the daily NASA POWER update. */
     disease?: DiseaseNow | null;
+    /** This week's field water and weather with a 7-day forecast (research/live/field_weather.py), for field_alerts.ts. */
+    field?: FieldWeather | null;
     source: string;
   };
   season: string;
@@ -144,7 +147,7 @@ const CHOICE_OPTIONS = 5;
 /** 1st, 2nd, 3rd, 4th ... for percentiles. */
 const ordinal = (n: number) => `${n}${[11, 12, 13].includes(n % 100) ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
 
-const HAZARD_ORDER = ['flash_flood', 'salinity', 'winter_fallow_salinity', 'dry_start', 'disease_weather', 'deep_flooding', 'submergence'];
+const HAZARD_ORDER = ['flash_flood', 'aman_dry_spell', 'rice_heat', 'cold_seedbed', 'salinity', 'winter_fallow_salinity', 'dry_start', 'disease_weather', 'wheat_heat', 'deep_flooding', 'submergence'];
 /** A pattern is named among what farmers grow at this share of the cropped land, and taken as current practice at this. */
 const PATTERN_NOTE_PCT = 10;
 const CURRENT_PRACTICE_PCT = 20;
@@ -1150,7 +1153,7 @@ export class RotationEngine {
    * hazards that shaped the plan: deep monsoon water, submergence, the haor's flash floods and, on the coast, winter
    * fallow that is often salinity. One short line of it goes into the farmer's summary.
    */
-  private localContext(request: PlanOptionsRequest, rules: LandRules, options: CandidateRotation[]) {
+  private localContext(request: PlanOptionsRequest, rules: LandRules, options: CandidateRotation[], best: CandidateSpec) {
     const local = LOC.local;
     const land = local.land;
     const landBn = LAND_TYPE_BANGLA[request.landType] ?? '';
@@ -1269,6 +1272,32 @@ export class RotationEngine {
       }
     }
 
+    // This week in the field (field_alerts.ts, from research/live/field_weather.py): a dry spell at Aman flowering, heat
+    // at rice flowering or wheat grain filling, cold on Boro seedbeds and AWD in Boro, for the crops of the first option
+    // (the farmer's own Aman variety when given)
+    const field = (LOC.conditions.current as { field?: FieldWeather | null } | null | undefined)?.field ?? null;
+    const amanKey = rules.aman ? (request.currentAmanCrop && LOC.aman[request.currentAmanCrop] ? request.currentAmanCrop : best.aman) : undefined;
+    const amanRec = amanKey ? LOC.aman[amanKey] : undefined;
+    const rabiRec = recordFor(best.rabi);
+    const rabiCat = catalogFor(best.rabi);
+    const fieldCrops: FieldCrops = {
+      aman: amanKey && amanRec ? { variety: amanKey, varietyBangla: AMAN_CATALOG[amanKey]?.varietyBangla ?? amanKey, flowering: amanRec.flowering } : null,
+      boro: rabiCat?.crop === 'Boro rice' && rabiRec ? { variety: best.rabi, varietyBangla: rabiCat.varietyBangla, transplant: rabiRec.sowing, harvest: rabiRec.harvest } : null,
+      wheat: rabiCat?.crop === 'Wheat' && rabiRec ? { sowing: rabiRec.sowing, harvest: rabiRec.harvest } : null,
+    };
+    const todayIso = (request.today ? new Date(request.today) : new Date()).toISOString().slice(0, 10);
+    const thisWeek = fieldAlerts(todayIso, fieldCrops, field);
+    for (const a of thisWeek) {
+      notesBangla.push(a.textBangla);
+      notesEnglish.push(a.textEnglish);
+      if (a.level !== 'high' && a.level !== 'watch') continue;
+      hazard(a.id, [a.titleBangla, a.titleEnglish]);
+      if (a.level === 'high' && a.smsBangla) {
+        farmerLineBangla = [farmerLineBangla, a.smsBangla].filter(Boolean).join(' ');
+        farmerLineEnglish = [farmerLineEnglish, `${a.titleEnglish}.`].filter(Boolean).join(' ');
+      }
+    }
+
     if (!rules.aman) {
       notesBangla.push(`${landBn} জমিতে জুন থেকে নভেম্বর পানি থাকে: আমন বা গ্রীষ্মের ফসল হয় না; পানি নামলে (~${bnDate(rules.ready!)}) রবি ফসল।`);
       notesEnglish.push(`On ${landEn} land water stands from June to November: no Aman or summer crop; the winter crop goes in once the water leaves (~${enDate(rules.ready!)}, after BRRI's haor seedbed dates).`);
@@ -1365,6 +1394,7 @@ export class RotationEngine {
       landEvidenceBangla: evidenceBn,
       landEvidenceEnglish: evidenceEn,
       diseaseWeather: disease ? { date: disease.date, rules: diseaseRows, method: diseaseData().method } : null,
+      fieldAlerts: field ? { through: field.through, observedTo: field.observedTo, forecastFrom: field.forecast?.from ?? null, rainSource: field.rainSource, alerts: thisWeek, method: FIELD_ALERT_METHOD } : null,
       patterns,
       patternsSource: patterns.length ? profileData().sources.patterns ?? null : null,
       croppingIntensityPct: local.intensityPct,
@@ -1508,7 +1538,7 @@ export class RotationEngine {
     const landBangla = LAND_TYPE_BANGLA[request.landType] ?? '';
     const asked = useChoice && wantsChoice ? choice!.result.requested : [];
     const hero = useChoice && wantsChoice ? choice!.result.heroCrop : null;
-    const local = this.localContext(request, rules, options);
+    const local = this.localContext(request, rules, options, bestSpec);
     const heroName = hero ? asked.find(a => a.id === hero) : undefined;
 
     const monsoonLineBangla = aman && amanName
