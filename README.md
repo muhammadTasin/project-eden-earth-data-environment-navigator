@@ -1,4 +1,4 @@
-# Project EDEN — Earth Data & Environment Navigator
+# (Mati Kokhon) Project EDEN — Earth Data & Environment Navigator
 
 **NASA Space Apps Challenge 2026 · Team WinR · Challenge 07: Field Shift**
 
